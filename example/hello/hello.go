@@ -13,6 +13,7 @@ import (
 
 func main() {
 	addr := flag.String("addr", ":8800", "running address")
+	flag.Parse()
 	mux := g.NewServeMux(
 		gc.BootStrapCDNHead("Gerbera Template Engine !"),
 		body(),

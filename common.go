@@ -6,37 +6,37 @@ import (
 )
 
 var (
-	SPACE   = []byte(" ")
-	NEWLINE = []byte("\n")
+	space   = []byte(" ")
+	newline = []byte("\n")
 )
 
-var emptyElements = []string{
-	"doctype",
-	"area",
-	"base",
-	"basefont",
-	"br",
-	"col",
-	"frame",
-	"hr",
-	"img",
-	"input",
-	"isindex",
-	"link",
-	"meta",
-	"param",
-	"embed",
-	"keygen",
-	"command",
+var emptyElements = map[string]struct{}{
+	"doctype":  {},
+	"area":     {},
+	"base":     {},
+	"basefont": {},
+	"br":       {},
+	"col":      {},
+	"frame":    {},
+	"hr":       {},
+	"img":      {},
+	"input":    {},
+	"isindex":  {},
+	"link":     {},
+	"meta":     {},
+	"param":    {},
+	"embed":    {},
+	"keygen":   {},
+	"command":  {},
 }
 
 type ComponentFunc func(*Element) error
 
 type ClassMap map[string]bool
 type AttrMap map[string]string
-type StyleMap map[string]interface{}
+type StyleMap map[string]any
 
-func Tag(tagName string, fus []ComponentFunc) ComponentFunc {
+func Tag(tagName string, fus ...ComponentFunc) ComponentFunc {
 	el := &Element{TagName: tagName}
 	return func(parent *Element) error {
 		el.Children = make([]*Element, 0)
@@ -71,17 +71,9 @@ func ExecuteTemplate(w io.Writer, lang string, c ...ComponentFunc) error {
 	return h.Execute(w, c...)
 }
 
-func CnvToSlice(a ...ComponentFunc) []ComponentFunc {
-	return a
-}
-
 func isEmptyElement(n string) bool {
-	for _, s := range emptyElements {
-		if s == n {
-			return true
-		}
-	}
-	return false
+	_, ok := emptyElements[n]
+	return ok
 }
 
 func bytesRepeat(out io.Writer, b []byte, count int) {

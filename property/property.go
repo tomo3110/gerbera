@@ -17,7 +17,7 @@ func Class(c ...string) gerbera.ComponentFunc {
 	}
 }
 
-func Attr(key string, val interface{}) gerbera.ComponentFunc {
+func Attr(key string, val any) gerbera.ComponentFunc {
 	return func(el *gerbera.Element) error {
 		if el.Attr == nil {
 			el.Attr = make(map[string]string)
@@ -35,7 +35,7 @@ func Name(text string) gerbera.ComponentFunc {
 	return Attr("name", text)
 }
 
-func Value(value interface{}) gerbera.ComponentFunc {
+func Value(value any) gerbera.ComponentFunc {
 	return func(el *gerbera.Element) error {
 		el.Value = html.EscapeString(fmt.Sprint(value))
 		return nil

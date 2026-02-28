@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -42,7 +41,7 @@ func (p *Page) Save() error {
 	}
 	filePath := filepath.Join(wd, p.Title+".txt")
 	cachePages[p.Title] = p
-	return ioutil.WriteFile(filePath, p.Body, 0600)
+	return os.WriteFile(filePath, p.Body, 0600)
 }
 
 func (p *Page) ToMap() g.Map {
@@ -64,7 +63,7 @@ func LoadPage(title string) (*Page, error) {
 	if _, err := os.Stat(filePath); err != nil {
 		return nil, err
 	}
-	body, err := ioutil.ReadFile(filePath)
+	body, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -77,13 +76,13 @@ func FetchPageNameList() ([]*Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	files, err := ioutil.ReadDir(wd)
+	entries, err := os.ReadDir(wd)
 	if err != nil {
 		return nil, err
 	}
-	for _, info := range files {
-		name := info.Name()
-		if info.IsDir() {
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() {
 			continue
 		}
 		if filepath.Ext(name) != ".txt" {

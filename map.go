@@ -4,9 +4,9 @@ type ConvertToMap interface {
 	ToMap() Map
 }
 
-type Map map[string]interface{}
+type Map map[string]any
 
-func (m Map) Get(key string) interface{} {
+func (m Map) Get(key string) any {
 	result, ok := m[key]
 	if ok {
 		return result

@@ -1,8 +1,8 @@
 package styles
 
 import (
-	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/tomo3110/gerbera"
 )
@@ -12,16 +12,13 @@ func Style(styleMap gerbera.StyleMap) gerbera.ComponentFunc {
 		if el.Attr == nil {
 			el.Attr = make(map[string]string)
 		}
-		buf := &bytes.Buffer{}
+		var b strings.Builder
 		for key, val := range styleMap {
-			if _, err := fmt.Fprintf(buf, "%s: %s; ", key, fmt.Sprint(val)); err != nil {
+			if _, err := fmt.Fprintf(&b, "%s: %s; ", key, fmt.Sprint(val)); err != nil {
 				return err
 			}
 		}
-		if _, err := buf.Write(bytes.TrimRight(buf.Bytes(), " ")); err != nil {
-			return err
-		}
-		el.Attr["style"] = buf.String()
+		el.Attr["style"] = strings.TrimRight(b.String(), " ")
 		return nil
 	}
 }
