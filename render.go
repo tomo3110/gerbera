@@ -15,19 +15,20 @@ func Render(w io.Writer, el *Element) error {
 	if err := render(buf, el, 0); err != nil {
 		return err
 	}
-	return nil
+	return buf.Flush()
 }
 
 func render(out *bufio.Writer, el *Element, indent int) error {
-	bytesRepeat(out, SPACE, indent)
+	bytesRepeat(out, space, indent)
 	if _, err := fmt.Fprintf(out, "<%s", el.TagName); err != nil {
 		return err
 	}
 	if err := renderClasses(out, el.ClassNames); err != nil {
 		return err
 	}
-	renderAttr(out, el.Attr)
-	//renderKey(out, el)
+	if err := renderAttr(out, el.Attr); err != nil {
+		return err
+	}
 
 	if isEmptyElement(el.TagName) {
 		// img, input etc...
@@ -69,36 +70,37 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 			if err := render(out, c, indent+2); err != nil {
 				return err
 			}
-			if _, err := out.Write(NEWLINE); err != nil {
+			if _, err := out.Write(newline); err != nil {
 				return err
 			}
 		}
 	}
-	bytesRepeat(out, SPACE, indent)
+	bytesRepeat(out, space, indent)
 	if _, err := fmt.Fprintf(out, "</%s>", el.TagName); err != nil {
 		return err
 	}
-	return out.Flush()
+	return nil
 }
 
-func renderAttr(out io.Writer, attr AttrMap) {
+func renderAttr(out io.Writer, attr AttrMap) error {
 	for key, val := range attr {
 		if _, err := fmt.Fprintf(out, " %s=\"%s\"", key, val); err != nil {
-			continue
+			return err
 		}
 	}
+	return nil
 }
 
 func renderClasses(out io.Writer, classes ClassMap) error {
 	if len(classes) > 0 {
-		list := make([]string, len(classes))
+		list := make([]string, 0, len(classes))
 		if _, err := out.Write([]byte(" class=\"")); err != nil {
 			return err
 		}
 		for name := range classes {
 			list = append(list, name)
 		}
-		if _, err := fmt.Fprint(out, strings.Join(list, string(SPACE))); err != nil {
+		if _, err := fmt.Fprint(out, strings.Join(list, string(space))); err != nil {
 			return err
 		}
 		if _, err := out.Write([]byte("\"")); err != nil {
@@ -115,7 +117,7 @@ func renderValue(out io.Writer, el *Element) error {
 				if _, err := out.Write([]byte(el.Value)); err != nil {
 					return err
 				}
-				if _, err := out.Write(NEWLINE); err != nil {
+				if _, err := out.Write(newline); err != nil {
 					return err
 				}
 			} else {

@@ -2,7 +2,6 @@ package gerbera
 
 import (
 	"bytes"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -20,7 +19,7 @@ func TestTag(t *testing.T) {
 	for _, item := range list {
 		t.Run(item.name, func(t *testing.T) {
 			parent := &Element{TagName: "div"}
-			err := Tag(item.name, []ComponentFunc{})(parent)
+			err := Tag(item.name)(parent)
 			if err != nil {
 				t.Error(err)
 			}
@@ -71,17 +70,6 @@ func TestExecuteTemplate(t *testing.T) {
 	}
 	if resArr[2] != "</html>" {
 		t.Errorf("html要素の終了タグが異なります: want = </html>, result = %s", resArr[2])
-	}
-}
-
-func TestCnvToSlice(t *testing.T) {
-	s := CnvToSlice(Tag("h1", []ComponentFunc{}))
-	typeInfo := reflect.TypeOf(s)
-	if typeInfo.String() != "[]gerbera.ComponentFunc" {
-		t.Errorf("型名が異なります: want = []gerbera.ComponentFunc, result = %s", typeInfo.String())
-	}
-	if len(s) != 1 {
-		t.Errorf("子要素数が異なります")
 	}
 }
 

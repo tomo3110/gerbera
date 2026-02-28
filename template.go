@@ -17,7 +17,6 @@ func (t *Template) init() {
 		t.el = &Element{}
 	}
 	t.el.TagName = "html"
-	t.el.Index = 0
 	t.el.Value = ""
 	t.el.Attr = make(AttrMap)
 	if len(t.Lang) > 0 {
@@ -26,7 +25,7 @@ func (t *Template) init() {
 		t.el.Attr["lang"] = "en"
 	}
 	t.el.ClassNames = make(ClassMap)
-	t.el.Children = make([]*Element, 0)
+	t.el.Children = nil
 	t.buf = &bytes.Buffer{}
 }
 
@@ -54,7 +53,7 @@ func (t *Template) Read(b []byte) (int, error) {
 	if t.buf.Len() > 0 {
 		return t.buf.Read(b)
 	}
-	if &t.el == nil {
+	if t.el == nil {
 		t.init()
 	}
 	if err := Render(t.buf, t.el); err != nil {
@@ -70,7 +69,6 @@ func (t *Template) Execute(w io.Writer, c ...ComponentFunc) error {
 	if _, err := fmt.Fprint(w, t); err != nil {
 		return err
 	}
-	fmt.Println(t.el)
 	t.el = nil
 	return nil
 }

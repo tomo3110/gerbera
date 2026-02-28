@@ -5,7 +5,7 @@ import "testing"
 type testCaseMap struct {
 	m    Map
 	key  string
-	want interface{}
+	want any
 }
 
 func TestMap_Get(t *testing.T) {
