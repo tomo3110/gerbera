@@ -79,6 +79,7 @@ type WikiView struct {
 	Body    string   // page body text
 	Pages   []string // page list
 	EditBuf string   // text being edited
+	IsNew   bool     // true when creating a new page
 }
 
 func (v *WikiView) Mount(_ gl.Params) error {
@@ -111,11 +112,13 @@ func (v *WikiView) HandleEvent(event string, payload gl.Payload) error {
 		v.Mode = "view"
 	case "nav-edit":
 		v.EditBuf = v.Body
+		v.IsNew = false
 		v.Mode = "edit"
 	case "nav-new":
 		v.Title = ""
 		v.Body = ""
 		v.EditBuf = ""
+		v.IsNew = true
 		v.Mode = "edit"
 	case "edit-input":
 		v.EditBuf = payload["value"]
@@ -129,6 +132,7 @@ func (v *WikiView) HandleEvent(event string, payload gl.Payload) error {
 			return err
 		}
 		v.Body = v.EditBuf
+		v.IsNew = false
 		v.Mode = "view"
 	}
 	return nil
@@ -199,12 +203,12 @@ func (v *WikiView) renderView() g.ComponentFunc {
 func (v *WikiView) renderEdit() g.ComponentFunc {
 	return gd.Div(
 		gd.H2(
-			ge.If(v.Title == "",
+			ge.If(v.IsNew,
 				gp.Value("新規ページ"),
 				gp.Value(v.Title+" を編集"),
 			),
 		),
-		ge.If(v.Title == "",
+		ge.If(v.IsNew,
 			gd.Div(
 				gd.Label(gp.Attr("for", "title"), gp.Value("タイトル")),
 				gd.Input(
