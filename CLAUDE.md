@@ -50,6 +50,19 @@ No external dependencies — standard library only.
 - Tests use table-driven patterns with a shared helper in `dom/dom_test.go`
 - `property.Attr()` applies `html.EscapeString` to attribute values for XSS prevention
 
+## Git Branching Rules
+
+**NEVER commit directly to the `main` branch.** Always create a working branch and commit there.
+
+`main` ブランチへの直接コミットは禁止。必ず作業ブランチを作成し、そちらにコミットすること。
+
+```bash
+git checkout -b feature/my-feature   # Create a working branch
+# ... make changes ...
+git add <files>
+git commit -m "..."
+```
+
 ## Commit Message Convention
 
 Commit messages MUST be written in both English and Japanese (bilingual).
