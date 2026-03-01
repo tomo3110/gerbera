@@ -9,12 +9,12 @@ import (
 	g "github.com/tomo3110/gerbera"
 	gd "github.com/tomo3110/gerbera/dom"
 	gp "github.com/tomo3110/gerbera/property"
-	"github.com/tomo3110/gerbera/live"
+	gl "github.com/tomo3110/gerbera/live"
 )
 
 type CounterView struct{ Count int }
 
-func (v *CounterView) Mount(params live.Params) error {
+func (v *CounterView) Mount(params gl.Params) error {
 	v.Count = 0
 	return nil
 }
@@ -26,14 +26,14 @@ func (v *CounterView) Render() []g.ComponentFunc {
 			gp.Class("container"),
 			gd.H1(gp.Value(fmt.Sprintf("カウント: %d", v.Count))),
 			gd.Div(
-				gd.Button(live.Click("dec"), gp.Value("-")),
-				gd.Button(live.Click("inc"), gp.Value("+")),
+				gd.Button(gl.Click("dec"), gp.Value("-")),
+				gd.Button(gl.Click("inc"), gp.Value("+")),
 			),
 		),
 	}
 }
 
-func (v *CounterView) HandleEvent(event string, payload live.Payload) error {
+func (v *CounterView) HandleEvent(event string, payload gl.Payload) error {
 	switch event {
 	case "inc":
 		v.Count++
@@ -46,7 +46,7 @@ func (v *CounterView) HandleEvent(event string, payload live.Payload) error {
 func main() {
 	addr := flag.String("addr", ":8840", "listen address")
 	flag.Parse()
-	http.Handle("/", live.Handler(func() live.View { return &CounterView{} }))
+	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }))
 	log.Printf("counter running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

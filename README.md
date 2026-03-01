@@ -62,25 +62,25 @@ import (
 	g  "github.com/tomo3110/gerbera"
 	gd "github.com/tomo3110/gerbera/dom"
 	gp "github.com/tomo3110/gerbera/property"
-	"github.com/tomo3110/gerbera/live"
+	gl "github.com/tomo3110/gerbera/live"
 )
 
 type CounterView struct{ Count int }
 
-func (v *CounterView) Mount(_ live.Params) error { v.Count = 0; return nil }
+func (v *CounterView) Mount(_ gl.Params) error { v.Count = 0; return nil }
 
 func (v *CounterView) Render() []g.ComponentFunc {
 	return []g.ComponentFunc{
 		gd.Head(gd.Title("Counter")),
 		gd.Body(
 			gd.H1(gp.Value(fmt.Sprintf("Count: %d", v.Count))),
-			gd.Button(live.Click("dec"), gp.Value("-")),
-			gd.Button(live.Click("inc"), gp.Value("+")),
+			gd.Button(gl.Click("dec"), gp.Value("-")),
+			gd.Button(gl.Click("inc"), gp.Value("+")),
 		),
 	}
 }
 
-func (v *CounterView) HandleEvent(event string, _ live.Payload) error {
+func (v *CounterView) HandleEvent(event string, _ gl.Payload) error {
 	switch event {
 	case "inc":
 		v.Count++
@@ -91,7 +91,7 @@ func (v *CounterView) HandleEvent(event string, _ live.Payload) error {
 }
 
 func main() {
-	http.Handle("/", live.Handler(func() live.View { return &CounterView{} }))
+	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }))
 	log.Fatal(http.ListenAndServe(":8840", nil))
 }
 ```
@@ -170,7 +170,7 @@ gd.Body(
 
 ### LiveView (`live/` package)
 
-Gerbera Live provides Phoenix LiveView-style real-time updates. Implement the `live.View` interface:
+Gerbera Live provides Phoenix LiveView-style real-time updates. Implement the `gl.View` interface:
 
 | Method | Description |
 |--------|-------------|
@@ -182,21 +182,21 @@ Event bindings:
 
 | Function | Description |
 |----------|-------------|
-| `live.Click(event)` | Binds a click event |
-| `live.ClickValue(value)` | Sets a value to send with click events |
-| `live.Input(event)` | Binds an input event (sends `value` in payload) |
-| `live.Change(event)` | Binds a change event |
-| `live.Submit(event)` | Binds a form submit event |
-| `live.Focus(event)` / `live.Blur(event)` | Focus/blur events |
-| `live.Keydown(event)` | Binds a keydown event |
-| `live.Key(key)` | Filters keydown by key name |
+| `gl.Click(event)` | Binds a click event |
+| `gl.ClickValue(value)` | Sets a value to send with click events |
+| `gl.Input(event)` | Binds an input event (sends `value` in payload) |
+| `gl.Change(event)` | Binds a change event |
+| `gl.Submit(event)` | Binds a form submit event |
+| `gl.Focus(event)` / `gl.Blur(event)` | Focus/blur events |
+| `gl.Keydown(event)` | Binds a keydown event |
+| `gl.Key(key)` | Filters keydown by key name |
 
 Handler options:
 
 | Function | Description |
 |----------|-------------|
-| `live.WithLang(lang)` | Sets HTML `lang` attribute (default `"ja"`) |
-| `live.WithSessionTTL(d)` | Sets session timeout (default 5 minutes) |
+| `gl.WithLang(lang)` | Sets HTML `lang` attribute (default `"ja"`) |
+| `gl.WithSessionTTL(d)` | Sets session timeout (default 5 minutes) |
 
 ## Examples
 
@@ -211,7 +211,7 @@ Each example includes bilingual tutorials (`TUTORIAL.md` / `TUTORIAL.ja.md`).
 | [report](example/report/) | Report output | stdout | `go run example/report/report.go` |
 | [wiki](example/wiki/) | Multi-route Wiki (SSR) | :8880 | `go run example/wiki/wiki.go` |
 | [counter](example/counter/) | LiveView counter | :8840 | `go run example/counter/counter.go` |
-| [wiki_live](example/wiki_live/) | LiveView Wiki (SPA) | :8850 | `go run example/wiki_live/wiki_live.go` |
+| [wiki_live](example/wiki_live/) | LiveView Wiki (SPA) | :8850 | `go run example/wiki_live/wiki_gl.go` |
 
 ## Development
 

@@ -4,9 +4,9 @@
 
 `live/` パッケージを使って、ページリロードなしで動作する SPA 風 Wiki を構築します。このチュートリアルでは以下の機能を学びます。
 
-- `live.View` インターフェース — 状態フィールドによる複数画面（一覧 / 閲覧 / 編集）の管理
-- `live.Click` / `live.ClickValue` — データを伴うクリックイベントによるナビゲーション
-- `live.Input` — リアルタイムフォーム入力バインディング
+- `gl.View` インターフェース — 状態フィールドによる複数画面（一覧 / 閲覧 / 編集）の管理
+- `gl.Click` / `gl.ClickValue` — データを伴うクリックイベントによるナビゲーション
+- `gl.Input` — リアルタイムフォーム入力バインディング
 - `expr.If` / `expr.Each` — LiveView 内での条件分岐とリスト描画
 - ファイル I/O — Wiki ページの `.txt` ファイルへの永続化
 
@@ -32,7 +32,7 @@ import (
 	gd "github.com/tomo3110/gerbera/dom"
 	ge "github.com/tomo3110/gerbera/expr"
 	gp "github.com/tomo3110/gerbera/property"
-	"github.com/tomo3110/gerbera/live"
+	gl "github.com/tomo3110/gerbera/live"
 )
 ```
 
@@ -102,7 +102,7 @@ func (p pageItem) ToMap() g.Map {
 ## ステップ 4: Mount の実装
 
 ```go
-func (v *WikiView) Mount(_ live.Params) error {
+func (v *WikiView) Mount(_ gl.Params) error {
 	v.Mode = "list"
 	return v.refreshPages()
 }
@@ -122,7 +122,7 @@ func (v *WikiView) refreshPages() error {
 ## ステップ 5: HandleEvent の実装
 
 ```go
-func (v *WikiView) HandleEvent(event string, payload live.Payload) error {
+func (v *WikiView) HandleEvent(event string, payload gl.Payload) error {
 	switch event {
 	case "nav-list":
 		v.Mode = "list"
@@ -162,8 +162,8 @@ func (v *WikiView) HandleEvent(event string, payload live.Payload) error {
 
 ポイント:
 - **画面遷移** — `nav-list`, `nav-view`, `nav-edit`, `nav-new` などのイベントが `Mode` フィールドを変更し、`Render()` が異なるコンポーネントツリーを出力します
-- **ClickValue によるデータ送信** — `nav-view` は `payload["value"]` からクリックされたページタイトルを取得します（`live.ClickValue` で設定）
-- **入力バインディング** — `edit-input` と `title-input` は `payload["value"]` から状態フィールドを更新します（`live.Input` で設定）
+- **ClickValue によるデータ送信** — `nav-view` は `payload["value"]` からクリックされたページタイトルを取得します（`gl.ClickValue` で設定）
+- **入力バインディング** — `edit-input` と `title-input` は `payload["value"]` から状態フィールドを更新します（`gl.Input` で設定）
 - **永続化** — `save` でディスクに書き込み、閲覧モードに遷移します
 
 ## ステップ 6: Render の実装
@@ -178,8 +178,8 @@ func (v *WikiView) Render() []g.ComponentFunc {
 			gp.Class("container"),
 			gd.H1(gp.Value("Wiki Live")),
 			gd.Nav(
-				gd.Button(live.Click("nav-list"), gp.Value("ページ一覧")),
-				gd.Button(live.Click("nav-new"), gp.Value("新規作成")),
+				gd.Button(gl.Click("nav-list"), gp.Value("ページ一覧")),
+				gd.Button(gl.Click("nav-new"), gp.Value("新規作成")),
 			),
 			gd.Hr(),
 			v.renderContent(),
@@ -199,7 +199,7 @@ func (v *WikiView) renderContent() g.ComponentFunc {
 }
 ```
 
-### 一覧モード — `expr.If` + `expr.Each` + `live.ClickValue`
+### 一覧モード — `expr.If` + `expr.Each` + `gl.ClickValue`
 
 ```go
 func (v *WikiView) renderList() g.ComponentFunc {
@@ -215,8 +215,8 @@ func (v *WikiView) renderList() g.ComponentFunc {
 					title := item.ToMap().Get("title").(string)
 					return gd.Li(
 						gd.Button(
-							live.Click("nav-view"),
-							live.ClickValue(title),
+							gl.Click("nav-view"),
+							gl.ClickValue(title),
 							gp.Value(title),
 						),
 					)
@@ -228,8 +228,8 @@ func (v *WikiView) renderList() g.ComponentFunc {
 }
 ```
 
-- `live.Click("nav-view")` でクリックイベントをバインド
-- `live.ClickValue(title)` で `gerbera-value` 属性を設定し、ページタイトルをペイロードの `"value"` として送信
+- `gl.Click("nav-view")` でクリックイベントをバインド
+- `gl.ClickValue(title)` で `gerbera-value` 属性を設定し、ページタイトルをペイロードの `"value"` として送信
 - `ge.If` でリストまたは空メッセージを表示
 - `ge.Each` でページアイテムを反復
 
@@ -240,14 +240,14 @@ func (v *WikiView) renderView() g.ComponentFunc {
 	return gd.Div(
 		gd.H2(gp.Value(v.Title)),
 		gd.Div(
-			gd.Button(live.Click("nav-edit"), gp.Value("編集")),
+			gd.Button(gl.Click("nav-edit"), gp.Value("編集")),
 		),
 		gd.P(gp.Value(v.Body)),
 	)
 }
 ```
 
-### 編集モード — `live.Input`
+### 編集モード — `gl.Input`
 
 ```go
 func (v *WikiView) renderEdit() g.ComponentFunc {
@@ -265,7 +265,7 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 					gp.Attr("type", "text"),
 					gp.Name("title"),
 					gp.Attr("placeholder", "ページタイトル"),
-					live.Input("title-input"),
+					gl.Input("title-input"),
 				),
 			),
 			g.Skip(),
@@ -277,18 +277,18 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 				gp.Attr("rows", "10"),
 				gp.Attr("cols", "60"),
 				gp.Value(v.EditBuf),
-				live.Input("edit-input"),
+				gl.Input("edit-input"),
 			),
 		),
 		gd.Div(
-			gd.Button(live.Click("save"), gp.Value("保存")),
-			gd.Button(live.Click("nav-list"), gp.Value("キャンセル")),
+			gd.Button(gl.Click("save"), gp.Value("保存")),
+			gd.Button(gl.Click("nav-list"), gp.Value("キャンセル")),
 		),
 	)
 }
 ```
 
-- `live.Input("edit-input")` で各キーストロークをサーバーに送信し、`EditBuf` を更新
+- `gl.Input("edit-input")` で各キーストロークをサーバーに送信し、`EditBuf` を更新
 - `ge.If(v.Title == "", ...)` で新規作成時のみタイトル入力フィールドを表示
 - `g.Skip()` は何も描画しない — `ge.If` の偽分岐として使用
 
@@ -298,13 +298,13 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 func main() {
 	addr := flag.String("addr", ":8850", "listen address")
 	flag.Parse()
-	http.Handle("/", live.Handler(func() live.View { return &WikiView{} }))
+	http.Handle("/", gl.Handler(func() gl.View { return &WikiView{} }))
 	log.Printf("wiki_live running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 ```
 
-`live.Handler` 1つで初期 HTML レンダリング、WebSocket アップグレード、イベント処理をすべて処理します。複数ルートは不要です。
+`gl.Handler` 1つで初期 HTML レンダリング、WebSocket アップグレード、イベント処理をすべて処理します。複数ルートは不要です。
 
 ## 動作の仕組み
 
@@ -347,15 +347,15 @@ func main() {
 | 観点 | `example/wiki/` | `example/wiki_live/` |
 |------|-----------------|---------------------|
 | レンダリング | サーバーサイド（フルページ） | LiveView（WebSocket パッチ） |
-| ナビゲーション | ページリロード（`<a href>`） | リロードなし（`live.Click`） |
+| ナビゲーション | ページリロード（`<a href>`） | リロードなし（`gl.Click`） |
 | ルート数 | 4（`/`, `/view/`, `/edit/`, `/save/`） | 1（`/`） |
-| フォーム処理 | POST + リダイレクト | `live.Input` + `live.Click` |
+| フォーム処理 | POST + リダイレクト | `gl.Input` + `gl.Click` |
 | ユーザー体験 | 従来型 Web アプリ | SPA 風 |
 
 ## 実行方法
 
 ```bash
-go run example/wiki_live/wiki_live.go
+go run example/wiki_live/wiki_gl.go
 ```
 
 ブラウザで http://localhost:8850 を開き、以下を試してみましょう:
@@ -370,13 +370,13 @@ go run example/wiki_live/wiki_live.go
 ポートを変更する場合:
 
 ```bash
-go run example/wiki_live/wiki_live.go -addr :3000
+go run example/wiki_live/wiki_gl.go -addr :3000
 ```
 
 ## 発展課題
 
 1. 閲覧画面にページの削除ボタンを追加してみましょう
-2. 一覧画面に `live.Input` を使った検索・フィルター入力を追加してみましょう
+2. 一覧画面に `gl.Input` を使った検索・フィルター入力を追加してみましょう
 3. 保存前に確認メッセージを表示してみましょう（`Message` 状態フィールドを追加）
 4. Markdown パーサーを組み込んで、本文を Markdown として描画してみましょう
 
@@ -384,13 +384,13 @@ go run example/wiki_live/wiki_live.go -addr :3000
 
 | 関数 | 説明 |
 |------|------|
-| `live.Handler(factory, opts...)` | LiveView 用の `http.Handler` を返す |
-| `live.Click(event)` | クリックイベントをバインド |
-| `live.ClickValue(value)` | クリックイベントで送信する値を設定 |
-| `live.Input(event)` | 入力イベントをバインド（ペイロードに `value` を含む） |
-| `live.View` | インターフェース: `Mount`, `Render`, `HandleEvent` |
-| `live.Params` | `map[string]string` — URL パラメータ |
-| `live.Payload` | `map[string]string` — イベントデータ |
+| `gl.Handler(factory, opts...)` | LiveView 用の `http.Handler` を返す |
+| `gl.Click(event)` | クリックイベントをバインド |
+| `gl.ClickValue(value)` | クリックイベントで送信する値を設定 |
+| `gl.Input(event)` | 入力イベントをバインド（ペイロードに `value` を含む） |
+| `gl.View` | インターフェース: `Mount`, `Render`, `HandleEvent` |
+| `gl.Params` | `map[string]string` — URL パラメータ |
+| `gl.Payload` | `map[string]string` — イベントデータ |
 | `ge.If(cond, true, false...)` | 条件分岐 |
 | `ge.Each(list, callback)` | `ConvertToMap` スライスのリスト反復 |
 | `g.Skip()` | 何も描画しない（`If` の偽分岐に便利） |

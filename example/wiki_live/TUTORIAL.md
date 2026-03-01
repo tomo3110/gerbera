@@ -4,9 +4,9 @@
 
 Build a SPA-style Wiki that runs entirely without page reloads, using the `live/` package. This tutorial covers the following features:
 
-- `live.View` interface — Managing multiple screens (list / view / edit) with state fields
-- `live.Click` / `live.ClickValue` — Navigation with click events that carry data
-- `live.Input` — Real-time form input binding
+- `gl.View` interface — Managing multiple screens (list / view / edit) with state fields
+- `gl.Click` / `gl.ClickValue` — Navigation with click events that carry data
+- `gl.Input` — Real-time form input binding
 - `expr.If` / `expr.Each` — Conditional branching and list rendering inside a LiveView
 - File I/O — Persisting wiki pages to `.txt` files on disk
 
@@ -32,7 +32,7 @@ import (
 	gd "github.com/tomo3110/gerbera/dom"
 	ge "github.com/tomo3110/gerbera/expr"
 	gp "github.com/tomo3110/gerbera/property"
-	"github.com/tomo3110/gerbera/live"
+	gl "github.com/tomo3110/gerbera/live"
 )
 ```
 
@@ -102,7 +102,7 @@ func (p pageItem) ToMap() g.Map {
 ## Step 4: Implementing Mount
 
 ```go
-func (v *WikiView) Mount(_ live.Params) error {
+func (v *WikiView) Mount(_ gl.Params) error {
 	v.Mode = "list"
 	return v.refreshPages()
 }
@@ -122,7 +122,7 @@ On session creation, the view initializes in list mode and loads the page list f
 ## Step 5: Implementing HandleEvent
 
 ```go
-func (v *WikiView) HandleEvent(event string, payload live.Payload) error {
+func (v *WikiView) HandleEvent(event string, payload gl.Payload) error {
 	switch event {
 	case "nav-list":
 		v.Mode = "list"
@@ -162,8 +162,8 @@ func (v *WikiView) HandleEvent(event string, payload live.Payload) error {
 
 Key points:
 - **Screen transitions** — Events like `nav-list`, `nav-view`, `nav-edit`, `nav-new` change the `Mode` field, causing `Render()` to output different component trees
-- **Data passing via ClickValue** — `nav-view` reads `payload["value"]` to get the clicked page title (set by `live.ClickValue`)
-- **Input binding** — `edit-input` and `title-input` update state fields from `payload["value"]` (set by `live.Input`)
+- **Data passing via ClickValue** — `nav-view` reads `payload["value"]` to get the clicked page title (set by `gl.ClickValue`)
+- **Input binding** — `edit-input` and `title-input` update state fields from `payload["value"]` (set by `gl.Input`)
 - **Persistence** — `save` writes to disk, then transitions to view mode
 
 ## Step 6: Implementing Render
@@ -178,8 +178,8 @@ func (v *WikiView) Render() []g.ComponentFunc {
 			gp.Class("container"),
 			gd.H1(gp.Value("Wiki Live")),
 			gd.Nav(
-				gd.Button(live.Click("nav-list"), gp.Value("ページ一覧")),
-				gd.Button(live.Click("nav-new"), gp.Value("新規作成")),
+				gd.Button(gl.Click("nav-list"), gp.Value("ページ一覧")),
+				gd.Button(gl.Click("nav-new"), gp.Value("新規作成")),
 			),
 			gd.Hr(),
 			v.renderContent(),
@@ -199,7 +199,7 @@ func (v *WikiView) renderContent() g.ComponentFunc {
 }
 ```
 
-### List Mode — `expr.If` + `expr.Each` + `live.ClickValue`
+### List Mode — `expr.If` + `expr.Each` + `gl.ClickValue`
 
 ```go
 func (v *WikiView) renderList() g.ComponentFunc {
@@ -215,8 +215,8 @@ func (v *WikiView) renderList() g.ComponentFunc {
 					title := item.ToMap().Get("title").(string)
 					return gd.Li(
 						gd.Button(
-							live.Click("nav-view"),
-							live.ClickValue(title),
+							gl.Click("nav-view"),
+							gl.ClickValue(title),
 							gp.Value(title),
 						),
 					)
@@ -228,8 +228,8 @@ func (v *WikiView) renderList() g.ComponentFunc {
 }
 ```
 
-- `live.Click("nav-view")` binds the click event
-- `live.ClickValue(title)` sets the `gerbera-value` attribute so the page title is sent in the payload as `"value"`
+- `gl.Click("nav-view")` binds the click event
+- `gl.ClickValue(title)` sets the `gerbera-value` attribute so the page title is sent in the payload as `"value"`
 - `ge.If` shows the list or an empty message
 - `ge.Each` iterates over the page items
 
@@ -240,14 +240,14 @@ func (v *WikiView) renderView() g.ComponentFunc {
 	return gd.Div(
 		gd.H2(gp.Value(v.Title)),
 		gd.Div(
-			gd.Button(live.Click("nav-edit"), gp.Value("編集")),
+			gd.Button(gl.Click("nav-edit"), gp.Value("編集")),
 		),
 		gd.P(gp.Value(v.Body)),
 	)
 }
 ```
 
-### Edit Mode — `live.Input`
+### Edit Mode — `gl.Input`
 
 ```go
 func (v *WikiView) renderEdit() g.ComponentFunc {
@@ -265,7 +265,7 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 					gp.Attr("type", "text"),
 					gp.Name("title"),
 					gp.Attr("placeholder", "ページタイトル"),
-					live.Input("title-input"),
+					gl.Input("title-input"),
 				),
 			),
 			g.Skip(),
@@ -277,18 +277,18 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 				gp.Attr("rows", "10"),
 				gp.Attr("cols", "60"),
 				gp.Value(v.EditBuf),
-				live.Input("edit-input"),
+				gl.Input("edit-input"),
 			),
 		),
 		gd.Div(
-			gd.Button(live.Click("save"), gp.Value("保存")),
-			gd.Button(live.Click("nav-list"), gp.Value("キャンセル")),
+			gd.Button(gl.Click("save"), gp.Value("保存")),
+			gd.Button(gl.Click("nav-list"), gp.Value("キャンセル")),
 		),
 	)
 }
 ```
 
-- `live.Input("edit-input")` sends each keystroke to the server, updating `EditBuf`
+- `gl.Input("edit-input")` sends each keystroke to the server, updating `EditBuf`
 - `ge.If(v.Title == "", ...)` shows the title input field only when creating a new page
 - `g.Skip()` renders nothing — used as the false branch of `ge.If`
 
@@ -298,13 +298,13 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 func main() {
 	addr := flag.String("addr", ":8850", "listen address")
 	flag.Parse()
-	http.Handle("/", live.Handler(func() live.View { return &WikiView{} }))
+	http.Handle("/", gl.Handler(func() gl.View { return &WikiView{} }))
 	log.Printf("wiki_live running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 ```
 
-A single `live.Handler` handles everything — initial HTML rendering, WebSocket upgrade, and event processing. No multiple routes needed.
+A single `gl.Handler` handles everything — initial HTML rendering, WebSocket upgrade, and event processing. No multiple routes needed.
 
 ## How It Works
 
@@ -347,15 +347,15 @@ Browser                                   Go Server
 | Aspect | `example/wiki/` | `example/wiki_live/` |
 |--------|-----------------|---------------------|
 | Rendering | Server-side (full page) | LiveView (WebSocket patches) |
-| Navigation | Page reloads (`<a href>`) | No reloads (`live.Click`) |
+| Navigation | Page reloads (`<a href>`) | No reloads (`gl.Click`) |
 | Routes | 4 (`/`, `/view/`, `/edit/`, `/save/`) | 1 (`/`) |
-| Form handling | POST + redirect | `live.Input` + `live.Click` |
+| Form handling | POST + redirect | `gl.Input` + `gl.Click` |
 | User experience | Traditional web app | SPA-like |
 
 ## Running
 
 ```bash
-go run example/wiki_live/wiki_live.go
+go run example/wiki_live/wiki_gl.go
 ```
 
 Open http://localhost:8850 in your browser and try:
@@ -370,13 +370,13 @@ All interactions happen without page reloads.
 To change the port:
 
 ```bash
-go run example/wiki_live/wiki_live.go -addr :3000
+go run example/wiki_live/wiki_gl.go -addr :3000
 ```
 
 ## Exercises
 
 1. Add a delete button to remove a page from the view screen
-2. Add a search/filter input on the list screen using `live.Input`
+2. Add a search/filter input on the list screen using `gl.Input`
 3. Show a confirmation message before saving (add a `Message` state field)
 4. Add Markdown rendering support by integrating a Markdown parser
 
@@ -384,13 +384,13 @@ go run example/wiki_live/wiki_live.go -addr :3000
 
 | Function | Description |
 |----------|-------------|
-| `live.Handler(factory, opts...)` | Returns an `http.Handler` for a LiveView |
-| `live.Click(event)` | Binds a click event |
-| `live.ClickValue(value)` | Sets a value to send with click events |
-| `live.Input(event)` | Binds an input event (sends `value` in payload) |
-| `live.View` | Interface: `Mount`, `Render`, `HandleEvent` |
-| `live.Params` | `map[string]string` — URL parameters |
-| `live.Payload` | `map[string]string` — Event data |
+| `gl.Handler(factory, opts...)` | Returns an `http.Handler` for a LiveView |
+| `gl.Click(event)` | Binds a click event |
+| `gl.ClickValue(value)` | Sets a value to send with click events |
+| `gl.Input(event)` | Binds an input event (sends `value` in payload) |
+| `gl.View` | Interface: `Mount`, `Render`, `HandleEvent` |
+| `gl.Params` | `map[string]string` — URL parameters |
+| `gl.Payload` | `map[string]string` — Event data |
 | `ge.If(cond, true, false...)` | Conditional branching |
 | `ge.Each(list, callback)` | List iteration over `ConvertToMap` slice |
 | `g.Skip()` | Renders nothing (useful as `If` false branch) |

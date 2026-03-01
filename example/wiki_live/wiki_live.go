@@ -12,7 +12,7 @@ import (
 	gd "github.com/tomo3110/gerbera/dom"
 	ge "github.com/tomo3110/gerbera/expr"
 	gp "github.com/tomo3110/gerbera/property"
-	"github.com/tomo3110/gerbera/live"
+	gl "github.com/tomo3110/gerbera/live"
 )
 
 // dataDir is the directory where wiki page .txt files are stored.
@@ -81,7 +81,7 @@ type WikiView struct {
 	EditBuf string   // text being edited
 }
 
-func (v *WikiView) Mount(_ live.Params) error {
+func (v *WikiView) Mount(_ gl.Params) error {
 	v.Mode = "list"
 	return v.refreshPages()
 }
@@ -95,7 +95,7 @@ func (v *WikiView) refreshPages() error {
 	return nil
 }
 
-func (v *WikiView) HandleEvent(event string, payload live.Payload) error {
+func (v *WikiView) HandleEvent(event string, payload gl.Payload) error {
 	switch event {
 	case "nav-list":
 		v.Mode = "list"
@@ -141,8 +141,8 @@ func (v *WikiView) Render() []g.ComponentFunc {
 			gp.Class("container"),
 			gd.H1(gp.Value("Wiki Live")),
 			gd.Nav(
-				gd.Button(live.Click("nav-list"), gp.Value("ページ一覧")),
-				gd.Button(live.Click("nav-new"), gp.Value("新規作成")),
+				gd.Button(gl.Click("nav-list"), gp.Value("ページ一覧")),
+				gd.Button(gl.Click("nav-new"), gp.Value("新規作成")),
 			),
 			gd.Hr(),
 			v.renderContent(),
@@ -174,8 +174,8 @@ func (v *WikiView) renderList() g.ComponentFunc {
 					title := item.ToMap().Get("title").(string)
 					return gd.Li(
 						gd.Button(
-							live.Click("nav-view"),
-							live.ClickValue(title),
+							gl.Click("nav-view"),
+							gl.ClickValue(title),
 							gp.Value(title),
 						),
 					)
@@ -190,7 +190,7 @@ func (v *WikiView) renderView() g.ComponentFunc {
 	return gd.Div(
 		gd.H2(gp.Value(v.Title)),
 		gd.Div(
-			gd.Button(live.Click("nav-edit"), gp.Value("編集")),
+			gd.Button(gl.Click("nav-edit"), gp.Value("編集")),
 		),
 		gd.P(gp.Value(v.Body)),
 	)
@@ -211,7 +211,7 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 					gp.Attr("type", "text"),
 					gp.Name("title"),
 					gp.Attr("placeholder", "ページタイトル"),
-					live.Input("title-input"),
+					gl.Input("title-input"),
 				),
 			),
 			g.Skip(),
@@ -223,12 +223,12 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 				gp.Attr("rows", "10"),
 				gp.Attr("cols", "60"),
 				gp.Value(v.EditBuf),
-				live.Input("edit-input"),
+				gl.Input("edit-input"),
 			),
 		),
 		gd.Div(
-			gd.Button(live.Click("save"), gp.Value("保存")),
-			gd.Button(live.Click("nav-list"), gp.Value("キャンセル")),
+			gd.Button(gl.Click("save"), gp.Value("保存")),
+			gd.Button(gl.Click("nav-list"), gp.Value("キャンセル")),
 		),
 	)
 }
@@ -236,7 +236,7 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 func main() {
 	addr := flag.String("addr", ":8850", "listen address")
 	flag.Parse()
-	http.Handle("/", live.Handler(func() live.View { return &WikiView{} }))
+	http.Handle("/", gl.Handler(func() gl.View { return &WikiView{} }))
 	log.Printf("wiki_live running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
