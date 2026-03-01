@@ -35,8 +35,10 @@
     ".gd-toggle { width:36px; height:36px; border-radius:50%; border:none;",
     "  background:#cba6f7; color:#1e1e2e; font-size:16px; font-weight:bold;",
     "  cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.3);",
-    "  display:flex; align-items:center; justify-content:center; margin:8px; }",
+    "  display:flex; align-items:center; justify-content:center; margin:8px;",
+    "  padding:0; line-height:0; }",
     ".gd-toggle:hover { background:#b48ef0; }",
+    ".gd-toggle svg { display:block; }",
     ".gd-status { display:inline-block; width:8px; height:8px; border-radius:50%;",
     "  margin-right:6px; }",
     ".gd-status-connected { background:#a6e3a1; }",
@@ -50,7 +52,7 @@
 
   var toggleBtn = document.createElement("button");
   toggleBtn.className = "gd-toggle";
-  toggleBtn.textContent = "G";
+  toggleBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2l1.88 1.88"/><path d="M14.12 3.88L16 2"/><path d="M9 7.13v-1a3.003 3.003 0 116 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 014-4h4a4 4 0 014 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg>';
   toggleBtn.title = "Toggle Gerbera Debug Panel (Ctrl+Shift+D)";
   shadow.appendChild(toggleBtn);
 
