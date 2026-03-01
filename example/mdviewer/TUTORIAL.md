@@ -10,6 +10,7 @@ Build a real-time Markdown viewer/editor that demonstrates practical Gerbera Liv
 - `OpSetHTML` — WebSocket diff patches that use `innerHTML` for HTML content
 - Independent module — Using `go.mod` with `replace` directive and external dependencies
 - Client-side polling — File change detection without server push
+- `gl.Scroll` / `gl.Throttle` — Server-routed scroll sync via `MutationObserver`
 
 ## Prerequisites
 
@@ -153,16 +154,96 @@ setInterval(function() {
 
 When no file changes are detected, `HandleEvent` returns without modifying state, producing zero patches, and the handler skips sending a WebSocket message (see `handler.go` L191).
 
-## Step 8: Scroll Sync
+## Step 8: Scroll Sync via `gl.Scroll()`
 
-```javascript
-ta.addEventListener('scroll', function() {
-    var pct = ta.scrollTop / (ta.scrollHeight - ta.clientHeight);
-    pv.scrollTop = pct * (pv.scrollHeight - pv.clientHeight);
-});
+Scroll sync uses the LiveView event system rather than raw JavaScript. Since `scrollTop` is a DOM property (not an HTML attribute), Gerbera's diff system can't control it directly. Instead, the server computes a scroll percentage and reflects it as a `data-scroll-pct` attribute, which a `MutationObserver` on the client converts back to `scrollTop`.
+
+### Binding the scroll event
+
+```go
+gd.Textarea(
+    gp.ID("md-editor"),
+    gp.Class("md-textarea"),
+    gl.Input("edit"),
+    gl.Scroll("editor-scroll"),  // send scroll events to server
+    gl.Throttle(50),             // limit to one event per 50ms
+    gp.Value(v.Source),
+),
 ```
 
-The editor's scroll position is mapped to a percentage and applied to the preview pane. This is injected as an inline `<script>` via `g.Literal()`.
+`gl.Scroll("editor-scroll")` adds a `gerbera-scroll` attribute. The client JS (`gerbera.js`) listens for `scroll` events and sends `scrollTop`, `scrollHeight`, and `clientHeight` in the payload. `gl.Throttle(50)` limits the event rate.
+
+### Server-side handler
+
+```go
+case "editor-scroll":
+    scrollTop, _ := strconv.ParseFloat(payload["scrollTop"], 64)
+    scrollHeight, _ := strconv.ParseFloat(payload["scrollHeight"], 64)
+    clientHeight, _ := strconv.ParseFloat(payload["clientHeight"], 64)
+    max := scrollHeight - clientHeight
+    if max > 0 {
+        v.ScrollPct = scrollTop / max
+    }
+```
+
+The handler normalizes the scroll position to a 0.0–1.0 range (`ScrollPct`).
+
+### Reflecting scroll percentage via diff
+
+```go
+gd.Div(
+    gp.Class("md-preview-pane"),
+    gp.Attr("data-scroll-pct", fmt.Sprintf("%.6f", v.ScrollPct)),
+    ...
+),
+```
+
+The diff system detects the attribute change and sends an `attr` patch to the client.
+
+### Client-side MutationObserver
+
+```javascript
+(function() {
+  var pv = document.querySelector('.md-preview-pane');
+  if (!pv) return;
+  var ob = new MutationObserver(function(muts) {
+    muts.forEach(function(m) {
+      if (m.attributeName === 'data-scroll-pct') {
+        var pct = parseFloat(pv.getAttribute('data-scroll-pct'));
+        if (!isNaN(pct)) {
+          pv.scrollTop = pct * (pv.scrollHeight - pv.clientHeight);
+        }
+      }
+    });
+  });
+  ob.observe(pv, { attributes: true, attributeFilter: ['data-scroll-pct'] });
+})();
+```
+
+The `MutationObserver` watches for changes to `data-scroll-pct` and converts the percentage back to an absolute `scrollTop` value.
+
+### Data flow
+
+```
+Browser                                    Go Server
+  |                                           |
+  | User scrolls textarea                     |
+  | gerbera.js: scroll event (throttled 50ms) |
+  | --> {"e":"editor-scroll","p":{            |
+  |       "scrollTop":"150",                  |
+  |       "scrollHeight":"1200",              |
+  |       "clientHeight":"400"}}              |
+  |                                           |
+  |     HandleEvent: ScrollPct = 150/800      |
+  |     Render: data-scroll-pct="0.187500"    |
+  |     Diff: attr patch                      |
+  |                                           |
+  | <-- [{"op":"attr","key":"data-scroll-pct",|
+  |       "val":"0.187500"}]                  |
+  |                                           |
+  | MutationObserver fires                    |
+  | pv.scrollTop = 0.1875 * maxScroll         |
+```
 
 ## Step 9: CLI and Server
 

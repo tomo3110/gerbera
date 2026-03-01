@@ -32,6 +32,27 @@
         });
       });
     });
+    document.querySelectorAll("[gerbera-scroll]").forEach(function(el) {
+      if (el._gbScroll) return;
+      el._gbScroll = true;
+      var ms = parseInt(el.getAttribute("gerbera-throttle")) || 100;
+      var timer = null;
+      el.addEventListener("scroll", function() {
+        if (timer) return;
+        timer = setTimeout(function() {
+          timer = null;
+          var name = el.getAttribute("gerbera-scroll");
+          ws.send(JSON.stringify({e: name, p: {
+            scrollTop: String(el.scrollTop),
+            scrollHeight: String(el.scrollHeight),
+            clientHeight: String(el.clientHeight),
+            scrollLeft: String(el.scrollLeft),
+            scrollWidth: String(el.scrollWidth),
+            clientWidth: String(el.clientWidth)
+          }}));
+        }, ms);
+      });
+    });
   }
 
   function resolve(path) {

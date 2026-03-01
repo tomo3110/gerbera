@@ -121,6 +121,7 @@ func TestEventBindings(t *testing.T) {
 		{"Focus", Focus, "gerbera-focus", "test"},
 		{"Blur", Blur, "gerbera-blur", "test"},
 		{"Keydown", Keydown, "gerbera-keydown", "test"},
+		{"Scroll", Scroll, "gerbera-scroll", "test"},
 	}
 
 	for _, tt := range tests {
@@ -151,6 +152,17 @@ func TestKeyBinding(t *testing.T) {
 	}
 	if el.Attr["gerbera-key"] != "Enter" {
 		t.Errorf("expected gerbera-key=Enter, got %s", el.Attr["gerbera-key"])
+	}
+}
+
+func TestThrottle(t *testing.T) {
+	el := &g.Element{TagName: "div", Attr: make(g.AttrMap)}
+	fn := Throttle(200)
+	if err := fn(el); err != nil {
+		t.Fatal(err)
+	}
+	if el.Attr["gerbera-throttle"] != "200" {
+		t.Errorf("expected gerbera-throttle=200, got %s", el.Attr["gerbera-throttle"])
 	}
 }
 

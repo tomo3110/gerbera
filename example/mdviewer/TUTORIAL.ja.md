@@ -10,6 +10,7 @@ Gerbera Live の実践的な機能を活用した、リアルタイム Markdown 
 - `OpSetHTML` — `innerHTML` を使用する WebSocket 差分パッチ
 - 独立モジュール — `replace` ディレクティブと外部依存を持つ `go.mod`
 - クライアントサイドポーリング — サーバープッシュなしのファイル変更検知
+- `gl.Scroll` / `gl.Throttle` — `MutationObserver` によるサーバー経由のスクロール同期
 
 ## 前提条件
 
@@ -153,16 +154,96 @@ setInterval(function() {
 
 ファイルが変更されていない場合、`HandleEvent` は状態を変更せずに返り、パッチ数は 0 になります。ハンドラは WebSocket メッセージの送信をスキップします（`handler.go` L191 参照）。
 
-## Step 8: スクロール同期
+## Step 8: `gl.Scroll()` によるスクロール同期
 
-```javascript
-ta.addEventListener('scroll', function() {
-    var pct = ta.scrollTop / (ta.scrollHeight - ta.clientHeight);
-    pv.scrollTop = pct * (pv.scrollHeight - pv.clientHeight);
-});
+スクロール同期は生 JavaScript ではなく、LiveView イベントシステムを活用します。`scrollTop` は DOM プロパティ（HTML 属性ではない）のため、Gerbera の diff システムでは直接制御できません。代わりに、サーバーでスクロール率を計算し `data-scroll-pct` 属性に反映、クライアント側の `MutationObserver` で `scrollTop` に変換します。
+
+### スクロールイベントのバインディング
+
+```go
+gd.Textarea(
+    gp.ID("md-editor"),
+    gp.Class("md-textarea"),
+    gl.Input("edit"),
+    gl.Scroll("editor-scroll"),  // スクロールイベントをサーバーに送信
+    gl.Throttle(50),             // 50ms に 1 回に制限
+    gp.Value(v.Source),
+),
 ```
 
-エディタのスクロール位置をパーセンテージに変換し、プレビューペインに適用します。`g.Literal()` でインライン `<script>` として注入します。
+`gl.Scroll("editor-scroll")` は `gerbera-scroll` 属性を追加します。クライアント JS（`gerbera.js`）が `scroll` イベントを監視し、`scrollTop`・`scrollHeight`・`clientHeight` をペイロードとして送信します。`gl.Throttle(50)` でイベント頻度を制限します。
+
+### サーバー側ハンドラ
+
+```go
+case "editor-scroll":
+    scrollTop, _ := strconv.ParseFloat(payload["scrollTop"], 64)
+    scrollHeight, _ := strconv.ParseFloat(payload["scrollHeight"], 64)
+    clientHeight, _ := strconv.ParseFloat(payload["clientHeight"], 64)
+    max := scrollHeight - clientHeight
+    if max > 0 {
+        v.ScrollPct = scrollTop / max
+    }
+```
+
+ハンドラはスクロール位置を 0.0〜1.0 の範囲（`ScrollPct`）に正規化します。
+
+### diff によるスクロール率の反映
+
+```go
+gd.Div(
+    gp.Class("md-preview-pane"),
+    gp.Attr("data-scroll-pct", fmt.Sprintf("%.6f", v.ScrollPct)),
+    ...
+),
+```
+
+diff システムが属性変更を検知し、`attr` パッチをクライアントに送信します。
+
+### クライアント側 MutationObserver
+
+```javascript
+(function() {
+  var pv = document.querySelector('.md-preview-pane');
+  if (!pv) return;
+  var ob = new MutationObserver(function(muts) {
+    muts.forEach(function(m) {
+      if (m.attributeName === 'data-scroll-pct') {
+        var pct = parseFloat(pv.getAttribute('data-scroll-pct'));
+        if (!isNaN(pct)) {
+          pv.scrollTop = pct * (pv.scrollHeight - pv.clientHeight);
+        }
+      }
+    });
+  });
+  ob.observe(pv, { attributes: true, attributeFilter: ['data-scroll-pct'] });
+})();
+```
+
+`MutationObserver` は `data-scroll-pct` の変更を監視し、パーセンテージを絶対的な `scrollTop` 値に変換します。
+
+### データフロー
+
+```
+ブラウザ                                   Go サーバー
+  |                                           |
+  | ユーザーがテキストエリアをスクロール          |
+  | gerbera.js: scroll イベント（50ms throttle）|
+  | --> {"e":"editor-scroll","p":{            |
+  |       "scrollTop":"150",                  |
+  |       "scrollHeight":"1200",              |
+  |       "clientHeight":"400"}}              |
+  |                                           |
+  |     HandleEvent: ScrollPct = 150/800      |
+  |     Render: data-scroll-pct="0.187500"    |
+  |     Diff: attr パッチ                      |
+  |                                           |
+  | <-- [{"op":"attr","key":"data-scroll-pct",|
+  |       "val":"0.187500"}]                  |
+  |                                           |
+  | MutationObserver 発火                      |
+  | pv.scrollTop = 0.1875 * maxScroll         |
+```
 
 ## Step 9: CLI とサーバー
 

@@ -1,6 +1,8 @@
 package live
 
 import (
+	"fmt"
+
 	"github.com/tomo3110/gerbera"
 	"github.com/tomo3110/gerbera/property"
 )
@@ -49,4 +51,15 @@ func Keydown(event string) gerbera.ComponentFunc {
 // Key sets a key filter for keydown events.
 func Key(key string) gerbera.ComponentFunc {
 	return property.Attr("gerbera-key", key)
+}
+
+// Scroll binds a scroll event to the element.
+// Default throttle is 100ms. Use Throttle() to customize.
+func Scroll(event string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-scroll", event)
+}
+
+// Throttle sets the throttle interval in milliseconds for scroll events.
+func Throttle(ms int) gerbera.ComponentFunc {
+	return property.Attr("gerbera-throttle", fmt.Sprintf("%d", ms))
 }

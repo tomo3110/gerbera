@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	g "github.com/tomo3110/gerbera"
@@ -24,6 +25,7 @@ type MarkdownView struct {
 	ModTime    time.Time `json:"modTime"`
 	FileName   string    `json:"fileName"`
 	SaveStatus string    `json:"saveStatus"`
+	ScrollPct  float64  `json:"scrollPct"`
 }
 
 func (v *MarkdownView) Mount(_ gl.Params) error {
@@ -66,6 +68,14 @@ func (v *MarkdownView) HandleEvent(event string, payload gl.Payload) error {
 			v.ModTime = info.ModTime()
 		}
 		v.SaveStatus = "saved"
+	case "editor-scroll":
+		scrollTop, _ := strconv.ParseFloat(payload["scrollTop"], 64)
+		scrollHeight, _ := strconv.ParseFloat(payload["scrollHeight"], 64)
+		clientHeight, _ := strconv.ParseFloat(payload["clientHeight"], 64)
+		max := scrollHeight - clientHeight
+		if max > 0 {
+			v.ScrollPct = scrollTop / max
+		}
 	case "check-file":
 		if v.FilePath == "" {
 			return nil
@@ -178,12 +188,15 @@ func (v *MarkdownView) renderMain() g.ComponentFunc {
 					gp.ID("md-editor"),
 					gp.Class("md-textarea"),
 					gl.Input("edit"),
+					gl.Scroll("editor-scroll"),
+					gl.Throttle(50),
 					gp.Value(v.Source),
 				),
 			),
 		),
 		gd.Div(
 			gp.Class("md-preview-pane"),
+			gp.Attr("data-scroll-pct", fmt.Sprintf("%.6f", v.ScrollPct)),
 			gd.Div(
 				gp.ID("md-preview"),
 				gp.Class("md-preview"),
@@ -198,16 +211,19 @@ func (v *MarkdownView) renderScripts() g.ComponentFunc {
 	if !v.Preview {
 		scripts += `<script>
 (function() {
-  var ta = document.getElementById('md-editor');
   var pv = document.querySelector('.md-preview-pane');
-  if (ta && pv) {
-    ta.addEventListener('scroll', function() {
-      var max = ta.scrollHeight - ta.clientHeight;
-      if (max <= 0) return;
-      var pct = ta.scrollTop / max;
-      pv.scrollTop = pct * (pv.scrollHeight - pv.clientHeight);
+  if (!pv) return;
+  var ob = new MutationObserver(function(muts) {
+    muts.forEach(function(m) {
+      if (m.attributeName === 'data-scroll-pct') {
+        var pct = parseFloat(pv.getAttribute('data-scroll-pct'));
+        if (!isNaN(pct)) {
+          pv.scrollTop = pct * (pv.scrollHeight - pv.clientHeight);
+        }
+      }
     });
-  }
+  });
+  ob.observe(pv, { attributes: true, attributeFilter: ['data-scroll-pct'] });
 })();
 </script>`
 	}

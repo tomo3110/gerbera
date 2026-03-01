@@ -191,6 +191,8 @@ Event bindings:
 | `gl.Focus(event)` / `gl.Blur(event)` | Focus/blur events |
 | `gl.Keydown(event)` | Binds a keydown event |
 | `gl.Key(key)` | Filters keydown by key name |
+| `gl.Scroll(event)` | Binds a scroll event (sends scroll position in payload) |
+| `gl.Throttle(ms)` | Sets throttle interval in ms for scroll events (default 100ms) |
 
 Handler options:
 
