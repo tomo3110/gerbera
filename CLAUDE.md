@@ -22,9 +22,11 @@ go run example/wiki/wiki.go             # Run wiki example on :8880
 go run example/counter/counter.go       # Run counter LiveView example on :8840
 go run example/counter/counter.go -debug  # Run counter with debug panel enabled
 go run example/wiki_live/wiki_live.go   # Run wiki_live LiveView example on :8850
+cd example/mdviewer && go run .           # Run mdviewer LiveView example on :8860
+cd example/mdviewer && go run . -preview README.md  # Run mdviewer in preview-only mode
 ```
 
-External dependency: `github.com/gorilla/websocket` (only used by `live/` package).
+External dependencies: `github.com/gorilla/websocket` (only used by `live/` package), `github.com/yuin/goldmark` (only used by `example/mdviewer`).
 
 ## Architecture
 

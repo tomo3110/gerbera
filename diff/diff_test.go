@@ -62,6 +62,33 @@ func TestDiffSetText(t *testing.T) {
 	}
 }
 
+func TestDiffSetHTML(t *testing.T) {
+	oldEl := el("div", "hello")
+	newEl := el("div", "<strong>hello</strong>")
+	patches := Diff(oldEl, newEl)
+	if len(patches) != 1 {
+		t.Fatalf("expected 1 patch, got %d", len(patches))
+	}
+	if patches[0].Op != OpSetHTML {
+		t.Errorf("expected OpSetHTML, got %s", patches[0].Op)
+	}
+	if patches[0].Value != "<strong>hello</strong>" {
+		t.Errorf("expected value '<strong>hello</strong>', got '%s'", patches[0].Value)
+	}
+}
+
+func TestDiffSetTextNoHTML(t *testing.T) {
+	oldEl := el("div", "hello")
+	newEl := el("div", "world")
+	patches := Diff(oldEl, newEl)
+	if len(patches) != 1 {
+		t.Fatalf("expected 1 patch, got %d", len(patches))
+	}
+	if patches[0].Op != OpSetText {
+		t.Errorf("expected OpSetText for plain text, got %s", patches[0].Op)
+	}
+}
+
 func TestDiffReplace(t *testing.T) {
 	oldEl := el("div", "")
 	newEl := el("span", "text")

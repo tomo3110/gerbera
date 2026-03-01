@@ -139,7 +139,8 @@ gerbera/
     ├── report/        # Report output (stdout)
     ├── wiki/          # Multi-route Wiki (server-side rendering)
     ├── counter/       # LiveView counter
-    └── wiki_live/     # LiveView Wiki (SPA-style)
+    ├── wiki_live/     # LiveView Wiki (SPA-style)
+    └── mdviewer/      # LiveView Markdown viewer/editor
 ```
 
 ### Core Concepts
@@ -231,6 +232,7 @@ Each example includes bilingual tutorials (`TUTORIAL.md` / `TUTORIAL.ja.md`).
 | [wiki](example/wiki/) | Multi-route Wiki (SSR) | :8880 | `go run example/wiki/wiki.go` |
 | [counter](example/counter/) | LiveView counter | :8840 | `go run example/counter/counter.go` |
 | [wiki_live](example/wiki_live/) | LiveView Wiki (SPA) | :8850 | `go run example/wiki_live/wiki_gl.go` |
+| [mdviewer](example/mdviewer/) | LiveView Markdown Viewer | :8860 | `cd example/mdviewer && go run .` |
 
 ## Development
 

@@ -139,7 +139,8 @@ gerbera/
     ├── report/        # レポート出力 (標準出力)
     ├── wiki/          # マルチルート Wiki (サーバーサイドレンダリング)
     ├── counter/       # LiveView カウンター
-    └── wiki_live/     # LiveView Wiki (SPA 風)
+    ├── wiki_live/     # LiveView Wiki (SPA 風)
+    └── mdviewer/      # LiveView Markdown ビューアー/エディタ
 ```
 
 ### コアコンセプト
@@ -231,6 +232,7 @@ http.Handle("/", gl.Handler(factory, gl.WithDebug()))
 | [wiki](example/wiki/) | マルチルート Wiki（SSR） | :8880 | `go run example/wiki/wiki.go` |
 | [counter](example/counter/) | LiveView カウンター | :8840 | `go run example/counter/counter.go` |
 | [wiki_live](example/wiki_live/) | LiveView Wiki（SPA） | :8850 | `go run example/wiki_live/wiki_gl.go` |
+| [mdviewer](example/mdviewer/) | LiveView Markdown ビューアー | :8860 | `cd example/mdviewer && go run .` |
 
 ## 開発
 

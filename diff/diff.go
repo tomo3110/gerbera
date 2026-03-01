@@ -12,6 +12,7 @@ type OpType string
 
 const (
 	OpSetText    OpType = "text"    // change text content (Value)
+	OpSetHTML    OpType = "html"   // set innerHTML (raw HTML content)
 	OpSetAttr    OpType = "attr"    // add/change attribute
 	OpRemoveAttr OpType = "rattr"  // remove attribute
 	OpSetClass   OpType = "class"  // change class attribute
@@ -52,8 +53,12 @@ func diffRecursive(oldEl, newEl *gerbera.Element, path []int, patches *[]Patch) 
 
 	// Compare Value (text content)
 	if oldEl.Value != newEl.Value {
+		op := OpSetText
+		if strings.Contains(newEl.Value, "<") {
+			op = OpSetHTML
+		}
 		*patches = append(*patches, Patch{
-			Op:    OpSetText,
+			Op:    op,
 			Path:  copyPath(path),
 			Value: newEl.Value,
 		})

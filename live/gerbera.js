@@ -61,6 +61,10 @@
         case "text":
           n.textContent = p.val;
           break;
+        case "html":
+          n.innerHTML = p.val;
+          bind();
+          break;
         case "attr":
           n.setAttribute(p.key, p.val);
           break;
