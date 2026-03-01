@@ -86,8 +86,9 @@ func (d *debugLogger) handleError(sessionID, context string, err error) {
 
 // debugMessage is the WebSocket envelope sent when debug mode is enabled.
 type debugMessage struct {
-	Patches json.RawMessage `json:"patches"`
-	Debug   *debugMeta      `json:"debug,omitempty"`
+	Patches    json.RawMessage `json:"patches"`
+	JSCommands []jsCommand     `json:"js_commands,omitempty"`
+	Debug      *debugMeta      `json:"debug,omitempty"`
 }
 
 // debugMeta carries debug information sent to the browser DevPanel.

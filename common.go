@@ -28,6 +28,9 @@ var emptyElements = map[string]struct{}{
 	"embed":    {},
 	"keygen":   {},
 	"command":  {},
+	"source":   {},
+	"track":    {},
+	"wbr":      {},
 }
 
 type ComponentFunc func(*Element) error

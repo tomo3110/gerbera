@@ -63,3 +63,68 @@ func Scroll(event string) gerbera.ComponentFunc {
 func Throttle(ms int) gerbera.ComponentFunc {
 	return property.Attr("gerbera-throttle", fmt.Sprintf("%d", ms))
 }
+
+// DblClick binds a double-click event to the element.
+func DblClick(event string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-dblclick", event)
+}
+
+// MouseEnter binds a mouseenter event to the element.
+func MouseEnter(event string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-mouseenter", event)
+}
+
+// MouseLeave binds a mouseleave event to the element.
+func MouseLeave(event string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-mouseleave", event)
+}
+
+// TouchStart binds a touchstart event to the element.
+func TouchStart(event string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-touchstart", event)
+}
+
+// TouchEnd binds a touchend event to the element.
+func TouchEnd(event string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-touchend", event)
+}
+
+// TouchMove binds a touchmove event to the element.
+func TouchMove(event string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-touchmove", event)
+}
+
+// Debounce sets the debounce interval in milliseconds for any event.
+// When set, the event handler will wait for the specified duration after
+// the last event before sending to the server.
+func Debounce(ms int) gerbera.ComponentFunc {
+	return property.Attr("gerbera-debounce", fmt.Sprintf("%d", ms))
+}
+
+// Hook attaches a lifecycle hook to the element.
+// The hook name must be registered on the client via Gerbera.registerHook().
+// Hook callbacks: mounted(el), updated(el), destroyed(el), disconnected(el).
+func Hook(name string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-hook", name)
+}
+
+// LiveLink marks an anchor element for client-side navigation.
+// Clicking the link will push state and send a navigation event
+// instead of performing a full page reload.
+func LiveLink(href string) gerbera.ComponentFunc {
+	return func(el *gerbera.Element) error {
+		if el.Attr == nil {
+			el.Attr = make(map[string]string)
+		}
+		el.Attr["href"] = href
+		el.Attr["gerbera-live-link"] = href
+		return nil
+	}
+}
+
+// Loading marks an element to receive loading state CSS class.
+// When an event is being processed, elements matching the selector
+// receive the "gerbera-loading" class on the <html> element.
+func Loading(cssClass string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-loading-class", cssClass)
+}

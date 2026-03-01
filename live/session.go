@@ -16,6 +16,8 @@ type Session struct {
 	tree     *gerbera.Element
 	lastSeen time.Time
 	mu       sync.Mutex
+	infoCh   chan any // channel for HandleInfo messages
+	stopTick chan struct{}
 }
 
 type sessionStore struct {
@@ -41,6 +43,8 @@ func (s *sessionStore) create(view View) *Session {
 		ID:       id,
 		View:     view,
 		lastSeen: time.Now(),
+		infoCh:   make(chan any, 32),
+		stopTick: make(chan struct{}),
 	}
 	s.mu.Lock()
 	s.sessions[id] = sess
@@ -83,6 +87,15 @@ func (s *sessionStore) gc() {
 			sess.mu.Unlock()
 		}
 		s.mu.Unlock()
+	}
+}
+
+// SendInfo sends a message to the session's info channel.
+// The message will be delivered to HandleInfo if the View implements InfoReceiver.
+func (s *Session) SendInfo(msg any) {
+	select {
+	case s.infoCh <- msg:
+	default:
 	}
 }
 

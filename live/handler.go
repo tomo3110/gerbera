@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -13,9 +14,10 @@ import (
 )
 
 type handlerConfig struct {
-	lang       string
-	sessionTTL time.Duration
-	debug      bool
+	lang        string
+	sessionTTL  time.Duration
+	debug       bool
+	middlewares []func(http.Handler) http.Handler
 }
 
 // Option configures the live handler.
@@ -34,6 +36,15 @@ func WithSessionTTL(d time.Duration) Option {
 // WithDebug enables the browser DevPanel and server-side structured logging.
 func WithDebug() Option {
 	return func(c *handlerConfig) { c.debug = true }
+}
+
+// WithMiddleware adds HTTP middleware to the handler chain.
+// Middleware is applied in the order provided.
+// This can be used for authentication, logging, CORS, etc.
+func WithMiddleware(mw func(http.Handler) http.Handler) Option {
+	return func(c *handlerConfig) {
+		c.middlewares = append(c.middlewares, mw)
+	}
 }
 
 type wsEvent struct {
@@ -61,13 +72,24 @@ func Handler(viewFactory func() View, opts ...Option) http.Handler {
 		dlog.sessionExpired(id)
 	})
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("gerbera-ws") == "1" {
 			handleWS(w, r, store, cfg, dlog)
 			return
 		}
+		if r.URL.Query().Get("gerbera-upload") == "1" && r.Method == http.MethodPost {
+			handleUpload(w, r, store, dlog)
+			return
+		}
 		handleHTTP(w, r, viewFactory, store, cfg, dlog)
 	})
+
+	// Apply middleware in reverse order so they execute in the order provided
+	for i := len(cfg.middlewares) - 1; i >= 0; i-- {
+		handler = cfg.middlewares[i](handler)
+	}
+
+	return handler
 }
 
 func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
@@ -119,7 +141,8 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 	sessionID := r.URL.Query().Get("session")
 	sess := store.get(sessionID)
 	if sess == nil {
-		http.Error(w, "session not found", http.StatusNotFound)
+		// Session expired or not found - signal client to reload for session recovery
+		http.Error(w, "session_expired", http.StatusGone)
 		return
 	}
 
@@ -133,89 +156,230 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 	dlog.sessionConnected(sessionID)
 	defer dlog.sessionDisconnected(sessionID)
 
+	// Channel for client WebSocket messages
+	msgCh := make(chan []byte, 32)
+	doneCh := make(chan struct{})
+	go func() {
+		defer close(doneCh)
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			msgCh <- msg
+		}
+	}()
+
+	// Start ticker if view implements TickerView
+	var tickCh <-chan time.Time
+	if tv, ok := sess.View.(TickerView); ok {
+		if interval := tv.TickInterval(); interval > 0 {
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			tickCh = ticker.C
+		}
+	}
+
+	var wsMu sync.Mutex // protects conn.WriteJSON
+
 	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			break
-		}
+		select {
+		case <-doneCh:
+			close(sess.stopTick)
+			return
 
-		var ev wsEvent
-		if err := json.Unmarshal(msg, &ev); err != nil {
-			dlog.handleError(sessionID, "unmarshal event", err)
-			continue
-		}
-
-		dlog.eventReceived(sessionID, ev.Name, ev.Payload)
-
-		var diffStart time.Time
-		if cfg.debug {
-			diffStart = time.Now()
-		}
-
-		sess.mu.Lock()
-
-		if err := sess.View.HandleEvent(ev.Name, ev.Payload); err != nil {
-			dlog.handleError(sessionID, "HandleEvent", err)
-			sess.mu.Unlock()
-			continue
-		}
-
-		components := sess.View.Render()
-		lang := ""
-		if sess.tree != nil && sess.tree.Attr != nil {
-			lang = sess.tree.Attr["lang"]
-		}
-		newTree, err := buildTree(lang, sess.ID, components)
-		if err != nil {
-			dlog.handleError(sessionID, "buildTree", err)
-			sess.mu.Unlock()
-			continue
-		}
-
-		patches := diff.Diff(sess.tree, newTree)
-		sess.tree = newTree
-
-		var viewStateJSON json.RawMessage
-		if cfg.debug {
-			viewStateJSON, _ = json.Marshal(sess.View)
-		}
-
-		sess.mu.Unlock()
-
-		var duration time.Duration
-		if cfg.debug {
-			duration = time.Since(diffStart)
-		}
-		dlog.patchesGenerated(sessionID, len(patches), duration)
-
-		if len(patches) == 0 && !cfg.debug {
-			continue
-		}
-
-		if cfg.debug {
-			patchJSON, _ := json.Marshal(patches)
-			envelope := debugMessage{
-				Patches: patchJSON,
-				Debug: &debugMeta{
-					Event:      ev.Name,
-					Payload:    ev.Payload,
-					PatchCount: len(patches),
-					DurationMS: duration.Milliseconds(),
-					ViewState:  viewStateJSON,
-					SessionID:  sessionID,
-					SessionTTL: cfg.sessionTTL.String(),
-					Timestamp:  time.Now().UnixMilli(),
-				},
+		case msg := <-msgCh:
+			var ev wsEvent
+			if err := json.Unmarshal(msg, &ev); err != nil {
+				dlog.handleError(sessionID, "unmarshal event", err)
+				continue
 			}
-			if err := conn.WriteJSON(envelope); err != nil {
-				break
+
+			dlog.eventReceived(sessionID, ev.Name, ev.Payload)
+
+			if err := processEvent(sess, conn, cfg, dlog, sessionID, ev.Name, ev.Payload, &wsMu); err != nil {
+				return
 			}
-		} else {
-			if err := conn.WriteJSON(patches); err != nil {
-				break
+
+		case <-tickCh:
+			tv := sess.View.(TickerView)
+
+			var diffStart time.Time
+			if cfg.debug {
+				diffStart = time.Now()
+			}
+
+			sess.mu.Lock()
+			if err := tv.HandleTick(); err != nil {
+				dlog.handleError(sessionID, "HandleTick", err)
+				sess.mu.Unlock()
+				continue
+			}
+			patches, jsCommands, err := renderAndDiff(sess, cfg)
+			sess.mu.Unlock()
+			if err != nil {
+				dlog.handleError(sessionID, "renderAndDiff", err)
+				continue
+			}
+
+			var duration time.Duration
+			if cfg.debug {
+				duration = time.Since(diffStart)
+			}
+			dlog.patchesGenerated(sessionID, len(patches), duration)
+
+			wsMu.Lock()
+			err = sendPatches(conn, patches, jsCommands, cfg, dlog, sessionID, "tick", nil, duration)
+			wsMu.Unlock()
+			if err != nil {
+				return
+			}
+
+		case info := <-sess.infoCh:
+			ir, ok := sess.View.(InfoReceiver)
+			if !ok {
+				continue
+			}
+
+			var diffStart time.Time
+			if cfg.debug {
+				diffStart = time.Now()
+			}
+
+			sess.mu.Lock()
+			if err := ir.HandleInfo(info); err != nil {
+				dlog.handleError(sessionID, "HandleInfo", err)
+				sess.mu.Unlock()
+				continue
+			}
+			patches, jsCommands, err := renderAndDiff(sess, cfg)
+			sess.mu.Unlock()
+			if err != nil {
+				dlog.handleError(sessionID, "renderAndDiff", err)
+				continue
+			}
+
+			var duration time.Duration
+			if cfg.debug {
+				duration = time.Since(diffStart)
+			}
+			dlog.patchesGenerated(sessionID, len(patches), duration)
+
+			wsMu.Lock()
+			err = sendPatches(conn, patches, jsCommands, cfg, dlog, sessionID, "info", nil, duration)
+			wsMu.Unlock()
+			if err != nil {
+				return
 			}
 		}
 	}
+}
+
+// processEvent handles a client WebSocket event: HandleEvent + render + diff + send.
+func processEvent(sess *Session, conn *websocket.Conn, cfg *handlerConfig, dlog *debugLogger, sessionID, eventName string, payload Payload, wsMu *sync.Mutex) error {
+	var diffStart time.Time
+	if cfg.debug {
+		diffStart = time.Now()
+	}
+
+	sess.mu.Lock()
+
+	if err := sess.View.HandleEvent(eventName, payload); err != nil {
+		dlog.handleError(sessionID, "HandleEvent", err)
+		sess.mu.Unlock()
+		return nil
+	}
+
+	patches, jsCommands, err := renderAndDiff(sess, cfg)
+	sess.mu.Unlock()
+	if err != nil {
+		dlog.handleError(sessionID, "renderAndDiff", err)
+		return nil
+	}
+
+	var duration time.Duration
+	if cfg.debug {
+		duration = time.Since(diffStart)
+	}
+	dlog.patchesGenerated(sessionID, len(patches), duration)
+
+	wsMu.Lock()
+	defer wsMu.Unlock()
+	return sendPatches(conn, patches, jsCommands, cfg, dlog, sessionID, eventName, payload, duration)
+}
+
+// renderAndDiff renders the view and computes patches against the stored tree.
+// Must be called with sess.mu held.
+func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand, error) {
+	components := sess.View.Render()
+	lang := ""
+	if sess.tree != nil && sess.tree.Attr != nil {
+		lang = sess.tree.Attr["lang"]
+	}
+	newTree, err := buildTree(lang, sess.ID, components)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	patches := diff.Diff(sess.tree, newTree)
+	sess.tree = newTree
+
+	// Collect JS commands if view implements JSCommander
+	var cmds []jsCommand
+	if jc, ok := sess.View.(JSCommander); ok {
+		cmds = jc.DrainCommands()
+	}
+
+	return patches, cmds, nil
+}
+
+// sendPatches sends patches (and optionally JS commands) to the client.
+// Returns non-nil error if the connection should be closed.
+func sendPatches(conn *websocket.Conn, patches []diff.Patch, jsCommands []jsCommand, cfg *handlerConfig, dlog *debugLogger, sessionID, eventName string, payload Payload, duration time.Duration) error {
+	if len(patches) == 0 && len(jsCommands) == 0 && !cfg.debug {
+		return nil
+	}
+
+	if cfg.debug {
+		var viewStateJSON json.RawMessage
+		// We can't access sess.View here safely, so we marshal in the caller
+		// For debug, we send all info
+		patchJSON, _ := json.Marshal(patches)
+		envelope := debugMessage{
+			Patches:    patchJSON,
+			JSCommands: jsCommands,
+			Debug: &debugMeta{
+				Event:      eventName,
+				Payload:    payload,
+				PatchCount: len(patches),
+				DurationMS: duration.Milliseconds(),
+				ViewState:  viewStateJSON,
+				SessionID:  sessionID,
+				SessionTTL: cfg.sessionTTL.String(),
+				Timestamp:  time.Now().UnixMilli(),
+			},
+		}
+		if err := conn.WriteJSON(envelope); err != nil {
+			return err
+		}
+	} else {
+		msg := wsMessage{
+			Patches:    patches,
+			JSCommands: jsCommands,
+		}
+		if len(jsCommands) == 0 {
+			// Backward compatible: send patches directly as array
+			if err := conn.WriteJSON(patches); err != nil {
+				return err
+			}
+		} else {
+			if err := conn.WriteJSON(msg); err != nil {
+				return err
+			}
+		}
+		_ = msg // suppress unused
+	}
+	return nil
 }
 
 // buildTree creates the full <html> Element tree from view components.

@@ -89,8 +89,8 @@ func TestHandlerWSWithoutSession(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
-	if w.Result().StatusCode != http.StatusNotFound {
-		t.Errorf("expected 404 for invalid session, got %d", w.Result().StatusCode)
+	if w.Result().StatusCode != http.StatusGone {
+		t.Errorf("expected 410 for expired/invalid session, got %d", w.Result().StatusCode)
 	}
 }
 
