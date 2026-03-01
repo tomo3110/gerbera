@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -111,9 +112,14 @@ func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View,
 
 	components := view.Render()
 	if cfg.debug {
+		debugHTML := renderDebugPanelHTML()
+		escaped := escapeForJSString(debugHTML)
+		debugJS := strings.Replace(gerberaDebugJS,
+			`/*__GERBERA_DEBUG_HTML__*/""`,
+			`"`+escaped+`"`, 1)
 		components = append(components, dom.Body(
 			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
-			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaDebugJS)),
+			gerbera.Literal(fmt.Sprintf("<script>%s</script>", debugJS)),
 		))
 	} else {
 		components = append(components, dom.Body(
