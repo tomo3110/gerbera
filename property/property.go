@@ -9,7 +9,7 @@ import (
 
 func Class(c ...string) gerbera.ComponentFunc {
 	return func(el *gerbera.Element) error {
-		el.ClassNames = make(gerbera.ClassMap)
+		el.ClassNames = make(gerbera.ClassMap, len(c))
 		for _, s := range c {
 			el.ClassNames[s] = false
 		}

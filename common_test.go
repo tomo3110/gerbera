@@ -1,6 +1,7 @@
 package gerbera
 
 import (
+	"bufio"
 	"bytes"
 	"strings"
 	"testing"
@@ -95,28 +96,23 @@ func TestIsEmptyElement(t *testing.T) {
 	}
 }
 
-func TestBytesRepeat(t *testing.T) {
+func TestWriteIndent(t *testing.T) {
 	cases := []struct {
-		b      string
-		count  int
-		str    string
-		wcount int
+		count int
+		str   string
 	}{
-		{count: 5, b: "b", str: "bbbbb", wcount: 5},
-		{count: 7, b: "by", str: "bybybybybybyby", wcount: 14},
-		{count: 3, b: "hoge", str: "hogehogehoge", wcount: 12},
-		{count: 1, b: "bc", str: "bc", wcount: 2},
-		{count: 0, b: "abc", str: "", wcount: 0},
+		{count: 0, str: ""},
+		{count: 1, str: " "},
+		{count: 4, str: "    "},
+		{count: 10, str: "          "},
 	}
-	buf := &bytes.Buffer{}
 	for _, c := range cases {
-		buf.Reset()
-		bytesRepeat(buf, []byte(c.b), c.count)
-		if buf.Len() != c.wcount {
-			t.Errorf("byte列の%sを%d回繰り返す場合の文字数: want = %d, result = %d\n", c.b, c.wcount, c.count, buf.Len())
-		}
+		var buf bytes.Buffer
+		bw := bufio.NewWriter(&buf)
+		writeIndent(bw, c.count)
+		bw.Flush()
 		if buf.String() != c.str {
-			t.Errorf("byte列の%sを%d回繰り返す場合の文字列: want = %s, result = %s\n", c.b, c.count, c.str, buf.String())
+			t.Errorf("writeIndent(%d): want = %q, result = %q\n", c.count, c.str, buf.String())
 		}
 	}
 }

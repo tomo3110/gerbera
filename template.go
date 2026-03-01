@@ -4,7 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 )
+
+var bufPool = sync.Pool{
+	New: func() any { return &bytes.Buffer{} },
+}
 
 type Template struct {
 	Lang string
@@ -18,20 +23,21 @@ func (t *Template) init() {
 	}
 	t.el.TagName = "html"
 	t.el.Value = ""
-	t.el.Attr = make(AttrMap)
-	if len(t.Lang) > 0 {
-		t.el.Attr["lang"] = t.Lang
-	} else {
-		t.el.Attr["lang"] = "en"
+	lang := t.Lang
+	if lang == "" {
+		lang = "en"
 	}
-	t.el.ClassNames = make(ClassMap)
+	t.el.Attr = AttrMap{"lang": lang}
+	t.el.ClassNames = nil
 	t.el.Children = nil
-	t.buf = &bytes.Buffer{}
+	if t.buf == nil {
+		t.buf = bufPool.Get().(*bytes.Buffer)
+	}
+	t.buf.Reset()
 }
 
 func (t *Template) Mount(fn ...ComponentFunc) (err error) {
 	t.init()
-	t.buf.Reset()
 	if t.el, err = Parse(t.el, fn...); err != nil {
 		return err
 	}
@@ -69,6 +75,8 @@ func (t *Template) Execute(w io.Writer, c ...ComponentFunc) error {
 	if _, err := fmt.Fprint(w, t); err != nil {
 		return err
 	}
+	bufPool.Put(t.buf)
+	t.buf = nil
 	t.el = nil
 	return nil
 }

@@ -1,14 +1,12 @@
 package gerbera
 
 import (
+	"bufio"
 	"io"
 	"strings"
 )
 
-var (
-	space   = []byte(" ")
-	newline = []byte("\n")
-)
+var indentSpaces = strings.Repeat(" ", 128)
 
 var emptyElements = map[string]struct{}{
 	"doctype":  {},
@@ -42,7 +40,10 @@ type StyleMap map[string]any
 func Tag(tagName string, fus ...ComponentFunc) ComponentFunc {
 	el := &Element{TagName: tagName}
 	return func(parent *Element) error {
-		el.Children = make([]*Element, 0)
+		el.Children = nil
+		el.ClassNames = nil
+		el.Attr = nil
+		el.Value = ""
 		for _, ef := range fus {
 			if err := ef(el); err != nil {
 				return err
@@ -62,9 +63,13 @@ func Skip() ComponentFunc {
 }
 
 func Literal(lines ...string) ComponentFunc {
+	joined := strings.Join(lines, "\n")
 	return func(parent *Element) error {
-		str := strings.Join(lines, "\n")
-		parent.Value = parent.Value + str
+		if parent.Value == "" {
+			parent.Value = joined
+		} else {
+			parent.Value += joined
+		}
 		return nil
 	}
 }
@@ -79,10 +84,11 @@ func isEmptyElement(n string) bool {
 	return ok
 }
 
-func bytesRepeat(out io.Writer, b []byte, count int) {
-	for i := 0; i < count; i++ {
-		if _, err := out.Write(b); err != nil {
-			continue
+func writeIndent(out *bufio.Writer, n int) {
+	if n > 0 {
+		if n > len(indentSpaces) {
+			n = len(indentSpaces)
 		}
+		out.WriteString(indentSpaces[:n])
 	}
 }
