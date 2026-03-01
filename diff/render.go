@@ -3,9 +3,8 @@ package diff
 import (
 	"bufio"
 	"bytes"
-	"fmt"
-	"io"
 	"strings"
+	"sync"
 
 	"github.com/tomo3110/gerbera"
 )
@@ -17,61 +16,67 @@ var emptyElements = map[string]struct{}{
 	"param": {}, "embed": {}, "keygen": {}, "command": {},
 }
 
+var indentSpaces = strings.Repeat(" ", 128)
+
+var bufPool = sync.Pool{
+	New: func() any { return &bytes.Buffer{} },
+}
+
+var bufioPool = sync.Pool{
+	New: func() any { return bufio.NewWriterSize(nil, 4096) },
+}
+
 // RenderFragment renders an Element as an HTML fragment (no DOCTYPE).
 func RenderFragment(el *gerbera.Element) (string, error) {
-	var buf bytes.Buffer
-	w := bufio.NewWriter(&buf)
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	w := bufioPool.Get().(*bufio.Writer)
+	w.Reset(buf)
+
 	if err := renderNode(w, el, 0); err != nil {
+		bufPool.Put(buf)
+		bufioPool.Put(w)
 		return "", err
 	}
 	if err := w.Flush(); err != nil {
+		bufPool.Put(buf)
+		bufioPool.Put(w)
 		return "", err
 	}
-	return buf.String(), nil
+	s := buf.String()
+	bufPool.Put(buf)
+	bufioPool.Put(w)
+	return s, nil
 }
 
 func renderNode(out *bufio.Writer, el *gerbera.Element, indent int) error {
-	if _, err := fmt.Fprintf(out, "<%s", el.TagName); err != nil {
-		return err
-	}
-	if err := renderClasses(out, el.ClassNames); err != nil {
-		return err
-	}
-	if err := renderAttr(out, el.Attr); err != nil {
-		return err
-	}
+	out.WriteByte('<')
+	out.WriteString(el.TagName)
+
+	renderClasses(out, el.ClassNames)
+	renderAttr(out, el.Attr)
 
 	if isEmptyElement(el.TagName) {
 		if el.Value != "" {
-			if _, err := fmt.Fprintf(out, " value=\"%s\"", el.Value); err != nil {
-				return err
-			}
+			out.WriteString(" value=\"")
+			out.WriteString(el.Value)
+			out.WriteByte('"')
 		}
-		_, err := fmt.Fprint(out, ">")
-		return err
+		return out.WriteByte('>')
 	}
 
 	if el.Value != "" && len(el.Children) == 0 {
-		if _, err := fmt.Fprint(out, ">"); err != nil {
-			return err
-		}
-		if _, err := out.WriteString(el.Value); err != nil {
-			return err
-		}
-		_, err := fmt.Fprintf(out, "</%s>", el.TagName)
-		return err
+		out.WriteByte('>')
+		out.WriteString(el.Value)
+		out.WriteString("</")
+		out.WriteString(el.TagName)
+		return out.WriteByte('>')
 	}
 
-	if _, err := fmt.Fprint(out, ">\n"); err != nil {
-		return err
-	}
+	out.WriteString(">\n")
 	if el.Value != "" {
-		if _, err := out.WriteString(el.Value); err != nil {
-			return err
-		}
-		if _, err := out.Write([]byte("\n")); err != nil {
-			return err
-		}
+		out.WriteString(el.Value)
+		out.WriteByte('\n')
 	}
 
 	for _, c := range el.Children {
@@ -79,39 +84,46 @@ func renderNode(out *bufio.Writer, el *gerbera.Element, indent int) error {
 		if err := renderNode(out, c, indent+2); err != nil {
 			return err
 		}
-		if _, err := out.Write([]byte("\n")); err != nil {
-			return err
-		}
+		out.WriteByte('\n')
 	}
 	writeIndent(out, indent)
-	_, err := fmt.Fprintf(out, "</%s>", el.TagName)
-	return err
+	out.WriteString("</")
+	out.WriteString(el.TagName)
+	return out.WriteByte('>')
 }
 
-func renderAttr(out io.Writer, attr gerbera.AttrMap) error {
+func renderAttr(out *bufio.Writer, attr gerbera.AttrMap) {
 	for key, val := range attr {
-		if _, err := fmt.Fprintf(out, " %s=\"%s\"", key, val); err != nil {
-			return err
-		}
+		out.WriteByte(' ')
+		out.WriteString(key)
+		out.WriteString("=\"")
+		out.WriteString(val)
+		out.WriteByte('"')
 	}
-	return nil
 }
 
-func renderClasses(out io.Writer, classes gerbera.ClassMap) error {
+func renderClasses(out *bufio.Writer, classes gerbera.ClassMap) {
 	if len(classes) == 0 {
-		return nil
+		return
 	}
-	list := make([]string, 0, len(classes))
+	out.WriteString(" class=\"")
+	first := true
 	for name := range classes {
-		list = append(list, name)
+		if !first {
+			out.WriteByte(' ')
+		}
+		out.WriteString(name)
+		first = false
 	}
-	_, err := fmt.Fprintf(out, " class=\"%s\"", strings.Join(list, " "))
-	return err
+	out.WriteByte('"')
 }
 
-func writeIndent(out io.Writer, n int) {
-	for i := 0; i < n; i++ {
-		out.Write([]byte(" "))
+func writeIndent(out *bufio.Writer, n int) {
+	if n > 0 {
+		if n > len(indentSpaces) {
+			n = len(indentSpaces)
+		}
+		out.WriteString(indentSpaces[:n])
 	}
 }
 

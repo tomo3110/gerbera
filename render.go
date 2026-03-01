@@ -2,14 +2,20 @@ package gerbera
 
 import (
 	"bufio"
-	"fmt"
 	"io"
-	"strings"
+	"sync"
 )
 
+var bufioPool = sync.Pool{
+	New: func() any { return bufio.NewWriterSize(nil, 4096) },
+}
+
 func Render(w io.Writer, el *Element) error {
-	buf := bufio.NewWriter(w)
-	if _, err := buf.Write([]byte("<!DOCTYPE html>\n")); err != nil {
+	buf := bufioPool.Get().(*bufio.Writer)
+	buf.Reset(w)
+	defer bufioPool.Put(buf)
+
+	if _, err := buf.WriteString("<!DOCTYPE html>\n"); err != nil {
 		return err
 	}
 	if err := render(buf, el, 0); err != nil {
@@ -19,10 +25,10 @@ func Render(w io.Writer, el *Element) error {
 }
 
 func render(out *bufio.Writer, el *Element, indent int) error {
-	bytesRepeat(out, space, indent)
-	if _, err := fmt.Fprintf(out, "<%s", el.TagName); err != nil {
-		return err
-	}
+	writeIndent(out, indent)
+	out.WriteByte('<')
+	out.WriteString(el.TagName)
+
 	if err := renderClasses(out, el.ClassNames); err != nil {
 		return err
 	}
@@ -31,34 +37,23 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 	}
 
 	if isEmptyElement(el.TagName) {
-		// img, input etc...
 		if el.Value != "" {
-			if _, err := fmt.Fprintf(out, " value=\"%s\"", el.Value); err != nil {
-				return err
-			}
+			out.WriteString(" value=\"")
+			out.WriteString(el.Value)
+			out.WriteByte('"')
 		}
-		if _, err := fmt.Fprint(out, ">"); err != nil {
-			return err
-		}
-		return nil
+		return out.WriteByte('>')
 	}
 
 	if el.Value != "" && len(el.Children) == 0 {
-		if _, err := fmt.Fprint(out, ">"); err != nil {
-			return err
-		}
-		if err := renderValue(out, el); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(out, "</%s>", el.TagName); err != nil {
-			return err
-		}
-		return nil
+		out.WriteByte('>')
+		out.WriteString(el.Value)
+		out.WriteString("</")
+		out.WriteString(el.TagName)
+		return out.WriteByte('>')
 	}
 
-	if _, err := fmt.Fprint(out, ">\n"); err != nil {
-		return err
-	}
+	out.WriteString(">\n")
 	if el.Value != "" {
 		if err := renderValue(out, el); err != nil {
 			return err
@@ -70,60 +65,49 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 			if err := render(out, c, indent+2); err != nil {
 				return err
 			}
-			if _, err := out.Write(newline); err != nil {
-				return err
-			}
+			out.WriteByte('\n')
 		}
 	}
-	bytesRepeat(out, space, indent)
-	if _, err := fmt.Fprintf(out, "</%s>", el.TagName); err != nil {
-		return err
-	}
-	return nil
+	writeIndent(out, indent)
+	out.WriteString("</")
+	out.WriteString(el.TagName)
+	return out.WriteByte('>')
 }
 
-func renderAttr(out io.Writer, attr AttrMap) error {
+func renderAttr(out *bufio.Writer, attr AttrMap) error {
 	for key, val := range attr {
-		if _, err := fmt.Fprintf(out, " %s=\"%s\"", key, val); err != nil {
-			return err
-		}
+		out.WriteByte(' ')
+		out.WriteString(key)
+		out.WriteString("=\"")
+		out.WriteString(val)
+		out.WriteByte('"')
 	}
 	return nil
 }
 
-func renderClasses(out io.Writer, classes ClassMap) error {
-	if len(classes) > 0 {
-		list := make([]string, 0, len(classes))
-		if _, err := out.Write([]byte(" class=\"")); err != nil {
-			return err
-		}
-		for name := range classes {
-			list = append(list, name)
-		}
-		if _, err := fmt.Fprint(out, strings.Join(list, string(space))); err != nil {
-			return err
-		}
-		if _, err := out.Write([]byte("\"")); err != nil {
-			return err
-		}
+func renderClasses(out *bufio.Writer, classes ClassMap) error {
+	if len(classes) == 0 {
+		return nil
 	}
+	out.WriteString(" class=\"")
+	first := true
+	for name := range classes {
+		if !first {
+			out.WriteByte(' ')
+		}
+		out.WriteString(name)
+		first = false
+	}
+	out.WriteByte('"')
 	return nil
 }
 
-func renderValue(out io.Writer, el *Element) error {
+func renderValue(out *bufio.Writer, el *Element) error {
 	if !isEmptyElement(el.TagName) {
 		if el.Value != "" {
+			out.WriteString(el.Value)
 			if len(el.Children) > 0 {
-				if _, err := out.Write([]byte(el.Value)); err != nil {
-					return err
-				}
-				if _, err := out.Write(newline); err != nil {
-					return err
-				}
-			} else {
-				if _, err := out.Write([]byte(el.Value)); err != nil {
-					return err
-				}
+				out.WriteByte('\n')
 			}
 		}
 	}
