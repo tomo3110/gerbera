@@ -264,24 +264,25 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 		),
 		ge.If(v.IsNew,
 			gd.Div(
-				gd.Label(gp.Attr("for", "title"), gp.Value("タイトル")),
+				gd.Label(gp.For("title"), gp.Value("タイトル")),
 				gd.Input(
-					gp.Attr("type", "text"),
+					gp.Type("text"),
 					gp.Name("title"),
-					gp.Attr("placeholder", "ページタイトル"),
+					gp.Placeholder("ページタイトル"),
 					gl.Input("title-input"),
 				),
 			),
 			g.Skip(),
 		),
 		gd.Div(
-			gd.Label(gp.Attr("for", "body"), gp.Value("本文")),
+			gd.Label(gp.For("body"), gp.Value("本文")),
 			gd.Textarea(
 				gp.Name("body"),
 				gp.Attr("rows", "10"),
 				gp.Attr("cols", "60"),
 				gp.Value(v.EditBuf),
 				gl.Input("edit-input"),
+				gl.Debounce(300),
 			),
 		),
 		gd.Div(
@@ -374,7 +375,7 @@ go run example/wiki_live/wiki_gl.go
 ポートを変更する場合:
 
 ```bash
-go run example/wiki_live/wiki_gl.go -addr :3000
+go run example/wiki_live/wiki_live.go -addr :3000
 ```
 
 ## 発展課題

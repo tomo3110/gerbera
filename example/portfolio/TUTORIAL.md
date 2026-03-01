@@ -53,15 +53,15 @@ func navBar() g.ComponentFunc {
 		gd.Nav(
 			gp.Class("nav-wrapper"),
 			gd.A(
-				gp.Attr("href", "#"),
+				gp.Href("#"),
 				gp.Class("brand-logo"),
 				gp.Value("Taro Tanaka"),
 			),
 			gd.Ul(
 				gp.ID("nav-mobile"),
 				gp.Class("right"),
-				gd.Li(gd.A(gp.Attr("href", "#about"), gp.Value("About"))),
-				gd.Li(gd.A(gp.Attr("href", "#skills"), gp.Value("Skills"))),
+				gd.Li(gd.A(gp.Href("#about"), gp.Value("About"))),
+				gd.Li(gd.A(gp.Href("#skills"), gp.Value("Skills"))),
 			),
 		),
 	)

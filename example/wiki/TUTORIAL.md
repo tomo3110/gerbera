@@ -74,7 +74,7 @@ gd.Form(
 	gd.Div(
 		gp.Class("form-group"),
 		gd.Label(
-			gp.Attr("for", "body"),
+			gp.For("body"),
 			gp.Value("body"),
 		),
 		gd.Textarea(
@@ -85,7 +85,7 @@ gd.Form(
 		),
 	),
 	gd.Button(
-		gp.Attr("type", "submit"),
+		gp.Type("submit"),
 		gp.Class("btn", "btn-primary"),
 		gp.Value("Save"),
 	),
@@ -104,7 +104,7 @@ ge.If(len(list) > 0,
 		title := page.ToMap().Get("title").(string)
 		return gd.Li(
 			gd.A(
-				gp.Attr("href", "/view/"+title),
+				gp.Href("/view/"+title),
 				gp.Value(title),
 			),
 		)

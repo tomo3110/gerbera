@@ -123,10 +123,10 @@ gerbera/
 ├── server.go          # NewServeMux() HTTP helper
 ├── map.go             # ConvertToMap interface, Map type
 │
-├── dom/               # HTML element wrappers (H1, Div, Body, Form, etc.)
-├── property/          # Attribute setters (Class, Attr, ID, Name, Value)
+├── dom/               # HTML element wrappers (H1, Div, Body, Span, Details, etc.)
+├── property/          # Attribute setters (Class, Attr, ID, Href, Type, For, etc.)
 ├── expr/              # Control flow: If(), Unless(), Each()
-├── styles/            # Style() for inline CSS from a map
+├── styles/            # Style(), CSS(), ScopedCSS() for CSS handling
 ├── components/        # Pre-built head components (Bootstrap CDN, etc.)
 ├── diff/              # Element tree diffing and fragment rendering
 ├── live/              # LiveView: View interface, WebSocket handler, client JS
@@ -193,6 +193,78 @@ Event bindings:
 | `gl.Key(key)` | Filters keydown by key name |
 | `gl.Scroll(event)` | Binds a scroll event (sends scroll position in payload) |
 | `gl.Throttle(ms)` | Sets throttle interval in ms for scroll events (default 100ms) |
+| `gl.Debounce(ms)` | Debounces any event — waits for idle before sending |
+| `gl.DblClick(event)` | Binds a double-click event |
+| `gl.MouseEnter(event)` / `gl.MouseLeave(event)` | Mouse enter/leave events |
+| `gl.TouchStart(event)` / `gl.TouchEnd(event)` | Touch events |
+
+### TickerView
+
+Implement the `TickerView` interface for periodic server-side updates (e.g., polling a file):
+
+```go
+type MyView struct { /* ... */ }
+
+func (v *MyView) TickInterval() time.Duration { return 2 * time.Second }
+func (v *MyView) HandleTick() error {
+    // Check external state, update fields — view is re-rendered automatically
+    return nil
+}
+```
+
+### CommandQueue (Server-to-Client Commands)
+
+Embed `gl.CommandQueue` in your View to issue JS commands without writing JavaScript:
+
+```go
+type MyView struct {
+    gl.CommandQueue
+    // ...
+}
+
+func (v *MyView) HandleEvent(event string, payload gl.Payload) error {
+    v.ScrollTo(".target", "100", "0")   // Scroll to position
+    v.Focus("#input")                    // Focus an element
+    v.AddClass(".item", "active")        // Add CSS class
+    v.Hide(".modal")                     // Hide an element
+    return nil
+}
+```
+
+Available commands: `ScrollTo`, `ScrollIntoPct`, `Focus`, `Blur`, `SetAttribute`, `RemoveAttribute`, `AddClass`, `RemoveClass`, `ToggleClass`, `SetProperty`, `Dispatch`, `Show`, `Hide`, `Toggle`.
+
+### Property Helpers
+
+Common HTML attributes have dedicated helpers in the `property/` package:
+
+| Function | Equivalent |
+|----------|------------|
+| `gp.Href(url)` | `gp.Attr("href", url)` |
+| `gp.For(id)` | `gp.Attr("for", id)` |
+| `gp.Type(t)` | `gp.Attr("type", t)` |
+| `gp.Placeholder(text)` | `gp.Attr("placeholder", text)` |
+| `gp.Required(true)` | `gp.Attr("required", "required")` |
+| `gp.Disabled(true)` | `gp.Attr("disabled", "disabled")` |
+| `gp.Src(url)` | `gp.Attr("src", url)` |
+| `gp.ClassIf(cond, name)` | Conditional CSS class |
+| `gp.ClassMap(map)` | Multiple conditional CSS classes |
+
+### Styles Helpers
+
+The `styles/` package provides additional CSS utilities:
+
+| Function | Description |
+|----------|-------------|
+| `gs.Style(styleMap)` | Inline CSS from a map |
+| `gs.CSS(cssText)` | `<style>` element with raw CSS |
+| `gs.ScopedCSS(scope, rules)` | CSS rules scoped to a selector |
+| `gs.StyleIf(cond, styleMap)` | Conditional inline styles |
+
+### Additional DOM Elements
+
+The `dom/` package includes helpers for many HTML elements beyond the basics:
+
+`Span`, `Details`, `Summary`, `Dialog`, `Progress`, `Meter`, `Time`, `Mark`, `Figure`, `Figcaption`, `Video`, `Audio`, `Source`, `Canvas`, `Pre`, `Blockquote`, `Em`, `Strong`, `Small`, `Dl`, `Dt`, `Dd`, `Fieldset`, `Legend`, `Iframe`, and more.
 
 Handler options:
 

@@ -55,8 +55,8 @@ After `Mount()`, use `String()` to get the buffer contents as a string. `Bytes()
 ```go
 ge.If(done,
 	g.Skip(),
-	g.Tag("details",
-		g.Tag("summary", gp.Value("Remaining work")),
+	gd.Details(
+		gd.Summary(gp.Value("Remaining work")),
 		gd.P(gp.Value("There is still work remaining on this task.")),
 	),
 ),
@@ -65,18 +65,19 @@ ge.If(done,
 - `g.Skip()` returns a `ComponentFunc` that renders nothing
 - Use it in conditional branches for "display nothing" cases
 - In the example above, if the task is done nothing is shown; if incomplete, details are displayed
+- `gd.Details()` and `gd.Summary()` are now available as dedicated helpers in the `dom/` package
 
 ## Step 4: Generating Arbitrary Elements with Tag
 
 ```go
-g.Tag("details",
-	g.Tag("summary", gp.Value("Remaining work")),
+gd.Details(
+	gd.Summary(gp.Value("Remaining work")),
 	gd.P(gp.Value("There is still work remaining on this task.")),
 ),
 ```
 
-- `g.Tag(tagName, children...)` generates an element with any tag name
-- Useful for elements without wrappers in the `dom/` package (e.g., `<details>`, `<summary>`, `<dialog>`)
+- `g.Tag(tagName, children...)` generates an element with any tag name and is still available for arbitrary elements
+- `<details>` and `<summary>` now have dedicated `gd.Details()` / `gd.Summary()` wrappers in the `dom/` package
 - In fact, all `dom/` functions are thin wrappers around `g.Tag`
 
 ## Step 5: Inline Styles and Unless

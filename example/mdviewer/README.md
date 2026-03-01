@@ -5,8 +5,8 @@ A real-time Markdown viewer/editor built with Gerbera Live.
 Features:
 - **Editor + Preview**: Side-by-side Markdown editing with live preview
 - **File mode**: Load, edit, and save `.md` files
-- **Preview-only mode**: Watch a file for external changes (auto-refresh every 2s)
-- **Scroll sync**: Editor scroll position is mirrored in the preview pane
+- **Preview-only mode**: Watch a file for external changes (auto-refresh every 2s via `TickerView`)
+- **Scroll sync**: Editor scroll position is mirrored in the preview pane via `CommandQueue`
 - **Download**: Export your Markdown as a `.md` file (when no file is specified)
 - **GitHub-style CSS**: Familiar Markdown rendering with GFM extensions (tables, task lists, strikethrough)
 
@@ -42,4 +42,6 @@ cd example/mdviewer && go run . -addr :3000 -debug README.md
 
 This example uses an independent `go.mod` with `replace` directive to reference the local gerbera module, demonstrating how to use Gerbera in a separate module.
 
-File watching is implemented via client-side polling: a hidden button triggers `check-file` events every 2 seconds, and the server compares `ModTime` to detect changes.
+File watching is implemented via the `TickerView` interface: the server calls `HandleTick()` every 2 seconds to compare `ModTime` and detect external changes — no client-side JavaScript polling is needed.
+
+Scroll sync uses `CommandQueue.ScrollIntoPct()` to send percentage-based scroll commands from the server to the client, eliminating the need for `MutationObserver` or `data-scroll-pct` attribute hacks.

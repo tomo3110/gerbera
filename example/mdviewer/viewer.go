@@ -16,8 +16,9 @@ import (
 	gl "github.com/tomo3110/gerbera/live"
 )
 
-// MarkdownView implements gl.View for the Markdown viewer/editor.
+// MarkdownView implements gl.View and gl.TickerView for the Markdown viewer/editor.
 type MarkdownView struct {
+	gl.CommandQueue
 	Source     string    `json:"source"`
 	HTML       string    `json:"html"`
 	FilePath   string    `json:"filePath"`
@@ -49,6 +50,36 @@ func (v *MarkdownView) Mount(_ gl.Params) error {
 	return nil
 }
 
+// TickInterval returns the interval for file change polling.
+// Only active when a file path is set.
+func (v *MarkdownView) TickInterval() time.Duration {
+	if v.FilePath == "" {
+		return 0
+	}
+	return 2 * time.Second
+}
+
+// HandleTick checks for external file changes on each tick.
+func (v *MarkdownView) HandleTick() error {
+	if v.FilePath == "" {
+		return nil
+	}
+	info, err := os.Stat(v.FilePath)
+	if err != nil {
+		return nil
+	}
+	if info.ModTime().After(v.ModTime) {
+		data, err := os.ReadFile(v.FilePath)
+		if err != nil {
+			return nil
+		}
+		v.Source = string(data)
+		v.HTML = renderMarkdown(v.Source)
+		v.ModTime = info.ModTime()
+	}
+	return nil
+}
+
 func (v *MarkdownView) HandleEvent(event string, payload gl.Payload) error {
 	switch event {
 	case "edit":
@@ -75,23 +106,7 @@ func (v *MarkdownView) HandleEvent(event string, payload gl.Payload) error {
 		max := scrollHeight - clientHeight
 		if max > 0 {
 			v.ScrollPct = scrollTop / max
-		}
-	case "check-file":
-		if v.FilePath == "" {
-			return nil
-		}
-		info, err := os.Stat(v.FilePath)
-		if err != nil {
-			return nil
-		}
-		if info.ModTime().After(v.ModTime) {
-			data, err := os.ReadFile(v.FilePath)
-			if err != nil {
-				return nil
-			}
-			v.Source = string(data)
-			v.HTML = renderMarkdown(v.Source)
-			v.ModTime = info.ModTime()
+			v.ScrollIntoPct(".md-preview-pane", fmt.Sprintf("%.6f", v.ScrollPct))
 		}
 	}
 	return nil
@@ -108,13 +123,12 @@ func (v *MarkdownView) Render() []g.ComponentFunc {
 			gd.Title(title),
 			gd.Meta(gp.Attr("charset", "utf-8")),
 			gd.Meta(gp.Attr("name", "viewport"), gp.Attr("content", "width=device-width, initial-scale=1")),
-			g.Tag("style",gp.Value(cssStyles)),
+			gs.CSS(cssStyles),
 		),
 		gd.Body(
 			gs.Style(g.StyleMap{"margin": "0", "padding": "0", "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"}),
 			v.renderHeader(),
 			v.renderMain(),
-			v.renderScripts(),
 		),
 	}
 }
@@ -131,7 +145,7 @@ func (v *MarkdownView) renderHeader() g.ComponentFunc {
 			"height":        "40px",
 			"box-sizing":    "border-box",
 		}),
-		g.Tag("span",
+		gd.Span(
 			gs.Style(g.StyleMap{"font-weight": "bold", "font-size": "14px"}),
 			ge.If(v.FileName != "",
 				gp.Value(v.FileName),
@@ -155,11 +169,11 @@ func (v *MarkdownView) renderHeader() g.ComponentFunc {
 			g.Skip(),
 		),
 		ge.If(v.SaveStatus == "saved",
-			g.Tag("span",gs.Style(g.StyleMap{"color": "#85e89d", "font-size": "12px"}), gp.Value("Saved")),
+			gd.Span(gs.Style(g.StyleMap{"color": "#85e89d", "font-size": "12px"}), gp.Value("Saved")),
 			g.Skip(),
 		),
 		ge.If(v.SaveStatus == "error",
-			g.Tag("span",gs.Style(g.StyleMap{"color": "#f97583", "font-size": "12px"}), gp.Value("Save failed")),
+			gd.Span(gs.Style(g.StyleMap{"color": "#f97583", "font-size": "12px"}), gp.Value("Save failed")),
 			g.Skip(),
 		),
 		ge.If(v.FilePath == "" && !v.Preview,
@@ -175,7 +189,7 @@ func (v *MarkdownView) renderDownloadLink() g.ComponentFunc {
 		`<a download="document.md" href="data:text/markdown;charset=utf-8,%s" style="color:#79b8ff;font-size:12px;text-decoration:none;">Download .md</a>`,
 		encoded,
 	)
-	return g.Tag("span",g.Literal(raw))
+	return gd.Span(g.Literal(raw))
 }
 
 func (v *MarkdownView) renderMain() g.ComponentFunc {
@@ -196,55 +210,12 @@ func (v *MarkdownView) renderMain() g.ComponentFunc {
 		),
 		gd.Div(
 			gp.Class("md-preview-pane"),
-			gp.Attr("data-scroll-pct", fmt.Sprintf("%.6f", v.ScrollPct)),
 			gd.Div(
 				gp.ID("md-preview"),
 				gp.Class("md-preview"),
 				g.Literal(v.HTML),
 			),
 		),
-	)
-}
-
-func (v *MarkdownView) renderScripts() g.ComponentFunc {
-	var scripts string
-	if !v.Preview {
-		scripts += `<script>
-(function() {
-  var pv = document.querySelector('.md-preview-pane');
-  if (!pv) return;
-  var ob = new MutationObserver(function(muts) {
-    muts.forEach(function(m) {
-      if (m.attributeName === 'data-scroll-pct') {
-        var pct = parseFloat(pv.getAttribute('data-scroll-pct'));
-        if (!isNaN(pct)) {
-          pv.scrollTop = pct * (pv.scrollHeight - pv.clientHeight);
-        }
-      }
-    });
-  });
-  ob.observe(pv, { attributes: true, attributeFilter: ['data-scroll-pct'] });
-})();
-</script>`
-	}
-	if v.FilePath != "" {
-		scripts += `<script>
-(function() {
-  var btn = document.getElementById('file-check-trigger');
-  if (btn) setInterval(function() { btn.click(); }, 2000);
-})();
-</script>`
-	}
-	return gd.Div(
-		ge.If(v.FilePath != "",
-			gd.Button(
-				gp.ID("file-check-trigger"),
-				gl.Click("check-file"),
-				gs.Style(g.StyleMap{"display": "none"}),
-			),
-			g.Skip(),
-		),
-		g.Literal(scripts),
 	)
 }
 

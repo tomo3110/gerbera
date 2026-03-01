@@ -85,7 +85,7 @@ func listHandle(w http.ResponseWriter, _ *http.Request) {
 							gd.Td(gp.Value(role)),
 							gd.Td(gp.Value(formatYen(salary))),
 							gd.Td(gd.A(
-								gp.Attr("href", "/detail/"+name),
+								gp.Href("/detail/"+name),
 								gp.Value("詳細"),
 							)),
 						)
@@ -141,7 +141,7 @@ func detailHandle(w http.ResponseWriter, r *http.Request) {
 				),
 			),
 			gd.A(
-				gp.Attr("href", "/"),
+				gp.Href("/"),
 				gp.Class("btn", "btn-primary"),
 				gp.Value("← 一覧に戻る"),
 			),

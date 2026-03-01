@@ -50,7 +50,7 @@ func formHandle(w http.ResponseWriter, _ *http.Request) {
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value("アンケートフォーム")),
-			gd.A(gp.Attr("href", "/results"), gp.Value("結果を見る")),
+			gd.A(gp.Href("/results"), gp.Value("結果を見る")),
 			gd.Form(
 				gp.Attr("action", "/submit"),
 				gp.Attr("method", "POST"),
@@ -58,26 +58,26 @@ func formHandle(w http.ResponseWriter, _ *http.Request) {
 				gd.Div(
 					gp.Class("form-group"),
 					gd.Label(
-						gp.Attr("for", "name"),
+						gp.For("name"),
 						gp.Value("お名前"),
 					),
 					gd.Input(
-						gp.Attr("type", "text"),
+						gp.Type("text"),
 						gp.Class("form-control"),
 						gp.ID("name"),
 						gp.Name("name"),
-						gp.Attr("required", "required"),
+						gp.Required(true),
 					),
 				),
 
 				gd.Div(
 					gp.Class("form-group"),
 					gd.Label(
-						gp.Attr("for", "email"),
+						gp.For("email"),
 						gp.Value("メールアドレス"),
 					),
 					gd.Input(
-						gp.Attr("type", "email"),
+						gp.Type("email"),
 						gp.Class("form-control"),
 						gp.ID("email"),
 						gp.Name("email"),
@@ -87,7 +87,7 @@ func formHandle(w http.ResponseWriter, _ *http.Request) {
 				gd.Div(
 					gp.Class("form-group"),
 					gd.Label(
-						gp.Attr("for", "language"),
+						gp.For("language"),
 						gp.Value("好きなプログラミング言語"),
 					),
 					gd.Select(
@@ -110,28 +110,28 @@ func formHandle(w http.ResponseWriter, _ *http.Request) {
 							gp.Name("interests"),
 							gp.ID("interest-web"),
 						),
-						gd.Label(gp.Attr("for", "interest-web"), gp.Value("Web 開発")),
+						gd.Label(gp.For("interest-web"), gp.Value("Web 開発")),
 					),
 					gd.Div(
 						gd.InputCheckbox(false, "cli",
 							gp.Name("interests"),
 							gp.ID("interest-cli"),
 						),
-						gd.Label(gp.Attr("for", "interest-cli"), gp.Value("CLI ツール")),
+						gd.Label(gp.For("interest-cli"), gp.Value("CLI ツール")),
 					),
 					gd.Div(
 						gd.InputCheckbox(false, "data",
 							gp.Name("interests"),
 							gp.ID("interest-data"),
 						),
-						gd.Label(gp.Attr("for", "interest-data"), gp.Value("データ分析")),
+						gd.Label(gp.For("interest-data"), gp.Value("データ分析")),
 					),
 					gd.Div(
 						gd.InputCheckbox(false, "infra",
 							gp.Name("interests"),
 							gp.ID("interest-infra"),
 						),
-						gd.Label(gp.Attr("for", "interest-infra"), gp.Value("インフラ")),
+						gd.Label(gp.For("interest-infra"), gp.Value("インフラ")),
 					),
 				),
 
@@ -180,7 +180,7 @@ func resultsHandle(w http.ResponseWriter, _ *http.Request) {
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value("アンケート結果")),
-			gd.A(gp.Attr("href", "/"), gp.Value("フォームに戻る")),
+			gd.A(gp.Href("/"), gp.Value("フォームに戻る")),
 			ge.Unless(len(list) > 0,
 				gd.P(gp.Class("text-muted"), gp.Value("まだ回答がありません。")),
 			),

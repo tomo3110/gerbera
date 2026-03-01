@@ -42,16 +42,16 @@ func navBar() g.ComponentFunc {
 		gd.Nav(
 			gp.Class("nav-wrapper"),
 			gd.A(
-				gp.Attr("href", "#"),
+				gp.Href("#"),
 				gp.Class("brand-logo"),
 				gp.Value("田中太郎"),
 			),
 			gd.Ul(
 				gp.ID("nav-mobile"),
 				gp.Class("right"),
-				gd.Li(gd.A(gp.Attr("href", "#about"), gp.Value("自己紹介"))),
-				gd.Li(gd.A(gp.Attr("href", "#skills"), gp.Value("スキル"))),
-				gd.Li(gd.A(gp.Attr("href", "#projects"), gp.Value("プロジェクト"))),
+				gd.Li(gd.A(gp.Href("#about"), gp.Value("自己紹介"))),
+				gd.Li(gd.A(gp.Href("#skills"), gp.Value("スキル"))),
+				gd.Li(gd.A(gp.Href("#projects"), gp.Value("プロジェクト"))),
 			),
 		),
 	)
