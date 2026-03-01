@@ -215,7 +215,7 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 				sess.mu.Unlock()
 				continue
 			}
-			patches, jsCommands, err := renderAndDiff(sess, cfg)
+			patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
 			sess.mu.Unlock()
 			if err != nil {
 				dlog.handleError(sessionID, "renderAndDiff", err)
@@ -229,7 +229,7 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 			dlog.patchesGenerated(sessionID, len(patches), duration)
 
 			wsMu.Lock()
-			err = sendPatches(conn, patches, jsCommands, cfg, dlog, sessionID, "tick", nil, duration)
+			err = sendPatches(conn, patches, jsCommands, viewState, cfg, dlog, sessionID, "tick", nil, duration)
 			wsMu.Unlock()
 			if err != nil {
 				return
@@ -252,7 +252,7 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 				sess.mu.Unlock()
 				continue
 			}
-			patches, jsCommands, err := renderAndDiff(sess, cfg)
+			patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
 			sess.mu.Unlock()
 			if err != nil {
 				dlog.handleError(sessionID, "renderAndDiff", err)
@@ -266,7 +266,7 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 			dlog.patchesGenerated(sessionID, len(patches), duration)
 
 			wsMu.Lock()
-			err = sendPatches(conn, patches, jsCommands, cfg, dlog, sessionID, "info", nil, duration)
+			err = sendPatches(conn, patches, jsCommands, viewState, cfg, dlog, sessionID, "info", nil, duration)
 			wsMu.Unlock()
 			if err != nil {
 				return
@@ -290,7 +290,7 @@ func processEvent(sess *Session, conn *websocket.Conn, cfg *handlerConfig, dlog 
 		return nil
 	}
 
-	patches, jsCommands, err := renderAndDiff(sess, cfg)
+	patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
 	sess.mu.Unlock()
 	if err != nil {
 		dlog.handleError(sessionID, "renderAndDiff", err)
@@ -305,12 +305,13 @@ func processEvent(sess *Session, conn *websocket.Conn, cfg *handlerConfig, dlog 
 
 	wsMu.Lock()
 	defer wsMu.Unlock()
-	return sendPatches(conn, patches, jsCommands, cfg, dlog, sessionID, eventName, payload, duration)
+	return sendPatches(conn, patches, jsCommands, viewState, cfg, dlog, sessionID, eventName, payload, duration)
 }
 
 // renderAndDiff renders the view and computes patches against the stored tree.
 // Must be called with sess.mu held.
-func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand, error) {
+// When debug is true, it also marshals the View state for the debug panel.
+func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand, json.RawMessage, error) {
 	components := sess.View.Render()
 	lang := ""
 	if sess.tree != nil && sess.tree.Attr != nil {
@@ -318,7 +319,7 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand
 	}
 	newTree, err := buildTree(lang, sess.ID, components)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	patches := diff.Diff(sess.tree, newTree)
@@ -330,20 +331,23 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand
 		cmds = jc.DrainCommands()
 	}
 
-	return patches, cmds, nil
+	// Marshal View state for debug panel while still under lock
+	var viewState json.RawMessage
+	if cfg.debug {
+		viewState, _ = json.Marshal(sess.View)
+	}
+
+	return patches, cmds, viewState, nil
 }
 
 // sendPatches sends patches (and optionally JS commands) to the client.
 // Returns non-nil error if the connection should be closed.
-func sendPatches(conn *websocket.Conn, patches []diff.Patch, jsCommands []jsCommand, cfg *handlerConfig, dlog *debugLogger, sessionID, eventName string, payload Payload, duration time.Duration) error {
+func sendPatches(conn *websocket.Conn, patches []diff.Patch, jsCommands []jsCommand, viewState json.RawMessage, cfg *handlerConfig, dlog *debugLogger, sessionID, eventName string, payload Payload, duration time.Duration) error {
 	if len(patches) == 0 && len(jsCommands) == 0 && !cfg.debug {
 		return nil
 	}
 
 	if cfg.debug {
-		var viewStateJSON json.RawMessage
-		// We can't access sess.View here safely, so we marshal in the caller
-		// For debug, we send all info
 		patchJSON, _ := json.Marshal(patches)
 		envelope := debugMessage{
 			Patches:    patchJSON,
@@ -353,7 +357,7 @@ func sendPatches(conn *websocket.Conn, patches []diff.Patch, jsCommands []jsComm
 				Payload:    payload,
 				PatchCount: len(patches),
 				DurationMS: duration.Milliseconds(),
-				ViewState:  viewStateJSON,
+				ViewState:  viewState,
 				SessionID:  sessionID,
 				SessionTTL: cfg.sessionTTL.String(),
 				Timestamp:  time.Now().UnixMilli(),

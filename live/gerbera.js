@@ -313,7 +313,7 @@
     if (Array.isArray(data)) {
       patches = data;
     } else {
-      patches = JSON.parse(data.patches || "[]");
+      patches = typeof data.patches === "string" ? JSON.parse(data.patches) : (data.patches || []);
       jsCommands = data.js_commands;
       if (data.debug && window.__gerberaDebug) {
         window.__gerberaDebug(data.debug);

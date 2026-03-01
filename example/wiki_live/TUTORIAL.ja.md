@@ -375,7 +375,7 @@ go run example/wiki_live/wiki_gl.go
 ポートを変更する場合:
 
 ```bash
-go run example/wiki_live/wiki_gl.go -addr :3000
+go run example/wiki_live/wiki_live.go -addr :3000
 ```
 
 ## 発展課題
