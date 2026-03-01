@@ -5,12 +5,14 @@
 Build a real-time Markdown viewer/editor that demonstrates practical Gerbera Live features:
 
 - `gl.View` interface — Stateful LiveView with file I/O
+- `gl.TickerView` interface — Server-side periodic file polling (no client JS needed)
+- `gl.CommandQueue` — Server-to-client scroll commands via `ScrollIntoPct`
 - `gl.Input` — Real-time text input binding
 - `g.Literal()` — Injecting raw HTML (rendered Markdown)
 - `OpSetHTML` — WebSocket diff patches that use `innerHTML` for HTML content
+- `gs.CSS()` — Embedding component-scoped CSS via `<style>` elements
 - Independent module — Using `go.mod` with `replace` directive and external dependencies
-- Client-side polling — File change detection without server push
-- `gl.Scroll` / `gl.Throttle` — Server-routed scroll sync via `MutationObserver`
+- `gl.Scroll` / `gl.Throttle` — Server-routed scroll sync via `CommandQueue`
 
 ## Prerequisites
 
@@ -26,7 +28,7 @@ example/mdviewer/
 ├── go.mod          # Independent module with replace directive
 ├── main.go         # CLI flags and server startup
 ├── markdown.go     # goldmark wrapper
-└── viewer.go       # MarkdownView (gl.View implementation)
+└── viewer.go       # MarkdownView (gl.View + gl.TickerView implementation)
 ```
 
 The `go.mod` uses a `replace` directive to reference the local gerbera:
@@ -65,17 +67,21 @@ The goldmark parser is configured with GFM (GitHub Flavored Markdown) extensions
 
 ```go
 type MarkdownView struct {
-    Source     string    // Markdown source text
-    HTML       string    // Rendered HTML (cached)
-    FilePath   string    // .md file path (empty = no file)
-    Preview    bool      // Preview-only mode
-    ModTime    time.Time // File's last modification time
-    FileName   string    // Display filename
-    SaveStatus string    // "", "saved", "error"
+    gl.CommandQueue              // Embed for server-to-client JS commands
+    Source     string            // Markdown source text
+    HTML       string            // Rendered HTML (cached)
+    FilePath   string            // .md file path (empty = no file)
+    Preview    bool              // Preview-only mode
+    ModTime    time.Time         // File's last modification time
+    FileName   string            // Display filename
+    SaveStatus string            // "", "saved", "error"
+    ScrollPct  float64           // Scroll position (0.0–1.0)
 }
 ```
 
-The `HTML` field caches the rendered Markdown to avoid re-rendering on every `Render()` call. It's only updated when `Source` changes.
+Key design decisions:
+- **`gl.CommandQueue` embed** — Implements the `JSCommander` interface, allowing the view to issue scroll commands to the client without custom JavaScript
+- The `HTML` field caches the rendered Markdown to avoid re-rendering on every `Render()` call. It's only updated when `Source` changes.
 
 ## Step 4: Mount
 
@@ -106,17 +112,18 @@ func (v *MarkdownView) HandleEvent(event string, payload gl.Payload) error {
     case "save":
         os.WriteFile(v.FilePath, []byte(v.Source), 0644)
         v.SaveStatus = "saved"
-    case "check-file":
-        // Compare ModTime, reload if changed
+    case "editor-scroll":
+        // Compute scroll percentage and send scroll command
     }
     return nil
 }
 ```
 
-Three events:
+Two main events:
 - **edit**: Triggered by `gl.Input("edit")` on the textarea. Updates source and re-renders HTML.
 - **save**: Writes current source to file. Only available when `FilePath` is set.
-- **check-file**: Polls the file's modification time. If the file changed externally, reloads it.
+
+Note that `check-file` event handling has been replaced by the `TickerView` interface (see Step 7).
 
 ## Step 6: Raw HTML with `g.Literal()` and `OpSetHTML`
 
@@ -132,31 +139,46 @@ gd.Div(
 
 This is the key difference from simple text updates: without `OpSetHTML`, Markdown rendering would break on WebSocket updates because HTML tags would be escaped.
 
-## Step 7: File Watching via Polling
+## Step 7: File Watching via `TickerView`
 
-Since Gerbera Live doesn't have server push, file watching is implemented with client-side polling:
+Instead of using client-side JavaScript polling, the `TickerView` interface provides server-side periodic callbacks:
 
 ```go
-// Hidden button in the DOM
-gd.Button(
-    gp.ID("file-check-trigger"),
-    gl.Click("check-file"),
-    gs.Style(g.StyleMap{"display": "none"}),
-)
+// TickInterval returns the interval for file change polling.
+func (v *MarkdownView) TickInterval() time.Duration {
+    if v.FilePath == "" {
+        return 0  // disable ticking when no file
+    }
+    return 2 * time.Second
+}
+
+// HandleTick checks for external file changes on each tick.
+func (v *MarkdownView) HandleTick() error {
+    if v.FilePath == "" {
+        return nil
+    }
+    info, err := os.Stat(v.FilePath)
+    if err != nil {
+        return nil
+    }
+    if info.ModTime().After(v.ModTime) {
+        data, _ := os.ReadFile(v.FilePath)
+        v.Source = string(data)
+        v.HTML = renderMarkdown(v.Source)
+        v.ModTime = info.ModTime()
+    }
+    return nil
+}
 ```
 
-```javascript
-// Auto-click every 2 seconds
-setInterval(function() {
-    document.getElementById('file-check-trigger').click();
-}, 2000);
-```
+Key advantages over the previous client-side polling approach:
+- **No JavaScript needed** — No hidden buttons, no `setInterval`, no client-side hacks
+- **Zero-overhead when idle** — If `HandleTick` doesn't modify state, no patches are sent
+- **Disable dynamically** — Return `0` from `TickInterval()` to disable ticking (e.g., when no file is loaded)
 
-When no file changes are detected, `HandleEvent` returns without modifying state, producing zero patches, and the handler skips sending a WebSocket message (see `handler.go` L191).
+## Step 8: Scroll Sync via `CommandQueue`
 
-## Step 8: Scroll Sync via `gl.Scroll()`
-
-Scroll sync uses the LiveView event system rather than raw JavaScript. Since `scrollTop` is a DOM property (not an HTML attribute), Gerbera's diff system can't control it directly. Instead, the server computes a scroll percentage and reflects it as a `data-scroll-pct` attribute, which a `MutationObserver` on the client converts back to `scrollTop`.
+Scroll sync uses the `CommandQueue` to send `ScrollIntoPct` commands from the server to the client, eliminating the need for `MutationObserver` and `data-scroll-pct` attribute hacks.
 
 ### Binding the scroll event
 
@@ -173,7 +195,7 @@ gd.Textarea(
 
 `gl.Scroll("editor-scroll")` adds a `gerbera-scroll` attribute. The client JS (`gerbera.js`) listens for `scroll` events and sends `scrollTop`, `scrollHeight`, and `clientHeight` in the payload. `gl.Throttle(50)` limits the event rate.
 
-### Server-side handler
+### Server-side handler with CommandQueue
 
 ```go
 case "editor-scroll":
@@ -183,44 +205,11 @@ case "editor-scroll":
     max := scrollHeight - clientHeight
     if max > 0 {
         v.ScrollPct = scrollTop / max
+        v.ScrollIntoPct(".md-preview-pane", fmt.Sprintf("%.6f", v.ScrollPct))
     }
 ```
 
-The handler normalizes the scroll position to a 0.0–1.0 range (`ScrollPct`).
-
-### Reflecting scroll percentage via diff
-
-```go
-gd.Div(
-    gp.Class("md-preview-pane"),
-    gp.Attr("data-scroll-pct", fmt.Sprintf("%.6f", v.ScrollPct)),
-    ...
-),
-```
-
-The diff system detects the attribute change and sends an `attr` patch to the client.
-
-### Client-side MutationObserver
-
-```javascript
-(function() {
-  var pv = document.querySelector('.md-preview-pane');
-  if (!pv) return;
-  var ob = new MutationObserver(function(muts) {
-    muts.forEach(function(m) {
-      if (m.attributeName === 'data-scroll-pct') {
-        var pct = parseFloat(pv.getAttribute('data-scroll-pct'));
-        if (!isNaN(pct)) {
-          pv.scrollTop = pct * (pv.scrollHeight - pv.clientHeight);
-        }
-      }
-    });
-  });
-  ob.observe(pv, { attributes: true, attributeFilter: ['data-scroll-pct'] });
-})();
-```
-
-The `MutationObserver` watches for changes to `data-scroll-pct` and converts the percentage back to an absolute `scrollTop` value.
+The handler normalizes the scroll position to a 0.0–1.0 range, then issues a `ScrollIntoPct` command. The `CommandQueue` (embedded in the view) queues this command, and the framework sends it to the client after the next render.
 
 ### Data flow
 
@@ -235,17 +224,32 @@ Browser                                    Go Server
   |       "clientHeight":"400"}}              |
   |                                           |
   |     HandleEvent: ScrollPct = 150/800      |
-  |     Render: data-scroll-pct="0.187500"    |
-  |     Diff: attr patch                      |
+  |     CommandQueue: ScrollIntoPct(0.1875)   |
+  |     Render + Diff + Drain commands        |
   |                                           |
-  | <-- [{"op":"attr","key":"data-scroll-pct",|
-  |       "val":"0.187500"}]                  |
+  | <-- {"patches":[...],                     |
+  |      "js_commands":[{"cmd":"scroll_into_pct",
+  |        "target":".md-preview-pane",       |
+  |        "args":{"pct":"0.187500"}}]}       |
   |                                           |
-  | MutationObserver fires                    |
-  | pv.scrollTop = 0.1875 * maxScroll         |
+  | gerbera.js executes command:              |
+  | el.scrollTop = 0.1875 * maxScroll         |
 ```
 
-## Step 9: CLI and Server
+Key advantage: No `MutationObserver`, no `data-scroll-pct` attribute, no custom JavaScript — the framework handles everything.
+
+## Step 9: CSS with `gs.CSS()`
+
+```go
+gd.Head(
+    gd.Title(title),
+    gs.CSS(cssStyles),  // Embed CSS via <style> element
+),
+```
+
+`gs.CSS()` generates a `<style>` element with raw CSS content. Previously this was done with `g.Tag("style", gp.Value(css))` — the dedicated helper is more concise and semantically clear.
+
+## Step 10: CLI and Server
 
 ```go
 func main() {
@@ -289,6 +293,10 @@ Browser                                  Go Server
   |          "val":"<h1>Hi</h1>"}]          |
   |                                         |
   | 5. JS: node.innerHTML = val             |
+  |                                         |
+  | 6. (Every 2s) Server tick               |
+  |     HandleTick -> check file ModTime    |
+  |     -> re-render if changed -> patches  |
 ```
 
 ## Running

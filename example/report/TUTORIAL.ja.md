@@ -55,8 +55,8 @@ data := tmpl.Bytes()          // HTML を []byte として取得
 ```go
 ge.If(done,
 	g.Skip(),
-	g.Tag("details",
-		g.Tag("summary", gp.Value("残作業")),
+	gd.Details(
+		gd.Summary(gp.Value("残作業")),
 		gd.P(gp.Value("このタスクにはまだ作業が残っています。")),
 	),
 ),
@@ -65,18 +65,19 @@ ge.If(done,
 - `g.Skip()` は何も描画しない `ComponentFunc` を返します
 - 条件分岐で「何も表示しない」ケースに使います
 - 上の例では、タスクが完了していれば何も表示せず、未完了なら詳細を表示します
+- `gd.Details()` と `gd.Summary()` は `dom/` パッケージの専用ヘルパーとして利用可能です
 
 ## ステップ 4: Tag で任意の要素を生成
 
 ```go
-g.Tag("details",
-	g.Tag("summary", gp.Value("残作業")),
+gd.Details(
+	gd.Summary(gp.Value("残作業")),
 	gd.P(gp.Value("このタスクにはまだ作業が残っています。")),
 ),
 ```
 
-- `g.Tag(tagName, children...)` は任意のタグ名で要素を生成します
-- `dom/` パッケージにラッパーがない要素（`<details>`, `<summary>`, `<dialog>` など）を使いたい場合に便利です
+- `g.Tag(tagName, children...)` は任意のタグ名で要素を生成でき、任意の要素に対して引き続き利用可能です
+- `<details>` と `<summary>` は `dom/` パッケージに専用の `gd.Details()` / `gd.Summary()` ラッパーが追加されました
 - 実は `dom/` の関数はすべて `g.Tag` の薄いラッパーです
 
 ## ステップ 5: インラインスタイルと Unless

@@ -38,6 +38,12 @@ func (q *CommandQueue) ScrollTo(selector string, top, left string) {
 	q.PushCommand("scroll_to", selector, map[string]string{"top": top, "left": left})
 }
 
+// ScrollIntoPct queues a percentage-based scroll command.
+// pct should be a value between 0.0 and 1.0.
+func (q *CommandQueue) ScrollIntoPct(selector string, pct string) {
+	q.PushCommand("scroll_into_pct", selector, map[string]string{"pct": pct})
+}
+
 // Focus queues a focus command for the given CSS selector.
 func (q *CommandQueue) Focus(selector string) {
 	q.PushCommand("focus", selector, nil)

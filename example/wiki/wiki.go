@@ -153,11 +153,11 @@ func viewLayout(w http.ResponseWriter, page *Page) error {
 			gp.Class("container"),
 			gd.H1(gp.Value(page.Title)),
 			gd.A(
-				gp.Attr("href", "/"),
+				gp.Href("/"),
 				gp.Value("list"),
 			),
 			gd.A(
-				gp.Attr("href", "/edit/"+page.Title),
+				gp.Href("/edit/"+page.Title),
 				gp.Value("Edit"),
 			),
 			gd.P(
@@ -174,7 +174,7 @@ func editLayout(w http.ResponseWriter, page *Page) error {
 			gp.Class("container"),
 			gd.H1(gp.Value(page.Title)),
 			gd.A(
-				gp.Attr("href", "/view/"+page.Title),
+				gp.Href("/view/"+page.Title),
 				gp.Value("cancel"),
 			),
 			gd.Form(
@@ -183,7 +183,7 @@ func editLayout(w http.ResponseWriter, page *Page) error {
 				gd.Div(
 					gp.Class("form-group"),
 					gd.Label(
-						gp.Attr("for", "body"),
+						gp.For("body"),
 						gp.Value("body"),
 					),
 					gd.Textarea(
@@ -194,7 +194,7 @@ func editLayout(w http.ResponseWriter, page *Page) error {
 					),
 				),
 				gd.Button(
-					gp.Attr("type", "submit"),
+					gp.Type("submit"),
 					gp.Class("btn", "btn-primary"),
 					gp.Value("Save"),
 				),
@@ -218,7 +218,7 @@ func listLayout(w http.ResponseWriter, pages []*Page) error {
 					title := page.ToMap().Get("title").(string)
 					return gd.Li(
 						gd.A(
-							gp.Attr("href", "/view/"+title),
+							gp.Href("/view/"+title),
 							gp.Value(title),
 						),
 					)

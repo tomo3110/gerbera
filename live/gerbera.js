@@ -250,6 +250,12 @@
             el.scrollTo(opts);
           }
           break;
+        case "scroll_into_pct":
+          if (el && cmd.args && cmd.args.pct) {
+            var pct = parseFloat(cmd.args.pct);
+            el.scrollTop = pct * (el.scrollHeight - el.clientHeight);
+          }
+          break;
         case "focus":
           if (el) el.focus();
           break;

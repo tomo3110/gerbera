@@ -49,18 +49,18 @@ var (
 
 ```go
 gd.Input(
-	gp.Attr("type", "text"),
+	gp.Type("text"),
 	gp.Class("form-control"),
 	gp.ID("name"),
 	gp.Name("name"),
-	gp.Attr("required", "required"),
+	gp.Required(true),
 ),
 ```
 
 - `gd.Input(...)` は `<input>` void要素を生成します
 - `gp.ID("name")` は `id="name"` を設定
 - `gp.Name("name")` は `name="name"` を設定（フォーム送信時のキー）
-- `type` は `gp.Attr` で指定します
+- `gp.Type("text")` で入力タイプを設定し、`gp.Required(true)` でフィールドを必須にします
 
 ## ステップ 3: ドロップダウン — Select / Option
 
@@ -87,10 +87,11 @@ gd.InputCheckbox(false, "web",
 	gp.Name("interests"),
 	gp.ID("interest-web"),
 ),
-gd.Label(gp.Attr("for", "interest-web"), gp.Value("Web 開発")),
+gd.Label(gp.For("interest-web"), gp.Value("Web 開発")),
 ```
 
 - `gd.InputCheckbox(initCheck, value, children...)` — 第1引数は初期チェック状態、第2引数は `value` 属性
+- `gp.For("interest-web")` で `for` 属性を使いラベルとチェックボックスを紐付けます
 - 同じ `name` を持つチェックボックスは、フォーム送信時にスライスとして受け取れます
 
 ## ステップ 5: 送信ボタン — Submit

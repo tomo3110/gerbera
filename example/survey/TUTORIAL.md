@@ -49,18 +49,18 @@ Responses are stored in an in-memory slice. A `sync.Mutex` is used for safe conc
 
 ```go
 gd.Input(
-	gp.Attr("type", "text"),
+	gp.Type("text"),
 	gp.Class("form-control"),
 	gp.ID("name"),
 	gp.Name("name"),
-	gp.Attr("required", "required"),
+	gp.Required(true),
 ),
 ```
 
 - `gd.Input(...)` generates an `<input>` void element
 - `gp.ID("name")` sets `id="name"`
 - `gp.Name("name")` sets `name="name"` (the key used on form submission)
-- `type` is specified via `gp.Attr`
+- `gp.Type("text")` sets the input type; `gp.Required(true)` marks the field as required
 
 ## Step 3: Dropdown — Select / Option
 
@@ -87,10 +87,11 @@ gd.InputCheckbox(false, "web",
 	gp.Name("interests"),
 	gp.ID("interest-web"),
 ),
-gd.Label(gp.Attr("for", "interest-web"), gp.Value("Web Development")),
+gd.Label(gp.For("interest-web"), gp.Value("Web Development")),
 ```
 
 - `gd.InputCheckbox(initCheck, value, children...)` — The 1st argument is the initial checked state, the 2nd is the `value` attribute
+- `gp.For("interest-web")` links the label to the checkbox via the `for` attribute
 - Checkboxes sharing the same `name` are received as a slice on form submission
 
 ## Step 5: Submit Button — Submit

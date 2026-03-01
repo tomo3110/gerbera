@@ -98,9 +98,8 @@ func taskListSection() g.ComponentFunc {
 					),
 					ge.If(done,
 						g.Skip(),
-						// details/summary は dom/ にないため Tag() で直接生成
-						g.Tag("details",
-							g.Tag("summary", gp.Value("残作業")),
+						gd.Details(
+							gd.Summary(gp.Value("残作業")),
 							gd.P(gp.Value("このタスクにはまだ作業が残っています。")),
 						),
 					),
