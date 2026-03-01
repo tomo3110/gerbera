@@ -102,8 +102,15 @@ After `HandleEvent` returns, the framework automatically calls `Render()`, diffs
 ```go
 func main() {
 	addr := flag.String("addr", ":8840", "listen address")
+	debug := flag.Bool("debug", false, "enable debug panel")
 	flag.Parse()
-	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }))
+
+	var opts []gl.Option
+	if *debug {
+		opts = append(opts, gl.WithDebug())
+	}
+
+	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }, opts...))
 	log.Printf("counter running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
@@ -112,6 +119,7 @@ func main() {
 - `gl.Handler(factory)` returns an `http.Handler` that handles both initial HTTP rendering and WebSocket connections
 - The factory function `func() gl.View` is called once per session to create a fresh `View` instance
 - Options: `gl.WithLang("en")` sets the HTML lang attribute, `gl.WithSessionTTL(10*time.Minute)` adjusts the session timeout
+- `gl.WithDebug()` enables the browser DevPanel and server-side structured logging (see below)
 
 ## How It Works
 
@@ -153,6 +161,24 @@ go run example/counter/counter.go -addr :3000
 
 Open the browser DevTools Network tab and filter by "WS" to observe the WebSocket messages being exchanged.
 
+### Debug Mode
+
+Run with the `-debug` flag to enable the built-in debug panel:
+
+```bash
+go run example/counter/counter.go -debug
+```
+
+When debug mode is enabled:
+- A floating **"G" button** appears in the bottom-right corner of the browser
+- Click the button or press `Ctrl+Shift+D` to toggle the **Gerbera Debug Panel**
+- The panel has 4 tabs:
+  - **Events** — Real-time log of events sent to the server (event name, payload, timestamp)
+  - **Patches** — DOM patches received from the server (patch count, server processing time in ms)
+  - **State** — Current `CounterView` state as JSON (updates after each event)
+  - **Session** — Session ID, TTL, and WebSocket connection status
+- The server terminal also outputs structured logs via `log/slog`
+
 ## Exercises
 
 1. Add a "Reset" button that sets the count back to 0
@@ -167,6 +193,7 @@ Open the browser DevTools Network tab and filter by "WS" to observe the WebSocke
 | `gl.Handler(factory, opts...)` | Returns an `http.Handler` for a LiveView |
 | `gl.WithLang(lang)` | Sets the HTML `lang` attribute (default `"ja"`) |
 | `gl.WithSessionTTL(d)` | Sets session timeout (default 5 minutes) |
+| `gl.WithDebug()` | Enables browser DevPanel and server-side structured logging |
 | `gl.Click(event)` | Binds a click event |
 | `gl.Input(event)` | Binds an input event |
 | `gl.Change(event)` | Binds a change event |

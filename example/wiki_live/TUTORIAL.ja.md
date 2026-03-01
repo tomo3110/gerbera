@@ -389,6 +389,7 @@ go run example/wiki_live/wiki_gl.go -addr :3000
 | 関数 | 説明 |
 |------|------|
 | `gl.Handler(factory, opts...)` | LiveView 用の `http.Handler` を返す |
+| `gl.WithDebug()` | ブラウザ DevPanel とサーバーサイド構造化ログを有効化 |
 | `gl.Click(event)` | クリックイベントをバインド |
 | `gl.ClickValue(value)` | クリックイベントで送信する値を設定 |
 | `gl.Input(event)` | 入力イベントをバインド（ペイロードに `value` を含む） |

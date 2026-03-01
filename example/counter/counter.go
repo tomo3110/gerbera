@@ -45,8 +45,15 @@ func (v *CounterView) HandleEvent(event string, payload gl.Payload) error {
 
 func main() {
 	addr := flag.String("addr", ":8840", "listen address")
+	debug := flag.Bool("debug", false, "enable debug panel")
 	flag.Parse()
-	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }))
+
+	var opts []gl.Option
+	if *debug {
+		opts = append(opts, gl.WithDebug())
+	}
+
+	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }, opts...))
 	log.Printf("counter running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

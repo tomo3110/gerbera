@@ -389,6 +389,7 @@ go run example/wiki_live/wiki_gl.go -addr :3000
 | Function | Description |
 |----------|-------------|
 | `gl.Handler(factory, opts...)` | Returns an `http.Handler` for a LiveView |
+| `gl.WithDebug()` | Enables browser DevPanel and server-side structured logging |
 | `gl.Click(event)` | Binds a click event |
 | `gl.ClickValue(value)` | Sets a value to send with click events |
 | `gl.Input(event)` | Binds an input event (sends `value` in payload) |

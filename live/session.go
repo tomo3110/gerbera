@@ -19,15 +19,17 @@ type Session struct {
 }
 
 type sessionStore struct {
-	mu       sync.RWMutex
-	sessions map[string]*Session
-	ttl      time.Duration
+	mu        sync.RWMutex
+	sessions  map[string]*Session
+	ttl       time.Duration
+	onExpired func(id string)
 }
 
-func newSessionStore(ttl time.Duration) *sessionStore {
+func newSessionStore(ttl time.Duration, onExpired func(string)) *sessionStore {
 	s := &sessionStore{
-		sessions: make(map[string]*Session),
-		ttl:      ttl,
+		sessions:  make(map[string]*Session),
+		ttl:       ttl,
+		onExpired: onExpired,
 	}
 	go s.gc()
 	return s
@@ -74,6 +76,9 @@ func (s *sessionStore) gc() {
 			sess.mu.Lock()
 			if now.Sub(sess.lastSeen) > s.ttl {
 				delete(s.sessions, id)
+				if s.onExpired != nil {
+					s.onExpired(id)
+				}
 			}
 			sess.mu.Unlock()
 		}

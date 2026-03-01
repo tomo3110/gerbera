@@ -197,6 +197,25 @@ Handler options:
 |----------|-------------|
 | `gl.WithLang(lang)` | Sets HTML `lang` attribute (default `"ja"`) |
 | `gl.WithSessionTTL(d)` | Sets session timeout (default 5 minutes) |
+| `gl.WithDebug()` | Enables browser DevPanel and server-side structured logging |
+
+### Debug Mode
+
+Enable debug mode by passing `gl.WithDebug()` to the handler:
+
+```go
+http.Handle("/", gl.Handler(factory, gl.WithDebug()))
+```
+
+When enabled:
+- **Browser DevPanel** — A floating overlay (toggle with `Ctrl+Shift+D` or the "G" button) with 4 tabs:
+  - **Events** — Real-time log of sent events with name, payload, and timestamp
+  - **Patches** — Received DOM patches with count and server processing time
+  - **State** — Current View struct state as JSON (updated after each event)
+  - **Session** — Session ID, TTL, and connection status
+- **Server-side logging** — Structured logs via `log/slog` for event processing, patch generation, and session lifecycle
+
+When `WithDebug()` is not set, there is zero overhead — no debug JS is injected and no timing is measured.
 
 ## Examples
 

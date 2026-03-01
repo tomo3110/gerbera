@@ -15,6 +15,7 @@ import (
 type handlerConfig struct {
 	lang       string
 	sessionTTL time.Duration
+	debug      bool
 }
 
 // Option configures the live handler.
@@ -28,6 +29,11 @@ func WithLang(lang string) Option {
 // WithSessionTTL sets the session timeout (default 5 minutes).
 func WithSessionTTL(d time.Duration) Option {
 	return func(c *handlerConfig) { c.sessionTTL = d }
+}
+
+// WithDebug enables the browser DevPanel and server-side structured logging.
+func WithDebug() Option {
+	return func(c *handlerConfig) { c.debug = true }
 }
 
 type wsEvent struct {
@@ -50,18 +56,21 @@ func Handler(viewFactory func() View, opts ...Option) http.Handler {
 		o(cfg)
 	}
 
-	store := newSessionStore(cfg.sessionTTL)
+	dlog := newDebugLogger(cfg.debug)
+	store := newSessionStore(cfg.sessionTTL, func(id string) {
+		dlog.sessionExpired(id)
+	})
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("gerbera-ws") == "1" {
-			handleWS(w, r, store)
+			handleWS(w, r, store, cfg, dlog)
 			return
 		}
-		handleHTTP(w, r, viewFactory, store, cfg)
+		handleHTTP(w, r, viewFactory, store, cfg, dlog)
 	})
 }
 
-func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View, store *sessionStore, cfg *handlerConfig) {
+func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
 	view := viewFactory()
 
 	params := make(Params)
@@ -76,12 +85,19 @@ func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View,
 	}
 
 	sess := store.create(view)
+	dlog.sessionCreated(sess.ID)
 
 	components := view.Render()
-	// Append the gerbera.js script tag
-	components = append(components, dom.Body(
-		gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
-	))
+	if cfg.debug {
+		components = append(components, dom.Body(
+			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
+			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaDebugJS)),
+		))
+	} else {
+		components = append(components, dom.Body(
+			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
+		))
+	}
 
 	tree, err := buildTree(cfg.lang, sess.ID, components)
 	if err != nil {
@@ -99,7 +115,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View,
 	}
 }
 
-func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore) {
+func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
 	sessionID := r.URL.Query().Get("session")
 	sess := store.get(sessionID)
 	if sess == nil {
@@ -114,6 +130,9 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore) {
 	defer conn.Close()
 	defer store.remove(sessionID)
 
+	dlog.sessionConnected(sessionID)
+	defer dlog.sessionDisconnected(sessionID)
+
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
@@ -122,33 +141,76 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore) {
 
 		var ev wsEvent
 		if err := json.Unmarshal(msg, &ev); err != nil {
+			dlog.handleError(sessionID, "unmarshal event", err)
 			continue
+		}
+
+		dlog.eventReceived(sessionID, ev.Name, ev.Payload)
+
+		var diffStart time.Time
+		if cfg.debug {
+			diffStart = time.Now()
 		}
 
 		sess.mu.Lock()
 
 		if err := sess.View.HandleEvent(ev.Name, ev.Payload); err != nil {
+			dlog.handleError(sessionID, "HandleEvent", err)
 			sess.mu.Unlock()
 			continue
 		}
 
 		components := sess.View.Render()
-		// Re-derive lang and session ID from existing tree
 		lang := ""
 		if sess.tree != nil && sess.tree.Attr != nil {
 			lang = sess.tree.Attr["lang"]
 		}
 		newTree, err := buildTree(lang, sess.ID, components)
 		if err != nil {
+			dlog.handleError(sessionID, "buildTree", err)
 			sess.mu.Unlock()
 			continue
 		}
 
 		patches := diff.Diff(sess.tree, newTree)
 		sess.tree = newTree
+
+		var viewStateJSON json.RawMessage
+		if cfg.debug {
+			viewStateJSON, _ = json.Marshal(sess.View)
+		}
+
 		sess.mu.Unlock()
 
-		if len(patches) > 0 {
+		var duration time.Duration
+		if cfg.debug {
+			duration = time.Since(diffStart)
+		}
+		dlog.patchesGenerated(sessionID, len(patches), duration)
+
+		if len(patches) == 0 && !cfg.debug {
+			continue
+		}
+
+		if cfg.debug {
+			patchJSON, _ := json.Marshal(patches)
+			envelope := debugMessage{
+				Patches: patchJSON,
+				Debug: &debugMeta{
+					Event:      ev.Name,
+					Payload:    ev.Payload,
+					PatchCount: len(patches),
+					DurationMS: duration.Milliseconds(),
+					ViewState:  viewStateJSON,
+					SessionID:  sessionID,
+					SessionTTL: cfg.sessionTTL.String(),
+					Timestamp:  time.Now().UnixMilli(),
+				},
+			}
+			if err := conn.WriteJSON(envelope); err != nil {
+				break
+			}
+		} else {
 			if err := conn.WriteJSON(patches); err != nil {
 				break
 			}

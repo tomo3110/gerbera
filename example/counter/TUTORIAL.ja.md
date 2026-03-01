@@ -102,8 +102,15 @@ func (v *CounterView) HandleEvent(event string, payload gl.Payload) error {
 ```go
 func main() {
 	addr := flag.String("addr", ":8840", "listen address")
+	debug := flag.Bool("debug", false, "enable debug panel")
 	flag.Parse()
-	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }))
+
+	var opts []gl.Option
+	if *debug {
+		opts = append(opts, gl.WithDebug())
+	}
+
+	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }, opts...))
 	log.Printf("counter running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
@@ -112,6 +119,7 @@ func main() {
 - `gl.Handler(factory)` は初期 HTML レンダリングと WebSocket 接続の両方を処理する `http.Handler` を返します
 - ファクトリ関数 `func() gl.View` はセッションごとに呼ばれ、新しい `View` インスタンスを生成します
 - オプション: `gl.WithLang("en")` で HTML の lang 属性を設定、`gl.WithSessionTTL(10*time.Minute)` でセッションタイムアウトを調整
+- `gl.WithDebug()` でブラウザ DevPanel とサーバーサイド構造化ログを有効化（後述）
 
 ## 動作の仕組み
 
@@ -153,6 +161,24 @@ go run example/counter/counter.go -addr :3000
 
 ブラウザの開発者ツールの Network タブで「WS」をフィルタすると、WebSocket メッセージの送受信を確認できます。
 
+### デバッグモード
+
+`-debug` フラグを付けて起動すると、組み込みのデバッグパネルが有効になります:
+
+```bash
+go run example/counter/counter.go -debug
+```
+
+デバッグモードを有効にすると:
+- ブラウザ画面の右下にフローティングの **"G" ボタン** が表示されます
+- ボタンをクリックするか `Ctrl+Shift+D` を押すと **Gerbera Debug Panel** が開閉します
+- パネルには 4 つのタブがあります:
+  - **Events** — サーバーに送信されたイベントのリアルタイムログ（イベント名・ペイロード・タイムスタンプ）
+  - **Patches** — サーバーから受信した DOM パッチ（パッチ数・サーバー処理時間 ms）
+  - **State** — `CounterView` の現在の状態を JSON 表示（各イベント後に更新）
+  - **Session** — セッション ID・TTL・WebSocket 接続状態
+- サーバーのターミナルにも `log/slog` による構造化ログが出力されます
+
 ## 発展課題
 
 1. カウントを 0 に戻す「リセット」ボタンを追加してみましょう
@@ -167,6 +193,7 @@ go run example/counter/counter.go -addr :3000
 | `gl.Handler(factory, opts...)` | LiveView 用の `http.Handler` を返す |
 | `gl.WithLang(lang)` | HTML の `lang` 属性を設定（デフォルト `"ja"`） |
 | `gl.WithSessionTTL(d)` | セッションタイムアウトを設定（デフォルト 5 分） |
+| `gl.WithDebug()` | ブラウザ DevPanel とサーバーサイド構造化ログを有効化 |
 | `gl.Click(event)` | クリックイベントをバインド |
 | `gl.Input(event)` | 入力イベントをバインド |
 | `gl.Change(event)` | 変更イベントをバインド |

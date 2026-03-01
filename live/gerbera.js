@@ -44,7 +44,17 @@
   }
 
   ws.onmessage = function(ev) {
-    JSON.parse(ev.data).forEach(function(p) {
+    var data = JSON.parse(ev.data);
+    var patches;
+    if (Array.isArray(data)) {
+      patches = data;
+    } else {
+      patches = data.patches;
+      if (data.debug && window.__gerberaDebug) {
+        window.__gerberaDebug(data.debug);
+      }
+    }
+    patches.forEach(function(p) {
       var n = resolve(p.path);
       if (!n) return;
       switch (p.op) {
@@ -82,6 +92,9 @@
   };
 
   ws.onclose = function() {
+    if (window.__gerberaDebugDisconnect) {
+      window.__gerberaDebugDisconnect();
+    }
     setTimeout(function() { location.reload(); }, 3000);
   };
 
