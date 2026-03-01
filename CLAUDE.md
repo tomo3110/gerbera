@@ -19,9 +19,10 @@ go run example/dashboard/dashboard.go   # Run dashboard example on :8820
 go run example/survey/survey.go         # Run survey example on :8830
 go run example/report/report.go         # Run report example (stdout, no server)
 go run example/wiki/wiki.go             # Run wiki example on :8880
+go run example/counter/counter.go       # Run counter LiveView example on :8840
 ```
 
-No external dependencies — standard library only.
+External dependency: `github.com/gorilla/websocket` (only used by `live/` package).
 
 ## Architecture
 
@@ -42,6 +43,8 @@ No external dependencies — standard library only.
 - **`expr/`** — Control flow: `If()`, `Unless()`, `Each()` for conditional/iterative rendering
 - **`styles/`** — `Style()` for inline CSS from a map
 - **`components/`** — Pre-built head components (Bootstrap CDN, Materialize CSS CDN)
+- **`diff/`** — Element tree diffing: `Diff()` compares two `*Element` trees and returns `[]Patch`; `RenderFragment()` for HTML fragments without DOCTYPE
+- **`live/`** — Phoenix LiveView-style real-time updates: `View` interface, `Handler()`, WebSocket event loop, session management, client JS (`gerbera.js` via `go:embed`)
 
 ### Key patterns
 
