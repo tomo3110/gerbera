@@ -10,6 +10,12 @@ func Click(event string) gerbera.ComponentFunc {
 	return property.Attr("gerbera-click", event)
 }
 
+// ClickValue sets the gerbera-value attribute on the element.
+// When a click event fires, this value is sent in the payload as "value".
+func ClickValue(value string) gerbera.ComponentFunc {
+	return property.Attr("gerbera-value", value)
+}
+
 // Input binds an input event to the element.
 func Input(event string) gerbera.ComponentFunc {
 	return property.Attr("gerbera-input", event)

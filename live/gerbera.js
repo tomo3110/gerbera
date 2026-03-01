@@ -20,6 +20,8 @@
           var p = {};
           if (type === "input" || type === "change") p.value = el.value;
           if (type === "keydown") p.key = e.key;
+          var gv = el.getAttribute("gerbera-value");
+          if (gv) p.value = gv;
           if (type === "submit") {
             var form = el.tagName === "FORM" ? el : el.closest("form");
             if (form) {

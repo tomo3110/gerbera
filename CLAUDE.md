@@ -20,6 +20,7 @@ go run example/survey/survey.go         # Run survey example on :8830
 go run example/report/report.go         # Run report example (stdout, no server)
 go run example/wiki/wiki.go             # Run wiki example on :8880
 go run example/counter/counter.go       # Run counter LiveView example on :8840
+go run example/wiki_live/wiki_live.go   # Run wiki_live LiveView example on :8850
 ```
 
 External dependency: `github.com/gorilla/websocket` (only used by `live/` package).
