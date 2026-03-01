@@ -13,8 +13,12 @@ go build ./...                        # Build all packages
 go test ./...                         # Run all tests
 go test -v ./...                      # Verbose test output
 go test -run TestFuncName ./...       # Run a single test
-go run example/hello/hello.go         # Run hello example on :8800
-go run example/wiki/wiki.go           # Run wiki example on :8880
+go run example/hello/hello.go           # Run hello example on :8800
+go run example/portfolio/portfolio.go   # Run portfolio example on :8810
+go run example/dashboard/dashboard.go   # Run dashboard example on :8820
+go run example/survey/survey.go         # Run survey example on :8830
+go run example/report/report.go         # Run report example (stdout, no server)
+go run example/wiki/wiki.go             # Run wiki example on :8880
 ```
 
 No external dependencies — standard library only.
@@ -45,3 +49,16 @@ No external dependencies — standard library only.
 - `Tag(tagName, children...)` is the universal element factory; `dom/` functions are thin wrappers
 - Tests use table-driven patterns with a shared helper in `dom/dom_test.go`
 - `property.Attr()` applies `html.EscapeString` to attribute values for XSS prevention
+
+## Commit Message Convention
+
+Commit messages MUST be written in both English and Japanese (bilingual).
+Format the message with English first, followed by Japanese on the next line.
+
+コミットメッセージは必ず英語と日本語を併記すること。英語を先に、日本語を次の行に記載する。
+
+Example:
+```
+Add user authentication feature
+ユーザー認証機能を追加
+```
