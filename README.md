@@ -133,6 +133,8 @@ gerbera/
 ├── components/        # Pre-built components (Bootstrap CDN, Tabs, etc.)
 ├── diff/              # Element tree diffing and fragment rendering
 ├── live/              # LiveView: View interface, WebSocket handler, client JS
+├── ui/               # Pre-built UI component library with theme system
+│   └── live/         # LiveView-only components (Modal, Toast, DataTable, etc.)
 │
 └── example/           # Example applications
     ├── hello/         # Minimal hello world
@@ -147,7 +149,9 @@ gerbera/
     ├── upload/        # LiveView file upload
     ├── tabview/       # LiveView tab component demo
     ├── wiki_live/     # LiveView Wiki (SPA-style)
-    └── mdviewer/      # LiveView Markdown viewer/editor
+    ├── mdviewer/      # LiveView Markdown viewer/editor
+    ├── admin/         # LiveView admin dashboard
+    └── catalog/       # Interactive UI component catalog
 ```
 
 ### Core Concepts
@@ -367,6 +371,53 @@ When enabled:
 
 When `WithDebug()` is not set, there is zero overhead — no debug JS is injected and no timing is measured.
 
+## UI Components (`ui/` package)
+
+The `ui/` package provides pre-built components so engineers can build professional UIs by writing Go code alone — no CSS required. All components include ARIA accessibility attributes and adapt to the active theme via CSS custom properties.
+
+```go
+import (
+    gu  "github.com/tomo3110/gerbera/ui"       // Static + interactive components
+    gul "github.com/tomo3110/gerbera/ui/live"   // LiveView-only components
+)
+```
+
+### Theme System
+
+```go
+gu.Theme()                          // Default light theme
+gu.ThemeWith(gu.DarkTheme())        // Dark theme
+gu.ThemeWith(gu.ThemeConfig{...})   // Custom overrides
+gu.ThemeAuto(light, dark)           // Auto switch via prefers-color-scheme
+```
+
+### Component Overview
+
+| Category | Components |
+|----------|-----------|
+| Layout | `AdminShell`, `Sidebar`, `PageHeader`, `Breadcrumb`, `MobileHeader` |
+| Grid & Spacing | `Grid`, `Row`, `Column`, `Stack`, `HStack`, `VStack`, `Center`, `Container`, `Spacer` |
+| Data Display | `Card`, `Badge`, `Alert`, `StatCard`, `StyledTable`, `THead`, `Tree` |
+| Form | `FormGroup`, `FormLabel`, `FormInput`, `FormSelect`, `FormTextarea`, `Checkbox`, `Radio` |
+| Feedback | `Spinner`, `Progress`, `EmptyState`, `Divider` |
+| Media | `Icon`, `Avatar`, `AvatarGroup`, `Chart` (Line, Column, Bar, Pie, Scatter, Histogram, StackedBar) |
+| Interactive | `Calendar`, `NumberInput`, `Slider`, `Accordion`, `ButtonGroup`, `Pagination`, `Stepper`, `InfiniteScroll`, `TimePicker`, `ChatContainer`, `ChatInput` |
+| LiveView-only (`ui/live/`) | `Modal`, `Toast`, `DataTable`, `Dropdown`, `Confirm`, `Tabs`, `Drawer`, `SearchSelect` |
+
+### Event Integration
+
+Interactive components use Opts structs with event fields. Empty fields render static HTML; non-empty fields add `gerbera-*` attributes for LiveView binding:
+
+```go
+// Static
+gu.Calendar(gu.CalendarOpts{Year: 2026, Month: time.March, Today: time.Now()})
+
+// Interactive (LiveView)
+gu.Calendar(gu.CalendarOpts{Year: v.CalYear, Month: v.CalMonth, SelectEvent: "calSelect", ...})
+```
+
+See [`ui/README.md`](ui/README.md) for full API reference.
+
 ## Examples
 
 Each example includes bilingual tutorials (`TUTORIAL.md` / `TUTORIAL.ja.md`).
@@ -386,6 +437,8 @@ Each example includes bilingual tutorials (`TUTORIAL.md` / `TUTORIAL.ja.md`).
 | [tabview](example/tabview/) | LiveView tab component | :8890 | `go run example/tabview/tabview.go` |
 | [wiki_live](example/wiki_live/) | LiveView Wiki (SPA) | :8850 | `go run example/wiki_live/wiki_live.go` |
 | [mdviewer](example/mdviewer/) | LiveView Markdown Viewer | :8860 | `cd example/mdviewer && go run .` |
+| [admin](example/admin/) | LiveView admin dashboard | :8910 | `go run example/admin/admin.go` |
+| [catalog](example/catalog/) | Interactive UI component catalog | :8900 | `go run example/catalog/catalog.go` |
 
 ## Development
 

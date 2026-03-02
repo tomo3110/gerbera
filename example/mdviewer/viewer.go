@@ -14,6 +14,7 @@ import (
 	gp "github.com/tomo3110/gerbera/property"
 	gs "github.com/tomo3110/gerbera/styles"
 	gl "github.com/tomo3110/gerbera/live"
+	gu "github.com/tomo3110/gerbera/ui"
 )
 
 // MarkdownView implements gl.View and gl.TickerView for the Markdown viewer/editor.
@@ -123,10 +124,10 @@ func (v *MarkdownView) Render() []g.ComponentFunc {
 			gd.Title(title),
 			gd.Meta(gp.Attr("charset", "utf-8")),
 			gd.Meta(gp.Attr("name", "viewport"), gp.Attr("content", "width=device-width, initial-scale=1")),
-			gs.CSS(cssStyles),
+			gu.Theme(),
+			gs.CSS(mdCSS),
 		),
 		gd.Body(
-			gs.Style(g.StyleMap{"margin": "0", "padding": "0", "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"}),
 			v.renderHeader(),
 			v.renderMain(),
 		),
@@ -135,50 +136,30 @@ func (v *MarkdownView) Render() []g.ComponentFunc {
 
 func (v *MarkdownView) renderHeader() g.ComponentFunc {
 	return gd.Header(
-		gs.Style(g.StyleMap{
-			"background":    "#24292e",
-			"color":         "#fff",
-			"padding":       "8px 16px",
-			"display":       "flex",
-			"align-items":   "center",
-			"gap":           "12px",
-			"height":        "40px",
-			"box-sizing":    "border-box",
-		}),
-		gd.Span(
-			gs.Style(g.StyleMap{"font-weight": "bold", "font-size": "14px"}),
-			ge.If(v.FileName != "",
-				gp.Value(v.FileName),
-				gp.Value("Markdown Viewer"),
+		gp.Class("g-mdviewer-header"),
+		gu.Row(gu.AlignCenter, gu.GapSm,
+			gd.Span(gp.Class("g-mdviewer-title"),
+				ge.If(v.FileName != "",
+					gp.Value(v.FileName),
+					gp.Value("Markdown Viewer"),
+				),
 			),
-		),
-		ge.If(v.FilePath != "" && !v.Preview,
-			gd.Button(
-				gl.Click("save"),
-				gs.Style(g.StyleMap{
-					"background":    "#2ea44f",
-					"color":         "#fff",
-					"border":        "none",
-					"padding":       "4px 12px",
-					"border-radius": "4px",
-					"cursor":        "pointer",
-					"font-size":     "12px",
-				}),
-				gp.Value("Save"),
+			ge.If(v.FilePath != "" && !v.Preview,
+				gu.Button("Save", gu.ButtonPrimary, gu.ButtonSmall, gl.Click("save")),
+				g.Skip(),
 			),
-			g.Skip(),
-		),
-		ge.If(v.SaveStatus == "saved",
-			gd.Span(gs.Style(g.StyleMap{"color": "#85e89d", "font-size": "12px"}), gp.Value("Saved")),
-			g.Skip(),
-		),
-		ge.If(v.SaveStatus == "error",
-			gd.Span(gs.Style(g.StyleMap{"color": "#f97583", "font-size": "12px"}), gp.Value("Save failed")),
-			g.Skip(),
-		),
-		ge.If(v.FilePath == "" && !v.Preview,
-			v.renderDownloadLink(),
-			g.Skip(),
+			ge.If(v.SaveStatus == "saved",
+				gu.Badge("Saved", "dark"),
+				g.Skip(),
+			),
+			ge.If(v.SaveStatus == "error",
+				gu.Badge("Save failed", "outline"),
+				g.Skip(),
+			),
+			ge.If(v.FilePath == "" && !v.Preview,
+				v.renderDownloadLink(),
+				g.Skip(),
+			),
 		),
 	)
 }
@@ -219,8 +200,19 @@ func (v *MarkdownView) renderMain() g.ComponentFunc {
 	)
 }
 
-const cssStyles = `
+const mdCSS = `
 * { box-sizing: border-box; }
+.g-mdviewer-header {
+  background: var(--g-accent);
+  color: var(--g-text-inverse);
+  padding: 8px 16px;
+  height: 40px;
+  box-sizing: border-box;
+}
+.g-mdviewer-title {
+  font-weight: bold;
+  font-size: 14px;
+}
 .md-container {
   display: flex;
   height: calc(100vh - 40px);
@@ -228,7 +220,7 @@ const cssStyles = `
 .md-editor-pane {
   flex: 1;
   display: flex;
-  border-right: 1px solid #e1e4e8;
+  border-right: 1px solid var(--g-border);
 }
 .md-textarea {
   width: 100%;
@@ -237,10 +229,11 @@ const cssStyles = `
   outline: none;
   resize: none;
   padding: 16px;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: var(--g-font-mono);
   font-size: 14px;
   line-height: 1.6;
-  background: #fafbfc;
+  background: var(--g-bg-inset);
+  color: var(--g-text);
 }
 .md-preview-pane {
   flex: 1;
@@ -250,21 +243,21 @@ const cssStyles = `
   padding: 16px 32px;
   font-size: 14px;
   line-height: 1.6;
-  color: #24292e;
+  color: var(--g-text);
 }
-.md-preview h1 { font-size: 2em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-top: 24px; margin-bottom: 16px; }
-.md-preview h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-top: 24px; margin-bottom: 16px; }
+.md-preview h1 { font-size: 2em; border-bottom: 1px solid var(--g-border); padding-bottom: 0.3em; margin-top: 24px; margin-bottom: 16px; }
+.md-preview h2 { font-size: 1.5em; border-bottom: 1px solid var(--g-border); padding-bottom: 0.3em; margin-top: 24px; margin-bottom: 16px; }
 .md-preview h3 { font-size: 1.25em; margin-top: 24px; margin-bottom: 16px; }
 .md-preview p { margin-top: 0; margin-bottom: 16px; }
 .md-preview code {
-  background: #f6f8fa;
+  background: var(--g-bg-overlay);
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-size: 85%;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: var(--g-font-mono);
 }
 .md-preview pre {
-  background: #f6f8fa;
+  background: var(--g-bg-overlay);
   padding: 16px;
   border-radius: 6px;
   overflow-x: auto;
@@ -274,17 +267,17 @@ const cssStyles = `
 .md-preview blockquote {
   margin: 0 0 16px 0;
   padding: 0 1em;
-  color: #6a737d;
-  border-left: 0.25em solid #dfe2e5;
+  color: var(--g-text-secondary);
+  border-left: 0.25em solid var(--g-border);
 }
 .md-preview table { border-collapse: collapse; margin-bottom: 16px; }
-.md-preview th, .md-preview td { border: 1px solid #dfe2e5; padding: 6px 13px; }
-.md-preview th { background: #f6f8fa; font-weight: 600; }
+.md-preview th, .md-preview td { border: 1px solid var(--g-border); padding: 6px 13px; }
+.md-preview th { background: var(--g-bg-overlay); font-weight: 600; }
 .md-preview img { max-width: 100%; }
-.md-preview a { color: #0366d6; text-decoration: none; }
+.md-preview a { color: var(--g-accent); text-decoration: none; }
 .md-preview a:hover { text-decoration: underline; }
 .md-preview ul, .md-preview ol { padding-left: 2em; margin-bottom: 16px; }
 .md-preview li + li { margin-top: 0.25em; }
-.md-preview hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: #e1e4e8; border: 0; }
+.md-preview hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: var(--g-border); border: 0; }
 .md-preview input[type="checkbox"] { margin-right: 0.5em; }
 `

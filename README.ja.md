@@ -133,6 +133,8 @@ gerbera/
 ├── components/        # ビルド済みコンポーネント (Bootstrap CDN, Tabs など)
 ├── diff/              # 要素ツリー差分比較とフラグメントレンダリング
 ├── live/              # LiveView: View インターフェース、WebSocket ハンドラ、クライアント JS
+├── ui/               # テーマシステム付きビルド済み UI コンポーネントライブラリ
+│   └── live/         # LiveView 専用コンポーネント (Modal, Toast, DataTable 等)
 │
 └── example/           # サンプルアプリケーション
     ├── hello/         # 最小限の Hello World
@@ -147,7 +149,9 @@ gerbera/
     ├── upload/        # LiveView ファイルアップロード
     ├── tabview/       # LiveView タブコンポーネントデモ
     ├── wiki_live/     # LiveView Wiki (SPA 風)
-    └── mdviewer/      # LiveView Markdown ビューアー/エディタ
+    ├── mdviewer/      # LiveView Markdown ビューアー/エディタ
+    ├── admin/         # LiveView 管理画面ダッシュボード
+    └── catalog/       # インタラクティブ UI コンポーネントカタログ
 ```
 
 ### コアコンセプト
@@ -367,6 +371,53 @@ http.Handle("/", gl.Handler(factory, gl.WithDebug()))
 
 `WithDebug()` 未設定時はオーバーヘッドゼロ — デバッグ JS の注入もタイミング計測も行われません。
 
+## UI コンポーネント（`ui/` パッケージ）
+
+`ui/` パッケージは、CSS を書かずに Go コードだけでプロフェッショナルな UI を構築できるビルド済みコンポーネントを提供します。すべてのコンポーネントが ARIA アクセシビリティ属性を含み、CSS カスタムプロパティによるテーマに自動適応します。
+
+```go
+import (
+    gu  "github.com/tomo3110/gerbera/ui"       // 静的 + インタラクティブコンポーネント
+    gul "github.com/tomo3110/gerbera/ui/live"   // LiveView 専用コンポーネント
+)
+```
+
+### テーマシステム
+
+```go
+gu.Theme()                          // デフォルトライトテーマ
+gu.ThemeWith(gu.DarkTheme())        // ダークテーマ
+gu.ThemeWith(gu.ThemeConfig{...})   // カスタム上書き
+gu.ThemeAuto(light, dark)           // prefers-color-scheme による自動切替
+```
+
+### コンポーネント一覧
+
+| カテゴリ | コンポーネント |
+|---------|-------------|
+| レイアウト | `AdminShell`, `Sidebar`, `PageHeader`, `Breadcrumb`, `MobileHeader` |
+| グリッド & スペーシング | `Grid`, `Row`, `Column`, `Stack`, `HStack`, `VStack`, `Center`, `Container`, `Spacer` |
+| データ表示 | `Card`, `Badge`, `Alert`, `StatCard`, `StyledTable`, `THead`, `Tree` |
+| フォーム | `FormGroup`, `FormLabel`, `FormInput`, `FormSelect`, `FormTextarea`, `Checkbox`, `Radio` |
+| フィードバック | `Spinner`, `Progress`, `EmptyState`, `Divider` |
+| メディア | `Icon`, `Avatar`, `AvatarGroup`, `Chart` (Line, Column, Bar, Pie, Scatter, Histogram, StackedBar) |
+| インタラクティブ | `Calendar`, `NumberInput`, `Slider`, `Accordion`, `ButtonGroup`, `Pagination`, `Stepper`, `InfiniteScroll`, `TimePicker`, `ChatContainer`, `ChatInput` |
+| LiveView 専用 (`ui/live/`) | `Modal`, `Toast`, `DataTable`, `Dropdown`, `Confirm`, `Tabs`, `Drawer`, `SearchSelect` |
+
+### イベント統合
+
+インタラクティブコンポーネントはイベントフィールドを持つ Opts 構造体を使用します。フィールドが空なら静的 HTML、値があれば LiveView バインディング用の `gerbera-*` 属性が付与されます:
+
+```go
+// 静的
+gu.Calendar(gu.CalendarOpts{Year: 2026, Month: time.March, Today: time.Now()})
+
+// インタラクティブ（LiveView）
+gu.Calendar(gu.CalendarOpts{Year: v.CalYear, Month: v.CalMonth, SelectEvent: "calSelect", ...})
+```
+
+詳細な API リファレンスは [`ui/README.ja.md`](ui/README.ja.md) を参照してください。
+
 ## サンプル
 
 各サンプルにはバイリンガルチュートリアル（`TUTORIAL.md` / `TUTORIAL.ja.md`）が含まれています。
@@ -386,6 +437,8 @@ http.Handle("/", gl.Handler(factory, gl.WithDebug()))
 | [tabview](example/tabview/) | LiveView タブコンポーネント | :8890 | `go run example/tabview/tabview.go` |
 | [wiki_live](example/wiki_live/) | LiveView Wiki（SPA） | :8850 | `go run example/wiki_live/wiki_live.go` |
 | [mdviewer](example/mdviewer/) | LiveView Markdown ビューアー | :8860 | `cd example/mdviewer && go run .` |
+| [admin](example/admin/) | LiveView 管理画面ダッシュボード | :8910 | `go run example/admin/admin.go` |
+| [catalog](example/catalog/) | インタラクティブ UI コンポーネントカタログ | :8900 | `go run example/catalog/catalog.go` |
 
 ## 開発
 
