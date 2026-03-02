@@ -29,6 +29,7 @@ go run example/tabview/tabview.go           # Run tabview LiveView example on :8
 go run example/wiki_live/wiki_live.go       # Run wiki_live LiveView example on :8850
 cd example/mdviewer && go run .             # Run mdviewer LiveView example on :8860
 cd example/mdviewer && go run . -preview README.md  # Run mdviewer in preview-only mode
+go run example/tui_writer/main.go           # Run TUI writer example (terminal app)
 ```
 
 External dependencies: `github.com/gorilla/websocket` (only used by `live/` package), `github.com/yuin/goldmark` (only used by `example/mdviewer`).
