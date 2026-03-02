@@ -74,6 +74,28 @@ type CatalogView struct {
 	// Chat demo
 	ChatMessages []gu.ChatMessage
 	ChatDraft    string
+
+	// Pagination demo
+	PaginationPage int
+
+	// InfiniteScroll demo
+	InfScrollItems   int
+	InfScrollView    gu.InfiniteScrollView
+	InfScrollLoading bool
+
+	// ButtonGroup demo
+	BtnGroupValue string
+
+	// Accordion demo
+	AccordionOpen [3]bool
+
+	// Stepper demo
+	StepperCurrent int
+
+	// TimePicker demo
+	TimeHour   int
+	TimeMinute int
+	TimeSecond int
 }
 
 func (v *CatalogView) Mount(params gl.Params) error {
@@ -90,6 +112,14 @@ func (v *CatalogView) Mount(params gl.Params) error {
 	now := time.Now()
 	v.CalYear = now.Year()
 	v.CalMonth = now.Month()
+	v.InfScrollItems = 10
+	v.InfScrollView = gu.InfiniteScrollList
+	v.BtnGroupValue = "day"
+	v.AccordionOpen = [3]bool{true, false, false}
+	v.StepperCurrent = 1
+	v.TimeHour = 14
+	v.TimeMinute = 30
+	v.TimeSecond = 0
 	v.ChatMessages = []gu.ChatMessage{
 		{Author: "Alice", Content: "Hello! Welcome to the chat demo.", Timestamp: "10:00", Sent: false, Avatar: "A"},
 		{Content: "Thanks! This looks great.", Timestamp: "10:01", Sent: true},
@@ -158,8 +188,14 @@ func (v *CatalogView) renderNavLinks() g.ComponentFunc {
 		navLink(v, "misc", "Misc"),
 		navLink(v, "layout", "Layout"),
 		navDividerLabel("Live Widgets"),
+		navLink(v, "pagination", "Pagination"),
+		navLink(v, "buttongroup", "ButtonGroup"),
+		navLink(v, "accordion", "Accordion"),
+		navLink(v, "stepper", "Stepper"),
+		navLink(v, "infinitescroll", "InfiniteScroll"),
 		navLink(v, "numberinput", "NumberInput"),
 		navLink(v, "slider", "Slider"),
+		navLink(v, "timepicker", "TimePicker"),
 		navLink(v, "calendar", "Calendar"),
 		navLink(v, "chat", "Chat"),
 		navLink(v, "modal", "Modal"),
@@ -223,10 +259,22 @@ func (v *CatalogView) renderContent() g.ComponentFunc {
 		body = v.pageMisc()
 	case "layout":
 		body = v.pageLayout()
+	case "pagination":
+		body = v.pagePagination()
+	case "buttongroup":
+		body = v.pageButtonGroup()
+	case "accordion":
+		body = v.pageAccordion()
+	case "stepper":
+		body = v.pageStepper()
+	case "infinitescroll":
+		body = v.pageInfiniteScroll()
 	case "numberinput":
 		body = v.pageNumberInput()
 	case "slider":
 		body = v.pageSlider()
+	case "timepicker":
+		body = v.pageTimePicker()
 	case "calendar":
 		body = v.pageCalendar()
 	case "chat":
@@ -622,6 +670,170 @@ func (v *CatalogView) pageLayout() g.ComponentFunc {
 	)
 }
 
+func (v *CatalogView) pagePagination() g.ComponentFunc {
+	total := 120
+
+	return gu.Stack(
+		section("Pagination", "Page navigation with ellipsis for large page counts (LiveView)."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gul.Pagination(gul.PaginationOpts{
+				Page:      v.PaginationPage,
+				PageSize:  10,
+				Total:     total,
+				PageEvent: "paginateTo",
+			}),
+			gd.Div(gp.Attr("style", "margin-top:12px"),
+				gd.Span(gp.Attr("style", "font-size:13px;color:var(--g-text-secondary)"),
+					gp.Value(fmt.Sprintf("Current page: %d (0-based)", v.PaginationPage))),
+			),
+		)),
+		section("Static Pagination", "Non-interactive version without LiveView events."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.Pagination(gu.PaginationOpts{Page: 3, PageSize: 10, Total: 120}),
+		)),
+	)
+}
+
+func (v *CatalogView) pageButtonGroup() g.ComponentFunc {
+	return gu.Stack(
+		section("ButtonGroup", "Segmented control / button group (LiveView)."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gul.ButtonGroup(gul.ButtonGroupOpts{
+				Items: []gu.ButtonGroupItem{
+					{Label: "Day", Value: "day", Active: v.BtnGroupValue == "day"},
+					{Label: "Week", Value: "week", Active: v.BtnGroupValue == "week"},
+					{Label: "Month", Value: "month", Active: v.BtnGroupValue == "month"},
+					{Label: "Year", Value: "year", Active: v.BtnGroupValue == "year"},
+				},
+				ChangeEvent: "btnGroupChange",
+			}),
+			gd.Div(gp.Attr("style", "margin-top:12px"),
+				gd.Span(gp.Attr("style", "font-size:13px;color:var(--g-text-secondary)"),
+					gp.Value("Selected: "+v.BtnGroupValue)),
+			),
+		)),
+		section("Static ButtonGroup", "Non-interactive version without LiveView events."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.ButtonGroup([]gu.ButtonGroupItem{
+				{Label: "Left", Value: "left", Active: true},
+				{Label: "Center", Value: "center"},
+				{Label: "Right", Value: "right"},
+			}),
+		)),
+		section("Small ButtonGroup", "Compact variant with ButtonGroupSmall modifier."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.ButtonGroup([]gu.ButtonGroupItem{
+				{Label: "S", Value: "s", Active: true},
+				{Label: "M", Value: "m"},
+				{Label: "L", Value: "l"},
+			}, gu.ButtonGroupSmall),
+		)),
+	)
+}
+
+func (v *CatalogView) pageAccordion() g.ComponentFunc {
+	return gu.Stack(
+		section("Accordion", "Collapsible sections with server-controlled open/close (LiveView)."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gul.Accordion(gul.AccordionOpts{
+				Items: []gu.AccordionItem{
+					{Title: "What is Gerbera?", Content: gd.P(gp.Value("Gerbera is a Go HTML template engine that uses functional composition instead of traditional template files.")), Open: v.AccordionOpen[0]},
+					{Title: "How does it work?", Content: gd.P(gp.Value("HTML is built programmatically by composing ComponentFunc functions.")), Open: v.AccordionOpen[1]},
+					{Title: "Is it production ready?", Content: gd.P(gp.Value("Gerbera uses sync.Pool for zero-allocation rendering and is suitable for production use.")), Open: v.AccordionOpen[2]},
+				},
+				Exclusive:   true,
+				ToggleEvent: "accordionToggle",
+			}),
+		)),
+		section("Static Accordion", "Native details/summary based, no LiveView required."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.Accordion([]gu.AccordionItem{
+				{Title: "First Section", Content: gd.P(gp.Value("This uses native HTML details/summary elements.")), Open: true},
+				{Title: "Second Section", Content: gd.P(gp.Value("Browser handles open/close without JavaScript.")), Open: false},
+			}),
+		)),
+	)
+}
+
+func (v *CatalogView) pageStepper() g.ComponentFunc {
+	steps := []gu.Step{
+		{Label: "Cart", Description: "Review items"},
+		{Label: "Shipping", Description: "Enter address"},
+		{Label: "Payment", Description: "Add payment method"},
+		{Label: "Confirm", Description: "Place order"},
+	}
+	for i := range steps {
+		switch {
+		case i < v.StepperCurrent:
+			steps[i].Status = gu.StepCompleted
+		case i == v.StepperCurrent:
+			steps[i].Status = gu.StepActive
+		default:
+			steps[i].Status = gu.StepUpcoming
+		}
+	}
+
+	return gu.Stack(
+		section("Stepper", "Step-by-step progress indicator (LiveView). Click completed steps to go back."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gul.Stepper(gul.StepperOpts{
+				Steps:      steps,
+				ClickEvent: "stepperClick",
+			}),
+			gd.Div(gp.Attr("style", "margin-top:16px"),
+				gu.HStack(
+					expr.If(v.StepperCurrent > 0,
+						gu.Button("Back", gu.ButtonOutline, gl.Click("stepperPrev")),
+					),
+					expr.If(v.StepperCurrent < len(steps)-1,
+						gu.Button("Next", gu.ButtonPrimary, gl.Click("stepperNext")),
+					),
+				),
+			),
+		)),
+		section("Vertical Stepper", "Vertical layout, also responsive (auto-vertical on mobile)."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.Stepper([]gu.Step{
+				{Label: "Sign Up", Status: gu.StepCompleted},
+				{Label: "Verify Email", Status: gu.StepActive, Description: "Check your inbox"},
+				{Label: "Set Profile", Status: gu.StepUpcoming},
+			}, gu.StepperVertical),
+		)),
+	)
+}
+
+func (v *CatalogView) pageInfiniteScroll() g.ComponentFunc {
+	var items []g.ComponentFunc
+	for i := 0; i < v.InfScrollItems; i++ {
+		items = append(items, gu.Card(
+			gd.Div(gp.Class("g-page-body"),
+				gd.Span(gp.Value(fmt.Sprintf("Item %d", i+1))),
+			),
+		))
+	}
+
+	return gu.Stack(
+		section("InfiniteScroll", "Scrollable list with load-more, view toggle (LiveView)."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gul.InfiniteScroll(gul.InfiniteScrollOpts{
+				View:          v.InfScrollView,
+				Loading:       v.InfScrollLoading,
+				ShowToggle:    true,
+				LoadMoreEvent: "loadMore",
+				ToggleEvent:   "toggleInfView",
+			}, items...),
+		)),
+		section("Static InfiniteScroll", "Non-interactive version."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.InfiniteScroll(gu.InfiniteScrollList, false, true,
+				gu.Card(gd.Div(gp.Class("g-page-body"), gd.Span(gp.Value("Static Item 1")))),
+				gu.Card(gd.Div(gp.Class("g-page-body"), gd.Span(gp.Value("Static Item 2")))),
+				gu.Card(gd.Div(gp.Class("g-page-body"), gd.Span(gp.Value("Static Item 3")))),
+			),
+		)),
+	)
+}
+
 func (v *CatalogView) pageModal() g.ComponentFunc {
 	return gd.Div(
 		section("Modal", "Dialog overlay (LiveView)."),
@@ -913,6 +1125,55 @@ func (v *CatalogView) pageSlider() g.ComponentFunc {
 	)
 }
 
+func (v *CatalogView) pageTimePicker() g.ComponentFunc {
+	return gu.Stack(
+		section("TimePicker", "Time picker with hour/minute increment buttons (LiveView)."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.FormGroup(
+				gu.FormLabel("Alarm Time (24h)", "tp-alarm"),
+				gul.TimePicker(gul.TimePickerOpts{
+					Name:        "alarm",
+					Hour:        v.TimeHour,
+					Minute:      v.TimeMinute,
+					Second:      v.TimeSecond,
+					Use24H:      true,
+					ChangeEvent: "timeChange",
+				}),
+			),
+			gd.Div(gp.Attr("style", "margin-top:8px"),
+				gd.Span(gp.Attr("style", "font-size:13px;color:var(--g-text-secondary)"),
+					gp.Value(fmt.Sprintf("Value: %s", gu.FormatTime(v.TimeHour, v.TimeMinute, v.TimeSecond, false)))),
+			),
+		)),
+		section("12-Hour Format", "TimePicker with AM/PM toggle."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gul.TimePicker(gul.TimePickerOpts{
+				Name:        "alarm12",
+				Hour:        v.TimeHour,
+				Minute:      v.TimeMinute,
+				Use24H:      false,
+				ChangeEvent: "timeChange",
+			}),
+		)),
+		section("With Seconds", "TimePicker showing seconds field."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gul.TimePicker(gul.TimePickerOpts{
+				Name:        "precise",
+				Hour:        v.TimeHour,
+				Minute:      v.TimeMinute,
+				Second:      v.TimeSecond,
+				Use24H:      true,
+				ShowSec:     true,
+				ChangeEvent: "timeChange",
+			}),
+		)),
+		section("Static TimePicker", "Non-interactive version without LiveView events."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.TimePicker("meeting", 9, 0, 0, gu.TimePickerOpts{Use24H: true}),
+		)),
+	)
+}
+
 func (v *CatalogView) pageCalendar() g.ComponentFunc {
 	return gu.Stack(
 		section("Calendar", "Month-view calendar with navigation and date selection (LiveView)."),
@@ -1096,6 +1357,59 @@ func (v *CatalogView) HandleEvent(event string, payload gl.Payload) error {
 			}
 		}
 
+	// Pagination
+	case "paginateTo":
+		fmt.Sscanf(payload["value"], "%d", &v.PaginationPage)
+
+	// ButtonGroup
+	case "btnGroupChange":
+		v.BtnGroupValue = payload["value"]
+
+	// Accordion
+	case "accordionToggle":
+		var idx int
+		fmt.Sscanf(payload["value"], "%d", &idx)
+		if idx >= 0 && idx < len(v.AccordionOpen) {
+			// Exclusive mode: close others when opening
+			if !v.AccordionOpen[idx] {
+				for i := range v.AccordionOpen {
+					v.AccordionOpen[i] = false
+				}
+			}
+			v.AccordionOpen[idx] = !v.AccordionOpen[idx]
+		}
+
+	// Stepper
+	case "stepperClick":
+		var idx int
+		fmt.Sscanf(payload["value"], "%d", &idx)
+		if idx >= 0 && idx < v.StepperCurrent {
+			v.StepperCurrent = idx
+		}
+	case "stepperPrev":
+		if v.StepperCurrent > 0 {
+			v.StepperCurrent--
+		}
+	case "stepperNext":
+		if v.StepperCurrent < 3 {
+			v.StepperCurrent++
+		}
+
+	// InfiniteScroll
+	case "loadMore":
+		if !v.InfScrollLoading {
+			v.InfScrollLoading = true
+			v.InfScrollItems += 5
+			v.InfScrollLoading = false
+		}
+	case "toggleInfView":
+		val := payload["value"]
+		if val == "grid" {
+			v.InfScrollView = gu.InfiniteScrollGrid
+		} else {
+			v.InfScrollView = gu.InfiniteScrollList
+		}
+
 	// NumberInput
 	case "numInc":
 		v.NumVal++
@@ -1114,6 +1428,32 @@ func (v *CatalogView) HandleEvent(event string, payload gl.Payload) error {
 		}
 		if v.NumVal > 20 {
 			v.NumVal = 20
+		}
+
+	// TimePicker
+	case "timeChange":
+		val := payload["value"]
+		switch val {
+		case "hour-up":
+			v.TimeHour = (v.TimeHour + 1) % 24
+		case "hour-down":
+			v.TimeHour = (v.TimeHour + 23) % 24
+		case "minute-up":
+			v.TimeMinute = (v.TimeMinute + 1) % 60
+		case "minute-down":
+			v.TimeMinute = (v.TimeMinute + 59) % 60
+		case "second-up":
+			v.TimeSecond = (v.TimeSecond + 1) % 60
+		case "second-down":
+			v.TimeSecond = (v.TimeSecond + 59) % 60
+		case "am":
+			if v.TimeHour >= 12 {
+				v.TimeHour -= 12
+			}
+		case "pm":
+			if v.TimeHour < 12 {
+				v.TimeHour += 12
+			}
 		}
 
 	// Slider

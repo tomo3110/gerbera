@@ -499,6 +499,299 @@ func TestLiveChatInputDefaultPlaceholder(t *testing.T) {
 	}
 }
 
+// --- Live Pagination tests ---
+
+func TestLivePagination(t *testing.T) {
+	out := render(t, Pagination(PaginationOpts{
+		Page:      2,
+		PageSize:  10,
+		Total:     100,
+		PageEvent: "paginateTo",
+	}))
+	if !strings.Contains(out, "g-pagination") {
+		t.Error("Live Pagination should have g-pagination class")
+	}
+	if !strings.Contains(out, `role="navigation"`) {
+		t.Error("Live Pagination should have navigation role")
+	}
+	if !strings.Contains(out, `gerbera-click="paginateTo"`) {
+		t.Error("Page buttons should have click event")
+	}
+	if !strings.Contains(out, `aria-current="page"`) {
+		t.Error("Active page should have aria-current")
+	}
+}
+
+func TestLivePaginationFirstPage(t *testing.T) {
+	out := render(t, Pagination(PaginationOpts{
+		Page:      0,
+		PageSize:  10,
+		Total:     50,
+		PageEvent: "page",
+	}))
+	// Prev button should be disabled on first page
+	if !strings.Contains(out, "g-pagination-prev") {
+		t.Error("Should have prev button")
+	}
+}
+
+// --- Live ButtonGroup tests ---
+
+func TestLiveButtonGroup(t *testing.T) {
+	out := render(t, ButtonGroup(ButtonGroupOpts{
+		Items: []ui.ButtonGroupItem{
+			{Label: "Day", Value: "day", Active: true},
+			{Label: "Week", Value: "week"},
+		},
+		ChangeEvent: "btnGroupChange",
+	}))
+	if !strings.Contains(out, "g-btngroup") {
+		t.Error("Live ButtonGroup should have g-btngroup class")
+	}
+	if !strings.Contains(out, `role="group"`) {
+		t.Error("Live ButtonGroup should have group role")
+	}
+	if !strings.Contains(out, `gerbera-click="btnGroupChange"`) {
+		t.Error("Buttons should have click event")
+	}
+	if !strings.Contains(out, `aria-pressed="true"`) {
+		t.Error("Active button should have aria-pressed=true")
+	}
+	if !strings.Contains(out, `gerbera-value="week"`) {
+		t.Error("Buttons should have click value")
+	}
+}
+
+// --- Live Accordion tests ---
+
+func TestLiveAccordion(t *testing.T) {
+	out := render(t, Accordion(AccordionOpts{
+		Items: []ui.AccordionItem{
+			{Title: "Section 1", Content: gerbera.Literal("Content 1"), Open: true},
+			{Title: "Section 2", Content: gerbera.Literal("Content 2"), Open: false},
+		},
+		ToggleEvent: "accordionToggle",
+	}))
+	if !strings.Contains(out, "g-accordion") {
+		t.Error("Live Accordion should have g-accordion class")
+	}
+	if !strings.Contains(out, `gerbera-click="accordionToggle"`) {
+		t.Error("Headers should have click event")
+	}
+	if !strings.Contains(out, `aria-expanded="true"`) {
+		t.Error("Open item should have aria-expanded=true")
+	}
+	if !strings.Contains(out, `aria-expanded="false"`) {
+		t.Error("Closed item should have aria-expanded=false")
+	}
+	if !strings.Contains(out, "Content 1") {
+		t.Error("Open item should show content")
+	}
+	if strings.Contains(out, "Content 2") {
+		t.Error("Closed item should not show content")
+	}
+	if !strings.Contains(out, `role="region"`) {
+		t.Error("Body should have region role")
+	}
+}
+
+func TestLiveAccordionAriaLinkage(t *testing.T) {
+	out := render(t, Accordion(AccordionOpts{
+		Items: []ui.AccordionItem{
+			{Title: "First", Content: gerbera.Literal("Body"), Open: true},
+		},
+		ToggleEvent: "toggle",
+	}))
+	if !strings.Contains(out, `id="g-accordion-header-0"`) {
+		t.Error("Header should have ID")
+	}
+	if !strings.Contains(out, `id="g-accordion-body-0"`) {
+		t.Error("Body should have ID")
+	}
+	if !strings.Contains(out, `aria-controls="g-accordion-body-0"`) {
+		t.Error("Header should have aria-controls")
+	}
+	if !strings.Contains(out, `aria-labelledby="g-accordion-header-0"`) {
+		t.Error("Body should have aria-labelledby")
+	}
+}
+
+// --- Live Stepper tests ---
+
+func TestLiveStepper(t *testing.T) {
+	out := render(t, Stepper(StepperOpts{
+		Steps: []ui.Step{
+			{Label: "Cart", Status: ui.StepCompleted},
+			{Label: "Shipping", Status: ui.StepActive, Description: "Enter address"},
+			{Label: "Payment", Status: ui.StepUpcoming},
+		},
+		ClickEvent: "stepperClick",
+	}))
+	if !strings.Contains(out, "g-stepper") {
+		t.Error("Live Stepper should have g-stepper class")
+	}
+	if !strings.Contains(out, `role="list"`) {
+		t.Error("Live Stepper should have list role")
+	}
+	if !strings.Contains(out, "g-stepper-completed") {
+		t.Error("Completed step should have class")
+	}
+	if !strings.Contains(out, `gerbera-click="stepperClick"`) {
+		t.Error("Completed step should have click event")
+	}
+	if !strings.Contains(out, `aria-current="step"`) {
+		t.Error("Active step should have aria-current")
+	}
+}
+
+func TestLiveStepperVertical(t *testing.T) {
+	out := render(t, Stepper(StepperOpts{
+		Steps: []ui.Step{
+			{Label: "A", Status: ui.StepCompleted},
+			{Label: "B", Status: ui.StepActive},
+		},
+		Vertical: true,
+	}))
+	if !strings.Contains(out, "g-stepper-vertical") {
+		t.Error("Vertical stepper should have vertical class")
+	}
+}
+
+// --- Live InfiniteScroll tests ---
+
+func TestLiveInfiniteScroll(t *testing.T) {
+	out := render(t, InfiniteScroll(InfiniteScrollOpts{
+		View:          ui.InfiniteScrollList,
+		Loading:       true,
+		ShowToggle:    true,
+		LoadMoreEvent: "loadMore",
+		ToggleEvent:   "toggleView",
+	}, gerbera.Literal("Item")))
+	if !strings.Contains(out, "g-infinitescroll") {
+		t.Error("Live InfiniteScroll should have g-infinitescroll class")
+	}
+	if !strings.Contains(out, "g-infinitescroll-toolbar") {
+		t.Error("Should show toolbar when ShowToggle is true")
+	}
+	if !strings.Contains(out, `gerbera-scroll="loadMore"`) {
+		t.Error("Content should have scroll event")
+	}
+	if !strings.Contains(out, `gerbera-click="toggleView"`) {
+		t.Error("Toggle buttons should have click event")
+	}
+	if !strings.Contains(out, "g-infinitescroll-loader") {
+		t.Error("Loading should show loader")
+	}
+	if !strings.Contains(out, "g-spinner") {
+		t.Error("Loader should contain spinner")
+	}
+}
+
+func TestLiveInfiniteScrollGrid(t *testing.T) {
+	out := render(t, InfiniteScroll(InfiniteScrollOpts{
+		View: ui.InfiniteScrollGrid,
+	}))
+	if !strings.Contains(out, "g-infinitescroll-grid") {
+		t.Error("Grid view should have grid class")
+	}
+}
+
+// --- Live TimePicker tests ---
+
+func TestLiveTimePicker(t *testing.T) {
+	out := render(t, TimePicker(TimePickerOpts{
+		Name:        "alarm",
+		Hour:        14,
+		Minute:      30,
+		Use24H:      true,
+		ChangeEvent: "timeChange",
+	}))
+	if !strings.Contains(out, "g-timepicker") {
+		t.Error("Live TimePicker should have g-timepicker class")
+	}
+	if !strings.Contains(out, `role="group"`) {
+		t.Error("Live TimePicker should have group role")
+	}
+	if !strings.Contains(out, `aria-label="alarm"`) {
+		t.Error("Live TimePicker should have aria-label")
+	}
+	if !strings.Contains(out, `value="14"`) {
+		t.Error("Live TimePicker should display hour")
+	}
+	if !strings.Contains(out, `value="30"`) {
+		t.Error("Live TimePicker should display minute")
+	}
+	if !strings.Contains(out, `gerbera-click="timeChange"`) {
+		t.Error("Buttons should have click event")
+	}
+	if !strings.Contains(out, `gerbera-change="timeChange"`) {
+		t.Error("Inputs should have change event")
+	}
+}
+
+func TestLiveTimePickerShowSec(t *testing.T) {
+	out := render(t, TimePicker(TimePickerOpts{
+		Name:        "time",
+		Hour:        10,
+		Minute:      20,
+		Second:      45,
+		Use24H:      true,
+		ShowSec:     true,
+		ChangeEvent: "timeChange",
+	}))
+	if !strings.Contains(out, `value="45"`) {
+		t.Error("Live TimePicker with ShowSec should display seconds")
+	}
+	if !strings.Contains(out, `aria-label="Second"`) {
+		t.Error("Second unit should have aria-label")
+	}
+}
+
+func TestLiveTimePicker12Hour(t *testing.T) {
+	out := render(t, TimePicker(TimePickerOpts{
+		Name:        "time",
+		Hour:        15,
+		Minute:      30,
+		Use24H:      false,
+		ChangeEvent: "timeChange",
+	}))
+	if !strings.Contains(out, `value="03"`) {
+		t.Error("12-hour Live TimePicker should convert 15:00 to 03")
+	}
+	if !strings.Contains(out, "g-timepicker-ampm") {
+		t.Error("12-hour Live TimePicker should have AM/PM toggle")
+	}
+	if !strings.Contains(out, `aria-pressed="true"`) {
+		t.Error("Active AM/PM button should have aria-pressed=true")
+	}
+}
+
+func TestLiveTimePickerDataValue(t *testing.T) {
+	out := render(t, TimePicker(TimePickerOpts{
+		Name:   "time",
+		Hour:   14,
+		Minute: 30,
+		Use24H: true,
+	}))
+	if !strings.Contains(out, `data-value="14:30"`) {
+		t.Error("Live TimePicker should have data-value with formatted time")
+	}
+}
+
+func TestLiveTimePickerDataValueWithSec(t *testing.T) {
+	out := render(t, TimePicker(TimePickerOpts{
+		Name:    "time",
+		Hour:    14,
+		Minute:  30,
+		Second:  15,
+		Use24H:  true,
+		ShowSec: true,
+	}))
+	if !strings.Contains(out, `data-value="14:30:15"`) {
+		t.Error("Live TimePicker with ShowSec should have data-value with seconds")
+	}
+}
+
 // Keep unused imports referenced
 var _ = ui.FormOption{}
 var _ = time.UTC

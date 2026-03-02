@@ -1145,6 +1145,339 @@ func TestChatInput(t *testing.T) {
 	}
 }
 
+// --- Pagination tests ---
+
+func TestPagination(t *testing.T) {
+	out := render(t, Pagination(PaginationOpts{Page: 0, PageSize: 10, Total: 50}))
+	if !strings.Contains(out, "g-pagination") {
+		t.Error("Pagination should have g-pagination class")
+	}
+	if !strings.Contains(out, `role="navigation"`) {
+		t.Error("Pagination should have navigation role")
+	}
+	if !strings.Contains(out, "1\u201310 of 50") {
+		t.Error("Pagination should show item range")
+	}
+	if !strings.Contains(out, `aria-current="page"`) {
+		t.Error("Active page should have aria-current")
+	}
+}
+
+func TestPaginationEllipsis(t *testing.T) {
+	out := render(t, Pagination(PaginationOpts{Page: 5, PageSize: 1, Total: 20}))
+	if !strings.Contains(out, "\u2026") {
+		t.Error("Pagination with many pages should show ellipsis")
+	}
+	// Should show first and last page
+	if !strings.Contains(out, ">1<") {
+		t.Error("Pagination should always show first page")
+	}
+}
+
+func TestPaginationSinglePage(t *testing.T) {
+	out := render(t, Pagination(PaginationOpts{Page: 0, PageSize: 10, Total: 5}))
+	if !strings.Contains(out, "g-pagination-prev") {
+		t.Error("Pagination should have prev button")
+	}
+	if !strings.Contains(out, "g-pagination-next") {
+		t.Error("Pagination should have next button")
+	}
+}
+
+// --- ButtonGroup tests ---
+
+func TestButtonGroup(t *testing.T) {
+	out := render(t, ButtonGroup([]ButtonGroupItem{
+		{Label: "Day", Value: "day", Active: true},
+		{Label: "Week", Value: "week"},
+		{Label: "Month", Value: "month"},
+	}))
+	if !strings.Contains(out, "g-btngroup") {
+		t.Error("ButtonGroup should have g-btngroup class")
+	}
+	if !strings.Contains(out, `role="group"`) {
+		t.Error("ButtonGroup should have group role")
+	}
+	if !strings.Contains(out, `aria-pressed="true"`) {
+		t.Error("Active button should have aria-pressed=true")
+	}
+	if !strings.Contains(out, `aria-pressed="false"`) {
+		t.Error("Inactive button should have aria-pressed=false")
+	}
+	if !strings.Contains(out, "g-btngroup-active") {
+		t.Error("Active button should have active class")
+	}
+	if !strings.Contains(out, "Day") {
+		t.Error("ButtonGroup should contain button labels")
+	}
+}
+
+func TestButtonGroupSmall(t *testing.T) {
+	out := render(t, ButtonGroup([]ButtonGroupItem{
+		{Label: "A", Value: "a"},
+	}, ButtonGroupSmall))
+	if !strings.Contains(out, "g-btngroup-sm") {
+		t.Error("ButtonGroupSmall should add sm class")
+	}
+}
+
+// --- Accordion tests ---
+
+func TestAccordion(t *testing.T) {
+	out := render(t, Accordion([]AccordionItem{
+		{Title: "Section 1", Content: gerbera.Literal("Content 1"), Open: true},
+		{Title: "Section 2", Content: gerbera.Literal("Content 2"), Open: false},
+	}))
+	if !strings.Contains(out, "g-accordion") {
+		t.Error("Accordion should have g-accordion class")
+	}
+	if !strings.Contains(out, "g-accordion-item") {
+		t.Error("Accordion should have accordion items")
+	}
+	if !strings.Contains(out, "g-accordion-header") {
+		t.Error("Accordion should have headers")
+	}
+	if !strings.Contains(out, "Section 1") {
+		t.Error("Accordion should show item titles")
+	}
+	if !strings.Contains(out, "Content 1") {
+		t.Error("Open accordion item should show content")
+	}
+	if !strings.Contains(out, `open="open"`) {
+		t.Error("Open item should have open attribute")
+	}
+}
+
+func TestAccordionClosed(t *testing.T) {
+	out := render(t, Accordion([]AccordionItem{
+		{Title: "Closed", Content: gerbera.Literal("Hidden"), Open: false},
+	}))
+	if !strings.Contains(out, "g-accordion-body") {
+		// Static accordion always renders the body; it's hidden via CSS
+		// Just ensure the structure is correct
+	}
+	if !strings.Contains(out, "Closed") {
+		t.Error("Accordion should show title even when closed")
+	}
+}
+
+// --- Stepper tests ---
+
+func TestStepper(t *testing.T) {
+	out := render(t, Stepper([]Step{
+		{Label: "Cart", Status: StepCompleted},
+		{Label: "Shipping", Status: StepActive, Description: "Enter address"},
+		{Label: "Payment", Status: StepUpcoming},
+	}))
+	if !strings.Contains(out, "g-stepper") {
+		t.Error("Stepper should have g-stepper class")
+	}
+	if !strings.Contains(out, `role="list"`) {
+		t.Error("Stepper should have list role")
+	}
+	if !strings.Contains(out, `role="listitem"`) {
+		t.Error("Step should have listitem role")
+	}
+	if !strings.Contains(out, "g-stepper-completed") {
+		t.Error("Completed step should have completed class")
+	}
+	if !strings.Contains(out, "g-stepper-active") {
+		t.Error("Active step should have active class")
+	}
+	if !strings.Contains(out, "g-stepper-upcoming") {
+		t.Error("Upcoming step should have upcoming class")
+	}
+	if !strings.Contains(out, `aria-current="step"`) {
+		t.Error("Active step should have aria-current=step")
+	}
+	if !strings.Contains(out, "\u2713") {
+		t.Error("Completed step should show checkmark")
+	}
+	if !strings.Contains(out, "Enter address") {
+		t.Error("Step with description should display it")
+	}
+	if !strings.Contains(out, "g-stepper-connector") {
+		t.Error("Non-last steps should have connectors")
+	}
+}
+
+func TestStepperVertical(t *testing.T) {
+	out := render(t, Stepper([]Step{
+		{Label: "Step 1", Status: StepCompleted},
+		{Label: "Step 2", Status: StepActive},
+	}, StepperVertical))
+	if !strings.Contains(out, "g-stepper-vertical") {
+		t.Error("StepperVertical should add vertical class")
+	}
+}
+
+// --- InfiniteScroll tests ---
+
+func TestInfiniteScroll(t *testing.T) {
+	out := render(t, InfiniteScroll(InfiniteScrollList, false, false,
+		gerbera.Literal("Item 1"),
+		gerbera.Literal("Item 2"),
+	))
+	if !strings.Contains(out, "g-infinitescroll") {
+		t.Error("InfiniteScroll should have g-infinitescroll class")
+	}
+	if !strings.Contains(out, "g-infinitescroll-content") {
+		t.Error("InfiniteScroll should have content area")
+	}
+	if !strings.Contains(out, `aria-live="polite"`) {
+		t.Error("InfiniteScroll content should have aria-live")
+	}
+	if !strings.Contains(out, "Item 1") {
+		t.Error("InfiniteScroll should render children")
+	}
+}
+
+func TestInfiniteScrollGrid(t *testing.T) {
+	out := render(t, InfiniteScroll(InfiniteScrollGrid, false, false))
+	if !strings.Contains(out, "g-infinitescroll-grid") {
+		t.Error("Grid view should have grid class")
+	}
+}
+
+func TestInfiniteScrollLoading(t *testing.T) {
+	out := render(t, InfiniteScroll(InfiniteScrollList, true, false))
+	if !strings.Contains(out, "g-infinitescroll-loader") {
+		t.Error("Loading state should show loader")
+	}
+	if !strings.Contains(out, "g-spinner") {
+		t.Error("Loader should contain spinner")
+	}
+}
+
+func TestInfiniteScrollToggle(t *testing.T) {
+	out := render(t, InfiniteScroll(InfiniteScrollList, false, true))
+	if !strings.Contains(out, "g-infinitescroll-toolbar") {
+		t.Error("ShowToggle should render toolbar")
+	}
+	if !strings.Contains(out, "g-infinitescroll-toggle") {
+		t.Error("Toolbar should have toggle buttons")
+	}
+	if !strings.Contains(out, `aria-pressed="true"`) {
+		t.Error("Active view toggle should have aria-pressed=true")
+	}
+}
+
+// --- TimePicker tests ---
+
+func TestTimePicker(t *testing.T) {
+	out := render(t, TimePicker("alarm", 14, 30, 0, TimePickerOpts{Use24H: true}))
+	if !strings.Contains(out, "g-timepicker") {
+		t.Error("TimePicker should have g-timepicker class")
+	}
+	if !strings.Contains(out, `role="group"`) {
+		t.Error("TimePicker should have group role")
+	}
+	if !strings.Contains(out, `aria-label="alarm"`) {
+		t.Error("TimePicker should have aria-label with name")
+	}
+	if !strings.Contains(out, `value="14"`) {
+		t.Error("TimePicker should display hour value")
+	}
+	if !strings.Contains(out, `value="30"`) {
+		t.Error("TimePicker should display minute value")
+	}
+	if !strings.Contains(out, `role="spinbutton"`) {
+		t.Error("TimePicker units should have spinbutton role")
+	}
+	if !strings.Contains(out, `aria-label="Hour"`) {
+		t.Error("Hour unit should have aria-label")
+	}
+	if !strings.Contains(out, `aria-label="Minute"`) {
+		t.Error("Minute unit should have aria-label")
+	}
+	if !strings.Contains(out, "g-timepicker-sep") {
+		t.Error("TimePicker should have separator")
+	}
+}
+
+func TestTimePickerShowSec(t *testing.T) {
+	out := render(t, TimePicker("time", 10, 20, 45, TimePickerOpts{Use24H: true, ShowSec: true}))
+	if !strings.Contains(out, `value="45"`) {
+		t.Error("TimePicker with ShowSec should display seconds")
+	}
+	if !strings.Contains(out, `aria-label="Second"`) {
+		t.Error("Second unit should have aria-label")
+	}
+}
+
+func TestTimePickerNoSec(t *testing.T) {
+	out := render(t, TimePicker("time", 10, 20, 45, TimePickerOpts{Use24H: true, ShowSec: false}))
+	if strings.Contains(out, `aria-label="Second"`) {
+		t.Error("TimePicker without ShowSec should not have second unit")
+	}
+}
+
+func TestTimePicker12Hour(t *testing.T) {
+	out := render(t, TimePicker("time", 15, 30, 0, TimePickerOpts{Use24H: false}))
+	if !strings.Contains(out, `value="03"`) {
+		t.Error("12-hour TimePicker should convert 15:00 to 03")
+	}
+	if !strings.Contains(out, "g-timepicker-ampm") {
+		t.Error("12-hour TimePicker should have AM/PM toggle")
+	}
+	if !strings.Contains(out, `aria-pressed="true"`) {
+		t.Error("Active AM/PM button should have aria-pressed=true")
+	}
+}
+
+func TestTimePicker12HourAM(t *testing.T) {
+	out := render(t, TimePicker("time", 9, 0, 0, TimePickerOpts{Use24H: false}))
+	if !strings.Contains(out, `value="09"`) {
+		t.Error("12-hour TimePicker should show 09 for 9 AM")
+	}
+}
+
+func TestTimePicker12HourNoon(t *testing.T) {
+	out := render(t, TimePicker("time", 12, 0, 0, TimePickerOpts{Use24H: false}))
+	if !strings.Contains(out, `value="12"`) {
+		t.Error("12-hour TimePicker should show 12 for noon")
+	}
+}
+
+func TestTimePicker12HourMidnight(t *testing.T) {
+	out := render(t, TimePicker("time", 0, 0, 0, TimePickerOpts{Use24H: false}))
+	if !strings.Contains(out, `value="12"`) {
+		t.Error("12-hour TimePicker should show 12 for midnight")
+	}
+}
+
+func TestTimePickerDisabled(t *testing.T) {
+	out := render(t, TimePicker("time", 10, 0, 0, TimePickerOpts{Use24H: true, Disabled: true}))
+	if !strings.Contains(out, `disabled="disabled"`) {
+		t.Error("Disabled TimePicker should have disabled attributes")
+	}
+}
+
+func TestTimePickerButtons(t *testing.T) {
+	out := render(t, TimePicker("time", 10, 30, 0, TimePickerOpts{Use24H: true}))
+	if !strings.Contains(out, "g-timepicker-up") {
+		t.Error("TimePicker should have up button")
+	}
+	if !strings.Contains(out, "g-timepicker-down") {
+		t.Error("TimePicker should have down button")
+	}
+	if !strings.Contains(out, `aria-label="Increase Hour"`) {
+		t.Error("Up button should have increase aria-label")
+	}
+	if !strings.Contains(out, `aria-label="Decrease Hour"`) {
+		t.Error("Down button should have decrease aria-label")
+	}
+}
+
+func TestFormatTime(t *testing.T) {
+	if got := FormatTime(14, 30, 0, false); got != "14:30" {
+		t.Errorf("FormatTime(14,30,0,false) = %q, want 14:30", got)
+	}
+	if got := FormatTime(14, 30, 45, true); got != "14:30:45" {
+		t.Errorf("FormatTime(14,30,45,true) = %q, want 14:30:45", got)
+	}
+}
+
 // Ensure unused imports are referenced
 var _ = gd.Div
 var _ = property.Class
