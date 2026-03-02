@@ -93,6 +93,9 @@
         el._gb[type] = true;
         var handler = function(e) {
           if (type === "submit") e.preventDefault();
+          if (type === "keydown" && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === "Escape")) {
+            if (el.getAttribute("role") === "combobox") e.preventDefault();
+          }
           var name = el.getAttribute("gerbera-" + type);
           var kf = el.getAttribute("gerbera-key");
           if (kf && e.key !== kf) return;
@@ -322,28 +325,41 @@
     patches.forEach(function(p) {
       var n = resolve(p.path);
       if (!n) return;
+      var v = p.val != null ? p.val : "";
       switch (p.op) {
         case "text":
-          n.textContent = p.val;
+          // If the element has child elements, update only the text node
+          // to avoid destroying child elements with textContent.
+          if (n.children.length > 0) {
+            var tn = null;
+            for (var i = 0; i < n.childNodes.length; i++) {
+              if (n.childNodes[i].nodeType === 3) { tn = n.childNodes[i]; break; }
+            }
+            if (tn) { tn.textContent = v; }
+            else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
+          } else {
+            n.textContent = v;
+          }
           break;
         case "html":
-          n.innerHTML = p.val;
-          bind();
+          n.innerHTML = v;
           break;
         case "attr":
-          n.setAttribute(p.key, p.val);
+          n.setAttribute(p.key, v);
+          if (p.key === "value" && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.tagName === "SELECT")) {
+            n.value = v;
+          }
           break;
         case "rattr":
           n.removeAttribute(p.key);
           break;
         case "class":
-          n.className = p.val;
+          n.className = v;
           break;
         case "insert": {
           var t = document.createElement("template");
           t.innerHTML = p.html;
           n.insertBefore(t.content, n.children[p.idx] || null);
-          bind();
           break;
         }
         case "remove":
@@ -364,11 +380,14 @@
             n._gbHookInstance.destroyed.call(n._gbHookInstance, n);
           }
           n.replaceWith(t.content);
-          bind();
           break;
         }
       }
     });
+
+    // Always rebind after applying patches — new gerbera-* attributes may
+    // have been added via attr/class patches without any insert/replace.
+    if (patches.length > 0) bind();
 
     // Execute JS commands
     executeJSCommands(jsCommands);
@@ -420,17 +439,31 @@
                   n = n.children[p.path[i]];
                 }
                 // Apply patch (reuse same logic)
+                var v = p.val != null ? p.val : "";
                 switch (p.op) {
-                  case "text": n.textContent = p.val; break;
-                  case "html": n.innerHTML = p.val; bind(); break;
-                  case "attr": n.setAttribute(p.key, p.val); break;
+                  case "text":
+                    if (n.children.length > 0) {
+                      var tn = null;
+                      for (var j = 0; j < n.childNodes.length; j++) {
+                        if (n.childNodes[j].nodeType === 3) { tn = n.childNodes[j]; break; }
+                      }
+                      if (tn) { tn.textContent = v; }
+                      else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
+                    } else { n.textContent = v; }
+                    break;
+                  case "html": n.innerHTML = v; break;
+                  case "attr":
+                    n.setAttribute(p.key, v);
+                    if (p.key === "value" && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.tagName === "SELECT")) {
+                      n.value = v;
+                    }
+                    break;
                   case "rattr": n.removeAttribute(p.key); break;
-                  case "class": n.className = p.val; break;
+                  case "class": n.className = v; break;
                   case "insert": {
                     var t = document.createElement("template");
                     t.innerHTML = p.html;
                     n.insertBefore(t.content, n.children[p.idx] || null);
-                    bind();
                     break;
                   }
                   case "remove":
@@ -440,11 +473,11 @@
                     var t = document.createElement("template");
                     t.innerHTML = p.html;
                     n.replaceWith(t.content);
-                    bind();
                     break;
                   }
                 }
               });
+              if (patches.length > 0) bind();
             };
           }
           bind();

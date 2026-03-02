@@ -60,17 +60,14 @@ func TestExecuteTemplate(t *testing.T) {
 	res := buf.String()
 	buf.Reset()
 	resArr := strings.Split(res, "\n")
-	if len(resArr) != 3 {
-		t.Errorf("出力されたHTMLの行数が異なります: want = 3, result = %d", len(resArr))
+	if len(resArr) != 2 {
+		t.Errorf("出力されたHTMLの行数が異なります: want = 2, result = %d", len(resArr))
 	}
 	if resArr[0] != "<!DOCTYPE html>" {
 		t.Errorf("DOCTYPE宣言が記述されていない: want = <!DOCTYPE html>, result = %s\n", resArr[0])
 	}
-	if resArr[1] != "<html lang=\"en\">" {
-		t.Errorf("html要素の開始タグが異なります: want = <html lang=\"en\">, result = %s", resArr[1])
-	}
-	if resArr[2] != "</html>" {
-		t.Errorf("html要素の終了タグが異なります: want = </html>, result = %s", resArr[2])
+	if resArr[1] != "<html lang=\"en\"></html>" {
+		t.Errorf("html要素が異なります: want = <html lang=\"en\"></html>, result = %s", resArr[1])
 	}
 }
 
