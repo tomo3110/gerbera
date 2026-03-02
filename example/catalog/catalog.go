@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	g "github.com/tomo3110/gerbera"
 	gd "github.com/tomo3110/gerbera/dom"
@@ -58,6 +59,21 @@ type CatalogView struct {
 
 	// Theme demo
 	ThemeMode string // "light", "dark", "custom", "auto"
+
+	// NumberInput demo
+	NumVal int
+
+	// Slider demo
+	SliderVal int
+
+	// Calendar demo
+	CalYear     int
+	CalMonth    time.Month
+	CalSelected *time.Time
+
+	// Chat demo
+	ChatMessages []gu.ChatMessage
+	ChatDraft    string
 }
 
 func (v *CatalogView) Mount(params gl.Params) error {
@@ -69,6 +85,16 @@ func (v *CatalogView) Mount(params gl.Params) error {
 	v.ThemeMode = "light"
 	v.SSHighlight = -1
 	v.TreeOpen = map[string]bool{"src": true}
+	v.NumVal = 5
+	v.SliderVal = 50
+	now := time.Now()
+	v.CalYear = now.Year()
+	v.CalMonth = now.Month()
+	v.ChatMessages = []gu.ChatMessage{
+		{Author: "Alice", Content: "Hello! Welcome to the chat demo.", Timestamp: "10:00", Sent: false, Avatar: "A"},
+		{Content: "Thanks! This looks great.", Timestamp: "10:01", Sent: true},
+		{Author: "Alice", Content: "Try sending a message below.", Timestamp: "10:02", Sent: false, Avatar: "A"},
+	}
 	if p := params["page"]; p != "" {
 		v.Page = p
 	}
@@ -128,9 +154,14 @@ func (v *CatalogView) renderNavLinks() g.ComponentFunc {
 		navLink(v, "stat", "StatCard"),
 		navLink(v, "nav", "Navigation"),
 		navLink(v, "tree", "TreeView"),
+		navLink(v, "spinner", "Spinner"),
 		navLink(v, "misc", "Misc"),
 		navLink(v, "layout", "Layout"),
 		navDividerLabel("Live Widgets"),
+		navLink(v, "numberinput", "NumberInput"),
+		navLink(v, "slider", "Slider"),
+		navLink(v, "calendar", "Calendar"),
+		navLink(v, "chat", "Chat"),
 		navLink(v, "modal", "Modal"),
 		navLink(v, "toast", "Toast"),
 		navLink(v, "datatable", "DataTable"),
@@ -186,10 +217,20 @@ func (v *CatalogView) renderContent() g.ComponentFunc {
 		body = v.pageNav()
 	case "tree":
 		body = v.pageTree()
+	case "spinner":
+		body = v.pageSpinner()
 	case "misc":
 		body = v.pageMisc()
 	case "layout":
 		body = v.pageLayout()
+	case "numberinput":
+		body = v.pageNumberInput()
+	case "slider":
+		body = v.pageSlider()
+	case "calendar":
+		body = v.pageCalendar()
+	case "chat":
+		body = v.pageChat()
 	case "modal":
 		body = v.pageModal()
 	case "toast":
@@ -221,8 +262,8 @@ func (v *CatalogView) pageOverview() g.ComponentFunc {
 	return gu.Stack(
 		gu.Alert("Welcome to the Gerbera UI Widget Catalog. Use the sidebar to browse components. Responsive: resize your browser to see mobile layout.", "info"),
 		gu.Grid(gu.GridCols3,
-			gu.StatCard("Static Widgets", "17"),
-			gu.StatCard("Live Widgets", "8"),
+			gu.StatCard("Static Widgets", "18"),
+			gu.StatCard("Live Widgets", "12"),
 			gu.StatCard("Icons", fmt.Sprintf("%d", len(gu.IconNames()))),
 		),
 	)
@@ -785,6 +826,162 @@ func (v *CatalogView) pageSearchSelect() g.ComponentFunc {
 	)
 }
 
+func (v *CatalogView) pageSpinner() g.ComponentFunc {
+	return gu.Stack(
+		section("Spinner", "CSS-only loading animation in three sizes."),
+		gu.HStack(
+			gu.VStack(
+				gu.Spinner("sm"),
+				gd.Span(gp.Attr("style", "font-size:11px;color:var(--g-text-tertiary)"), gp.Value("sm (16px)")),
+			),
+			gu.VStack(
+				gu.Spinner("md"),
+				gd.Span(gp.Attr("style", "font-size:11px;color:var(--g-text-tertiary)"), gp.Value("md (24px)")),
+			),
+			gu.VStack(
+				gu.Spinner("lg"),
+				gd.Span(gp.Attr("style", "font-size:11px;color:var(--g-text-tertiary)"), gp.Value("lg (40px)")),
+			),
+		),
+		section("Inline Spinner", "Use SpinnerInline to display inline with text."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.Row(gu.AlignCenter, gu.GapSm,
+				gu.Spinner("sm", gu.SpinnerInline),
+				gd.Span(gp.Value("Loading data...")),
+			),
+		)),
+		section("Spinner in Button", "Combine with a button for loading states."),
+		gu.HStack(
+			gu.Button("Saving...", gu.ButtonPrimary, gp.Disabled(true), gu.Spinner("sm", gu.SpinnerInline)),
+			gu.Button("Loading", gu.ButtonOutline, gp.Disabled(true), gu.Spinner("sm", gu.SpinnerInline)),
+		),
+	)
+}
+
+func (v *CatalogView) pageNumberInput() g.ComponentFunc {
+	min, max := 0, 20
+
+	return gu.Stack(
+		section("NumberInput", "Number input with increment/decrement buttons (LiveView)."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.FormGroup(
+				gu.FormLabel("Quantity", "num-qty"),
+				gul.NumberInput(gul.NumberInputOpts{
+					Name:           "qty",
+					Value:          v.NumVal,
+					Min:            &min,
+					Max:            &max,
+					Step:           1,
+					IncrementEvent: "numInc",
+					DecrementEvent: "numDec",
+					ChangeEvent:    "numChange",
+				}),
+			),
+			gd.Div(gp.Attr("style", "margin-top:8px"),
+				gd.Span(gp.Attr("style", "font-size:13px;color:var(--g-text-secondary)"),
+					gp.Value(fmt.Sprintf("Value: %d (min: %d, max: %d)", v.NumVal, min, max))),
+			),
+		)),
+		section("Static NumberInput", "Non-interactive version without LiveView events."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.NumberInput("items", 3, gu.NumberInputOpts{Min: &min, Max: &max, Step: 1}),
+		)),
+	)
+}
+
+func (v *CatalogView) pageSlider() g.ComponentFunc {
+	return gu.Stack(
+		section("Slider", "Range slider with label and live value display (LiveView)."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gul.Slider(gul.SliderOpts{
+				Name:       "volume",
+				Value:      v.SliderVal,
+				Min:        0,
+				Max:        100,
+				Step:       1,
+				Label:      "Volume",
+				InputEvent: "slideInput",
+			}),
+			gd.Div(gp.Attr("style", "margin-top:12px"),
+				gu.Progress(v.SliderVal),
+			),
+		)),
+		section("Static Slider", "Non-interactive version without LiveView events."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.Slider("brightness", 75, gu.SliderOpts{Min: 0, Max: 100, Label: "Brightness"}),
+		)),
+	)
+}
+
+func (v *CatalogView) pageCalendar() g.ComponentFunc {
+	return gu.Stack(
+		section("Calendar", "Month-view calendar with navigation and date selection (LiveView)."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gul.Calendar(gul.CalendarOpts{
+				Year:             v.CalYear,
+				Month:            v.CalMonth,
+				Selected:         v.CalSelected,
+				Today:            time.Now(),
+				SelectEvent:      "calSelect",
+				PrevMonthEvent:   "calPrev",
+				NextMonthEvent:   "calNext",
+				MonthChangeEvent: "calMonthChange",
+				YearChangeEvent:  "calYearChange",
+			}),
+			expr.If(v.CalSelected != nil,
+				gd.Div(gp.Attr("style", "margin-top:12px"),
+					gu.Alert(fmt.Sprintf("Selected: %s", v.calSelectedStr()), "info"),
+				),
+			),
+		)),
+		section("Static Calendar", "Non-interactive version without LiveView events."),
+		gu.Card(gd.Div(gp.Class("g-page-body"),
+			gu.Calendar(gu.CalendarOpts{
+				Year:  time.Now().Year(),
+				Month: time.Now().Month(),
+				Today: time.Now(),
+			}),
+		)),
+	)
+}
+
+func (v *CatalogView) calSelectedStr() string {
+	if v.CalSelected == nil {
+		return ""
+	}
+	return v.CalSelected.Format("2006-01-02")
+}
+
+func (v *CatalogView) pageChat() g.ComponentFunc {
+	var msgViews []g.ComponentFunc
+	for _, m := range v.ChatMessages {
+		msgViews = append(msgViews, gu.ChatMessageView(m))
+	}
+
+	return gu.Stack(
+		section("Chat", "Chat message list with input area (LiveView)."),
+		gu.Card(
+			gu.ChatContainer(msgViews...),
+			gul.ChatInput(gul.ChatInputOpts{
+				Name:         "chatMsg",
+				Value:        v.ChatDraft,
+				Placeholder:  "Type a message...",
+				SendEvent:    "chatSend",
+				InputEvent:   "chatInput",
+				KeydownEvent: "chatKeydown",
+			}),
+		),
+		section("Static Chat", "Non-interactive chat rendering."),
+		gu.Card(
+			gu.ChatContainer(
+				gu.ChatMessageView(gu.ChatMessage{Author: "System", Content: "Welcome to the chat.", Timestamp: "09:00", Sent: false}),
+				gu.ChatMessageView(gu.ChatMessage{Content: "Hello!", Timestamp: "09:01", Sent: true}),
+			),
+			gu.ChatInput("msg", ""),
+		),
+	)
+}
+
 func (v *CatalogView) pageConfirm() g.ComponentFunc {
 	return gd.Div(
 		section("Confirm", "Confirmation dialog (LiveView)."),
@@ -897,6 +1094,84 @@ func (v *CatalogView) HandleEvent(event string, payload gl.Payload) error {
 				v.SSOpen = false
 				v.SSHighlight = -1
 			}
+		}
+
+	// NumberInput
+	case "numInc":
+		v.NumVal++
+		if v.NumVal > 20 {
+			v.NumVal = 20
+		}
+	case "numDec":
+		v.NumVal--
+		if v.NumVal < 0 {
+			v.NumVal = 0
+		}
+	case "numChange":
+		fmt.Sscanf(payload["value"], "%d", &v.NumVal)
+		if v.NumVal < 0 {
+			v.NumVal = 0
+		}
+		if v.NumVal > 20 {
+			v.NumVal = 20
+		}
+
+	// Slider
+	case "slideInput":
+		fmt.Sscanf(payload["value"], "%d", &v.SliderVal)
+
+	// Calendar
+	case "calSelect":
+		if dateStr := payload["value"]; dateStr != "" {
+			if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+				v.CalSelected = &t
+			}
+		}
+	case "calPrev":
+		v.CalMonth--
+		if v.CalMonth < time.January {
+			v.CalMonth = time.December
+			v.CalYear--
+		}
+	case "calNext":
+		v.CalMonth++
+		if v.CalMonth > time.December {
+			v.CalMonth = time.January
+			v.CalYear++
+		}
+	case "calMonthChange":
+		var m int
+		fmt.Sscanf(payload["value"], "%d", &m)
+		if m >= 1 && m <= 12 {
+			v.CalMonth = time.Month(m)
+		}
+	case "calYearChange":
+		var y int
+		fmt.Sscanf(payload["value"], "%d", &y)
+		if y > 0 {
+			v.CalYear = y
+		}
+
+	// Chat
+	case "chatInput":
+		v.ChatDraft = payload["value"]
+	case "chatSend":
+		if strings.TrimSpace(v.ChatDraft) != "" {
+			v.ChatMessages = append(v.ChatMessages, gu.ChatMessage{
+				Content:   v.ChatDraft,
+				Timestamp: time.Now().Format("15:04"),
+				Sent:      true,
+			})
+			v.ChatDraft = ""
+		}
+	case "chatKeydown":
+		if payload["key"] == "Enter" && strings.TrimSpace(v.ChatDraft) != "" {
+			v.ChatMessages = append(v.ChatMessages, gu.ChatMessage{
+				Content:   v.ChatDraft,
+				Timestamp: time.Now().Format("15:04"),
+				Sent:      true,
+			})
+			v.ChatDraft = ""
 		}
 
 	// Form validation

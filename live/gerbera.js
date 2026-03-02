@@ -7,6 +7,22 @@
   var maxReconnectDelay = 30000;
   var reconnectOverlay = null;
 
+  // Decode HTML entities produced by Go's html.EscapeString.
+  // Uses a textarea element so that the browser's HTML parser decodes entities
+  // without executing any embedded scripts (textarea content model is text).
+  var _decEl;
+  function decodeAttr(s) {
+    if (s.indexOf("&") === -1) return s;
+    if (!_decEl) _decEl = document.createElement("textarea");
+    _decEl.innerHTML = s;
+    return _decEl.value;
+  }
+
+  // Track IME composition state to avoid disrupting input during composition.
+  var _composing = false;
+  document.addEventListener("compositionstart", function() { _composing = true; });
+  document.addEventListener("compositionend", function() { _composing = false; });
+
   var EVENTS = ["click","input","change","submit","focus","blur","keydown","dblclick","mouseenter","mouseleave"];
   var TOUCH_EVENTS = ["touchstart","touchend","touchmove"];
 
@@ -93,6 +109,8 @@
         el._gb[type] = true;
         var handler = function(e) {
           if (type === "submit") e.preventDefault();
+          if (type === "keydown" && (e.isComposing || e.keyCode === 229)) return;
+          if (type === "input" && _composing) return;
           if (type === "keydown" && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === "Escape")) {
             if (el.getAttribute("role") === "combobox") e.preventDefault();
           }
@@ -345,9 +363,12 @@
           n.innerHTML = v;
           break;
         case "attr":
-          n.setAttribute(p.key, v);
+          var dv = decodeAttr(v);
+          n.setAttribute(p.key, dv);
           if (p.key === "value" && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.tagName === "SELECT")) {
-            n.value = v;
+            if (!(_composing && n === document.activeElement)) {
+              n.value = dv;
+            }
           }
           break;
         case "rattr":
@@ -453,9 +474,12 @@
                     break;
                   case "html": n.innerHTML = v; break;
                   case "attr":
-                    n.setAttribute(p.key, v);
+                    var dv = decodeAttr(v);
+                    n.setAttribute(p.key, dv);
                     if (p.key === "value" && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.tagName === "SELECT")) {
-                      n.value = v;
+                      if (!(_composing && n === document.activeElement)) {
+                        n.value = dv;
+                      }
                     }
                     break;
                   case "rattr": n.removeAttribute(p.key); break;

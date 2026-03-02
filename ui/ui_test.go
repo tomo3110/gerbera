@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/tomo3110/gerbera"
 	gd "github.com/tomo3110/gerbera/dom"
@@ -28,7 +29,7 @@ func TestTheme(t *testing.T) {
 		t.Error("Theme should render as <style> element")
 	}
 	// Backward compatibility: Theme() should produce default values
-	if !strings.Contains(out, "#f5f6f8") {
+	if !strings.Contains(out, "#fafafa") {
 		t.Error("Theme should contain default background color")
 	}
 	if !strings.Contains(out, "--g-accent-hover:") {
@@ -56,7 +57,7 @@ func TestThemeWith(t *testing.T) {
 		t.Error("ThemeWith should contain custom accent-hover color")
 	}
 	// Zero-value fields should be filled with defaults
-	if !strings.Contains(out, "#f5f6f8") {
+	if !strings.Contains(out, "#fafafa") {
 		t.Error("ThemeWith should fill zero-value Bg with default")
 	}
 	// Should still contain component CSS rules
@@ -67,13 +68,13 @@ func TestThemeWith(t *testing.T) {
 
 func TestThemeWithDark(t *testing.T) {
 	out := render(t, ThemeWith(DarkTheme()))
-	if !strings.Contains(out, "#1a1d21") {
+	if !strings.Contains(out, "#0a0a0a") {
 		t.Error("ThemeWith(DarkTheme()) should contain dark background color")
 	}
-	if !strings.Contains(out, "#e6edf3") {
+	if !strings.Contains(out, "#fafafa") {
 		t.Error("ThemeWith(DarkTheme()) should contain dark text color")
 	}
-	if !strings.Contains(out, "#6e7ee0") {
+	if !strings.Contains(out, "#e5e5e5") {
 		t.Error("ThemeWith(DarkTheme()) should contain dark accent color")
 	}
 }
@@ -84,11 +85,11 @@ func TestThemeAuto(t *testing.T) {
 		t.Error("ThemeAuto should contain prefers-color-scheme media query")
 	}
 	// Light defaults
-	if !strings.Contains(out, "#f5f6f8") {
+	if !strings.Contains(out, "#fafafa") {
 		t.Error("ThemeAuto should contain default light background")
 	}
 	// Dark defaults
-	if !strings.Contains(out, "#1a1d21") {
+	if !strings.Contains(out, "#0a0a0a") {
 		t.Error("ThemeAuto should contain default dark background")
 	}
 	// Component rules should appear only once (use a rule that appears exactly once in themeRulesCSS)
@@ -126,30 +127,30 @@ func TestThemeAutoCustom(t *testing.T) {
 
 func TestDefaultTheme(t *testing.T) {
 	d := DefaultTheme()
-	if d.Bg != "#f5f6f8" {
-		t.Errorf("DefaultTheme().Bg = %q, want #f5f6f8", d.Bg)
+	if d.Bg != "#fafafa" {
+		t.Errorf("DefaultTheme().Bg = %q, want #fafafa", d.Bg)
 	}
-	if d.AccentHover != "#2d333b" {
-		t.Errorf("DefaultTheme().AccentHover = %q, want #2d333b", d.AccentHover)
+	if d.AccentHover != "#262626" {
+		t.Errorf("DefaultTheme().AccentHover = %q, want #262626", d.AccentHover)
 	}
-	if d.DangerHover != "#6b2a2a" {
-		t.Errorf("DefaultTheme().DangerHover = %q, want #6b2a2a", d.DangerHover)
+	if d.DangerHover != "#b91c1c" {
+		t.Errorf("DefaultTheme().DangerHover = %q, want #b91c1c", d.DangerHover)
 	}
 }
 
 func TestDarkTheme(t *testing.T) {
 	d := DarkTheme()
-	if d.Bg != "#1a1d21" {
-		t.Errorf("DarkTheme().Bg = %q, want #1a1d21", d.Bg)
+	if d.Bg != "#0a0a0a" {
+		t.Errorf("DarkTheme().Bg = %q, want #0a0a0a", d.Bg)
 	}
-	if d.Text != "#e6edf3" {
-		t.Errorf("DarkTheme().Text = %q, want #e6edf3", d.Text)
+	if d.Text != "#fafafa" {
+		t.Errorf("DarkTheme().Text = %q, want #fafafa", d.Text)
 	}
-	if d.Accent != "#6e7ee0" {
-		t.Errorf("DarkTheme().Accent = %q, want #6e7ee0", d.Accent)
+	if d.Accent != "#e5e5e5" {
+		t.Errorf("DarkTheme().Accent = %q, want #e5e5e5", d.Accent)
 	}
-	if d.AccentHover != "#8a97e8" {
-		t.Errorf("DarkTheme().AccentHover = %q, want #8a97e8", d.AccentHover)
+	if d.AccentHover != "#ffffff" {
+		t.Errorf("DarkTheme().AccentHover = %q, want #ffffff", d.AccentHover)
 	}
 }
 
@@ -162,7 +163,7 @@ func TestThemeConfigWithDefaults(t *testing.T) {
 	if filled.BgSurface != "#ffffff" {
 		t.Error("withDefaults should fill zero BgSurface with default")
 	}
-	if filled.Accent != "#3d4450" {
+	if filled.Accent != "#171717" {
 		t.Error("withDefaults should fill zero Accent with default")
 	}
 }
@@ -859,3 +860,291 @@ func TestRowWithSpacer(t *testing.T) {
 		t.Error("Row should have AlignCenter modifier")
 	}
 }
+
+// --- Spinner tests ---
+
+func TestSpinner(t *testing.T) {
+	out := render(t, Spinner("md"))
+	if !strings.Contains(out, "g-spinner") {
+		t.Error("Spinner should have g-spinner class")
+	}
+	if !strings.Contains(out, "g-spinner-md") {
+		t.Error("Spinner should have size class")
+	}
+	if !strings.Contains(out, `role="status"`) {
+		t.Error("Spinner should have role=status")
+	}
+	if !strings.Contains(out, `aria-label="Loading"`) {
+		t.Error("Spinner should have aria-label")
+	}
+	if !strings.Contains(out, "g-spinner-arc") {
+		t.Error("Spinner should have arc element")
+	}
+}
+
+func TestSpinnerSizes(t *testing.T) {
+	for _, size := range []string{"sm", "md", "lg"} {
+		t.Run(size, func(t *testing.T) {
+			out := render(t, Spinner(size))
+			if !strings.Contains(out, "g-spinner-"+size) {
+				t.Errorf("Spinner(%q) should have class g-spinner-%s", size, size)
+			}
+		})
+	}
+}
+
+func TestSpinnerDefault(t *testing.T) {
+	out := render(t, Spinner(""))
+	if !strings.Contains(out, "g-spinner-md") {
+		t.Error("Spinner with empty size should default to md")
+	}
+}
+
+func TestSpinnerInline(t *testing.T) {
+	out := render(t, Spinner("sm", SpinnerInline))
+	if !strings.Contains(out, "g-spinner-inline") {
+		t.Error("Spinner with SpinnerInline should have inline class")
+	}
+}
+
+// --- NumberInput tests ---
+
+func TestNumberInput(t *testing.T) {
+	out := render(t, NumberInput("qty", 5, NumberInputOpts{}))
+	if !strings.Contains(out, "g-numberinput") {
+		t.Error("NumberInput should have g-numberinput class")
+	}
+	if !strings.Contains(out, `role="spinbutton"`) {
+		t.Error("NumberInput should have spinbutton role")
+	}
+	if !strings.Contains(out, `name="qty"`) {
+		t.Error("NumberInput should have name attribute")
+	}
+	if !strings.Contains(out, `value="5"`) {
+		t.Error("NumberInput should have value attribute")
+	}
+	if !strings.Contains(out, `aria-valuenow="5"`) {
+		t.Error("NumberInput should have aria-valuenow")
+	}
+}
+
+func TestNumberInputMinMax(t *testing.T) {
+	min, max := 0, 10
+	out := render(t, NumberInput("qty", 3, NumberInputOpts{Min: &min, Max: &max}))
+	if !strings.Contains(out, `min="0"`) {
+		t.Error("NumberInput should have min attribute")
+	}
+	if !strings.Contains(out, `max="10"`) {
+		t.Error("NumberInput should have max attribute")
+	}
+	if !strings.Contains(out, `aria-valuemin="0"`) {
+		t.Error("NumberInput should have aria-valuemin")
+	}
+	if !strings.Contains(out, `aria-valuemax="10"`) {
+		t.Error("NumberInput should have aria-valuemax")
+	}
+}
+
+func TestNumberInputDisabledAtMin(t *testing.T) {
+	min := 0
+	out := render(t, NumberInput("qty", 0, NumberInputOpts{Min: &min}))
+	// Decrement button should be disabled
+	if !strings.Contains(out, "g-numberinput-dec") {
+		t.Error("NumberInput should have dec button")
+	}
+}
+
+// --- Slider tests ---
+
+func TestSlider(t *testing.T) {
+	out := render(t, Slider("volume", 50, SliderOpts{Min: 0, Max: 100}))
+	if !strings.Contains(out, "g-slider") {
+		t.Error("Slider should have g-slider class")
+	}
+	if !strings.Contains(out, `role="slider"`) {
+		t.Error("Slider should have slider role")
+	}
+	if !strings.Contains(out, `name="volume"`) {
+		t.Error("Slider should have name attribute")
+	}
+	if !strings.Contains(out, `value="50"`) {
+		t.Error("Slider should have value attribute")
+	}
+	if !strings.Contains(out, `aria-valuenow="50"`) {
+		t.Error("Slider should have aria-valuenow")
+	}
+	if !strings.Contains(out, `aria-valuemin="0"`) {
+		t.Error("Slider should have aria-valuemin")
+	}
+	if !strings.Contains(out, `aria-valuemax="100"`) {
+		t.Error("Slider should have aria-valuemax")
+	}
+}
+
+func TestSliderLabel(t *testing.T) {
+	out := render(t, Slider("vol", 30, SliderOpts{Label: "Volume", Max: 100}))
+	if !strings.Contains(out, "Volume") {
+		t.Error("Slider should display label")
+	}
+	if !strings.Contains(out, "30") {
+		t.Error("Slider should display current value")
+	}
+	if !strings.Contains(out, "g-slider-header") {
+		t.Error("Slider should have header")
+	}
+}
+
+func TestSliderDefaultMax(t *testing.T) {
+	out := render(t, Slider("x", 10, SliderOpts{}))
+	if !strings.Contains(out, `max="100"`) {
+		t.Error("Slider with zero Min/Max should default max to 100")
+	}
+}
+
+// --- Calendar tests ---
+
+func TestCalendar(t *testing.T) {
+	out := render(t, Calendar(CalendarOpts{
+		Year:  2025,
+		Month: time.January,
+		Today: time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+	}))
+	if !strings.Contains(out, "g-calendar") {
+		t.Error("Calendar should have g-calendar class")
+	}
+	if !strings.Contains(out, `role="grid"`) {
+		t.Error("Calendar should have grid role")
+	}
+	if !strings.Contains(out, "January 2025") {
+		t.Error("Calendar should display month and year")
+	}
+	if !strings.Contains(out, "g-calendar-day-today") {
+		t.Error("Calendar should highlight today")
+	}
+}
+
+func TestCalendarSelected(t *testing.T) {
+	sel := time.Date(2025, 1, 20, 0, 0, 0, 0, time.UTC)
+	out := render(t, Calendar(CalendarOpts{
+		Year:     2025,
+		Month:    time.January,
+		Selected: &sel,
+		Today:    time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+	}))
+	if !strings.Contains(out, "g-calendar-day-selected") {
+		t.Error("Calendar should highlight selected date")
+	}
+	if !strings.Contains(out, `data-date="2025-01-20"`) {
+		t.Error("Calendar should have data-date attribute for selected day")
+	}
+}
+
+func TestCalendarDayNames(t *testing.T) {
+	out := render(t, Calendar(CalendarOpts{
+		Year:  2025,
+		Month: time.March,
+		Today: time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
+	}))
+	if !strings.Contains(out, "Sun") {
+		t.Error("Calendar should display default day names")
+	}
+	if !strings.Contains(out, "g-calendar-weekdays") {
+		t.Error("Calendar should have weekdays row")
+	}
+}
+
+func TestCalendarCustomDayNames(t *testing.T) {
+	out := render(t, Calendar(CalendarOpts{
+		Year:     2025,
+		Month:    time.January,
+		Today:    time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		DayNames: []string{"日", "月", "火", "水", "木", "金", "土"},
+	}))
+	if !strings.Contains(out, "日") {
+		t.Error("Calendar should use custom day names")
+	}
+}
+
+func TestCalendarOutsideDays(t *testing.T) {
+	out := render(t, Calendar(CalendarOpts{
+		Year:  2025,
+		Month: time.February,
+		Today: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+	}))
+	if !strings.Contains(out, "g-calendar-day-outside") {
+		t.Error("Calendar should have outside day cells for padding")
+	}
+}
+
+// --- Chat tests ---
+
+func TestChatContainer(t *testing.T) {
+	out := render(t, ChatContainer(gerbera.Literal("messages")))
+	if !strings.Contains(out, "g-chat") {
+		t.Error("ChatContainer should have g-chat class")
+	}
+	if !strings.Contains(out, `role="log"`) {
+		t.Error("ChatContainer should have log role")
+	}
+}
+
+func TestChatMessageReceived(t *testing.T) {
+	out := render(t, ChatMessageView(ChatMessage{
+		Author:    "Alice",
+		Content:   "Hello!",
+		Timestamp: "10:30",
+		Sent:      false,
+		Avatar:    "A",
+	}))
+	if !strings.Contains(out, "g-chat-bubble-received") {
+		t.Error("Received message should have received bubble class")
+	}
+	if !strings.Contains(out, "g-chat-row-received") {
+		t.Error("Received message should have received row class")
+	}
+	if !strings.Contains(out, "Hello!") {
+		t.Error("Message should contain content")
+	}
+	if !strings.Contains(out, "Alice") {
+		t.Error("Message should contain author")
+	}
+	if !strings.Contains(out, "10:30") {
+		t.Error("Message should contain timestamp")
+	}
+	if !strings.Contains(out, "g-chat-avatar") {
+		t.Error("Message should contain avatar")
+	}
+}
+
+func TestChatMessageSent(t *testing.T) {
+	out := render(t, ChatMessageView(ChatMessage{
+		Content: "Hi there",
+		Sent:    true,
+	}))
+	if !strings.Contains(out, "g-chat-bubble-sent") {
+		t.Error("Sent message should have sent bubble class")
+	}
+	if !strings.Contains(out, "g-chat-row-sent") {
+		t.Error("Sent message should have sent row class")
+	}
+}
+
+func TestChatInput(t *testing.T) {
+	out := render(t, ChatInput("message", ""))
+	if !strings.Contains(out, "g-chat-inputbar") {
+		t.Error("ChatInput should have inputbar class")
+	}
+	if !strings.Contains(out, "g-chat-input-field") {
+		t.Error("ChatInput should have input field")
+	}
+	if !strings.Contains(out, "g-chat-send") {
+		t.Error("ChatInput should have send button")
+	}
+	if !strings.Contains(out, `aria-label="Send"`) {
+		t.Error("Send button should have aria-label")
+	}
+}
+
+// Ensure unused imports are referenced
+var _ = gd.Div
+var _ = property.Class

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	g "github.com/tomo3110/gerbera"
 	gd "github.com/tomo3110/gerbera/dom"
@@ -27,6 +29,19 @@ type AdminView struct {
 	ToastVisible  bool
 	ToastMessage  string
 	ToastVariant  string
+
+	// Settings
+	ItemsPerPage int
+	NotifyFreq   int
+
+	// Calendar
+	CalYear     int
+	CalMonth    time.Month
+	CalSelected *time.Time
+
+	// Messages
+	ChatMessages []gu.ChatMessage
+	ChatDraft    string
 }
 
 type user struct {
@@ -60,6 +75,16 @@ func (v *AdminView) Mount(params gl.Params) error {
 	v.SortDir = "asc"
 	v.SelectedUser = -1
 	v.DeleteTarget = -1
+	v.ItemsPerPage = 10
+	v.NotifyFreq = 30
+	now := time.Now()
+	v.CalYear = now.Year()
+	v.CalMonth = now.Month()
+	v.ChatMessages = []gu.ChatMessage{
+		{Author: "System", Content: "Welcome to Admin Messages.", Timestamp: "09:00", Sent: false},
+		{Author: "Alice Johnson", Content: "The new user report is ready for review.", Timestamp: "09:15", Sent: false, Avatar: "A"},
+		{Content: "Thanks, I'll take a look now.", Timestamp: "09:16", Sent: true},
+	}
 	if p := params["page"]; p != "" {
 		v.Page = p
 	}
@@ -91,6 +116,8 @@ func (v *AdminView) renderSidebar() g.ComponentFunc {
 			gl.Click("nav"), gl.ClickValue("dashboard")),
 		gu.SidebarLink("#", "Users", v.Page == "users",
 			gl.Click("nav"), gl.ClickValue("users")),
+		gu.SidebarLink("#", "Messages", v.Page == "messages",
+			gl.Click("nav"), gl.ClickValue("messages")),
 		gu.SidebarDivider(),
 		gu.SidebarLink("#", "Settings", v.Page == "settings",
 			gl.Click("nav"), gl.ClickValue("settings")),
@@ -102,6 +129,8 @@ func (v *AdminView) renderContent() g.ComponentFunc {
 	switch v.Page {
 	case "users":
 		body = v.pageUsers()
+	case "messages":
+		body = v.pageMessages()
 	case "settings":
 		body = v.pageSettings()
 	default:
@@ -123,16 +152,39 @@ func (v *AdminView) pageDashboard() g.ComponentFunc {
 					gu.StatCard("Admins", fmt.Sprintf("%d", countByRole("Admin"))),
 					gu.StatCard("Editors", fmt.Sprintf("%d", countByRole("Editor"))),
 				),
-				gu.Card(
-					gu.CardHeader("Recent Activity"),
-					gu.StyledTable(
-						gu.THead("User", "Action", "Time"),
-						gd.Tbody(
-							activityRow("Alice Johnson", "Updated profile", "2 min ago"),
-							activityRow("Bob Smith", "Uploaded document", "15 min ago"),
-							activityRow("Diana Prince", "Created post", "1 hour ago"),
-							activityRow("Frank Castle", "Deleted comment", "3 hours ago"),
-							activityRow("Grace Hopper", "Logged in", "5 hours ago"),
+				gu.Grid(gu.GridCols2,
+					gu.Card(
+						gu.CardHeader("Recent Activity"),
+						gu.StyledTable(
+							gu.THead("User", "Action", "Time"),
+							gd.Tbody(
+								activityRow("Alice Johnson", "Updated profile", "2 min ago"),
+								activityRow("Bob Smith", "Uploaded document", "15 min ago"),
+								activityRow("Diana Prince", "Created post", "1 hour ago"),
+								activityRow("Frank Castle", "Deleted comment", "3 hours ago"),
+								activityRow("Grace Hopper", "Logged in", "5 hours ago"),
+							),
+						),
+					),
+					gu.Card(
+						gu.CardHeader("Calendar"),
+						gd.Div(gp.Class("g-page-body"),
+							gul.Calendar(gul.CalendarOpts{
+								Year:             v.CalYear,
+								Month:            v.CalMonth,
+								Selected:         v.CalSelected,
+								Today:            time.Now(),
+								SelectEvent:      "calSelect",
+								PrevMonthEvent:   "calPrev",
+								NextMonthEvent:   "calNext",
+								MonthChangeEvent: "calMonthChange",
+								YearChangeEvent:  "calYearChange",
+							}),
+							expr.If(v.CalSelected != nil,
+								gd.Div(gp.Attr("style", "margin-top:8px"),
+									gu.Badge(v.CalSelected.Format("2006-01-02"), "dark"),
+								),
+							),
 						),
 					),
 				),
@@ -215,7 +267,44 @@ func (v *AdminView) renderUserModal() g.ComponentFunc {
 	)
 }
 
+func (v *AdminView) pageMessages() g.ComponentFunc {
+	var msgViews []g.ComponentFunc
+	for _, m := range v.ChatMessages {
+		msgViews = append(msgViews, gu.ChatMessageView(m))
+	}
+
+	return gd.Div(
+		gu.PageHeader("Messages",
+			gu.Breadcrumb(
+				gu.BreadcrumbItem{Label: "Dashboard", Href: "#"},
+				gu.BreadcrumbItem{Label: "Messages", Href: ""},
+			),
+		),
+		gd.Div(gp.Class("g-page-body"),
+			gu.Card(
+				gu.CardHeader("Team Chat"),
+				gd.Div(gp.Attr("style", "height:400px;display:flex;flex-direction:column"),
+					gd.Div(gp.Attr("style", "flex:1;overflow-y:auto"),
+						gu.ChatContainer(msgViews...),
+					),
+					gul.ChatInput(gul.ChatInputOpts{
+						Name:         "chatMsg",
+						Value:        v.ChatDraft,
+						Placeholder:  "Send a message to the team...",
+						SendEvent:    "chatSend",
+						InputEvent:   "chatInput",
+						KeydownEvent: "chatKeydown",
+					}),
+				),
+			),
+		),
+	)
+}
+
 func (v *AdminView) pageSettings() g.ComponentFunc {
+	min0, max100 := 0, 100
+	min5, max50 := 5, 50
+
 	return gd.Div(
 		gu.PageHeader("Settings",
 			gu.Breadcrumb(
@@ -224,21 +313,52 @@ func (v *AdminView) pageSettings() g.ComponentFunc {
 			),
 		),
 		gd.Div(gp.Class("g-page-body"),
-			gu.Card(
-				gu.CardHeader("General Settings"),
-				gd.Div(gp.Class("g-page-body"),
-					gu.FormGroup(
-						gu.FormLabel("Site Name", "site-name"),
-						gu.FormInput("site-name", gp.ID("site-name"), gp.Attr("value", "My Admin Panel")),
+			gu.Stack(
+				gu.Card(
+					gu.CardHeader("General Settings"),
+					gd.Div(gp.Class("g-page-body"),
+						gu.FormGroup(
+							gu.FormLabel("Site Name", "site-name"),
+							gu.FormInput("site-name", gp.ID("site-name"), gp.Attr("value", "My Admin Panel")),
+						),
+						gu.FormGroup(
+							gu.FormLabel("Language", "lang"),
+							gu.FormSelect("lang", []gu.FormOption{
+								{Value: "ja", Label: "Japanese"},
+								{Value: "en", Label: "English"},
+							}, gp.ID("lang")),
+						),
+						gu.Button("Save", gu.ButtonPrimary),
 					),
-					gu.FormGroup(
-						gu.FormLabel("Language", "lang"),
-						gu.FormSelect("lang", []gu.FormOption{
-							{Value: "ja", Label: "Japanese"},
-							{Value: "en", Label: "English"},
-						}, gp.ID("lang")),
+				),
+				gu.Card(
+					gu.CardHeader("Display Settings"),
+					gd.Div(gp.Class("g-page-body"),
+						gu.FormGroup(
+							gu.FormLabel("Items per page", "items-per-page"),
+							gul.NumberInput(gul.NumberInputOpts{
+								Name:           "items-per-page",
+								Value:          v.ItemsPerPage,
+								Min:            &min5,
+								Max:            &max50,
+								Step:           5,
+								IncrementEvent: "settingsItemsInc",
+								DecrementEvent: "settingsItemsDec",
+							}),
+						),
+						gu.FormGroup(
+							gu.FormLabel("Notification frequency (minutes)", "notify-freq"),
+							gul.Slider(gul.SliderOpts{
+								Name:       "notify-freq",
+								Value:      v.NotifyFreq,
+								Min:        min0,
+								Max:        max100,
+								Step:       5,
+								Label:      "Frequency",
+								InputEvent: "settingsNotifyFreq",
+							}),
+						),
 					),
-					gu.Button("Save", gu.ButtonPrimary),
 				),
 			),
 		),
@@ -283,6 +403,74 @@ func (v *AdminView) HandleEvent(event string, payload gl.Payload) error {
 		v.ConfirmOpen = false
 	case "dismissToast":
 		v.ToastVisible = false
+
+	// Calendar
+	case "calSelect":
+		if dateStr := payload["value"]; dateStr != "" {
+			if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+				v.CalSelected = &t
+			}
+		}
+	case "calPrev":
+		v.CalMonth--
+		if v.CalMonth < time.January {
+			v.CalMonth = time.December
+			v.CalYear--
+		}
+	case "calNext":
+		v.CalMonth++
+		if v.CalMonth > time.December {
+			v.CalMonth = time.January
+			v.CalYear++
+		}
+	case "calMonthChange":
+		var m int
+		fmt.Sscanf(payload["value"], "%d", &m)
+		if m >= 1 && m <= 12 {
+			v.CalMonth = time.Month(m)
+		}
+	case "calYearChange":
+		var y int
+		fmt.Sscanf(payload["value"], "%d", &y)
+		if y > 0 {
+			v.CalYear = y
+		}
+
+	// Messages
+	case "chatInput":
+		v.ChatDraft = payload["value"]
+	case "chatSend":
+		if strings.TrimSpace(v.ChatDraft) != "" {
+			v.ChatMessages = append(v.ChatMessages, gu.ChatMessage{
+				Content:   v.ChatDraft,
+				Timestamp: time.Now().Format("15:04"),
+				Sent:      true,
+			})
+			v.ChatDraft = ""
+		}
+	case "chatKeydown":
+		if payload["key"] == "Enter" && strings.TrimSpace(v.ChatDraft) != "" {
+			v.ChatMessages = append(v.ChatMessages, gu.ChatMessage{
+				Content:   v.ChatDraft,
+				Timestamp: time.Now().Format("15:04"),
+				Sent:      true,
+			})
+			v.ChatDraft = ""
+		}
+
+	// Settings
+	case "settingsItemsInc":
+		v.ItemsPerPage += 5
+		if v.ItemsPerPage > 50 {
+			v.ItemsPerPage = 50
+		}
+	case "settingsItemsDec":
+		v.ItemsPerPage -= 5
+		if v.ItemsPerPage < 5 {
+			v.ItemsPerPage = 5
+		}
+	case "settingsNotifyFreq":
+		fmt.Sscanf(payload["value"], "%d", &v.NotifyFreq)
 	}
 	return nil
 }

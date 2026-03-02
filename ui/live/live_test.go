@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/tomo3110/gerbera"
 	"github.com/tomo3110/gerbera/property"
@@ -309,3 +310,195 @@ func TestModalHeader(t *testing.T) {
 	}
 	_ = property.Class // ensure import is used
 }
+
+// --- Live NumberInput tests ---
+
+func TestLiveNumberInput(t *testing.T) {
+	out := render(t, NumberInput(NumberInputOpts{
+		Name:           "qty",
+		Value:          5,
+		IncrementEvent: "inc",
+		DecrementEvent: "dec",
+		ChangeEvent:    "change",
+	}))
+	if !strings.Contains(out, "g-numberinput") {
+		t.Error("Live NumberInput should have g-numberinput class")
+	}
+	if !strings.Contains(out, `role="spinbutton"`) {
+		t.Error("Live NumberInput should have spinbutton role")
+	}
+	if !strings.Contains(out, `gerbera-click="inc"`) {
+		t.Error("Increment button should have click event")
+	}
+	if !strings.Contains(out, `gerbera-click="dec"`) {
+		t.Error("Decrement button should have click event")
+	}
+	if !strings.Contains(out, `gerbera-change="change"`) {
+		t.Error("Input should have change event")
+	}
+	if !strings.Contains(out, `value="5"`) {
+		t.Error("Input should have value")
+	}
+}
+
+func TestLiveNumberInputMinMax(t *testing.T) {
+	min, max := 0, 10
+	out := render(t, NumberInput(NumberInputOpts{
+		Name:  "qty",
+		Value: 5,
+		Min:   &min,
+		Max:   &max,
+	}))
+	if !strings.Contains(out, `min="0"`) {
+		t.Error("Live NumberInput should have min attribute")
+	}
+	if !strings.Contains(out, `max="10"`) {
+		t.Error("Live NumberInput should have max attribute")
+	}
+	if !strings.Contains(out, `aria-valuemin="0"`) {
+		t.Error("Live NumberInput should have aria-valuemin")
+	}
+	if !strings.Contains(out, `aria-valuemax="10"`) {
+		t.Error("Live NumberInput should have aria-valuemax")
+	}
+}
+
+// --- Live Slider tests ---
+
+func TestLiveSlider(t *testing.T) {
+	out := render(t, Slider(SliderOpts{
+		Name:       "volume",
+		Value:      75,
+		Min:        0,
+		Max:        100,
+		Label:      "Volume",
+		InputEvent: "slideVolume",
+	}))
+	if !strings.Contains(out, "g-slider") {
+		t.Error("Live Slider should have g-slider class")
+	}
+	if !strings.Contains(out, `role="slider"`) {
+		t.Error("Live Slider should have slider role")
+	}
+	if !strings.Contains(out, `gerbera-input="slideVolume"`) {
+		t.Error("Slider should have input event")
+	}
+	if !strings.Contains(out, "Volume") {
+		t.Error("Slider should display label")
+	}
+	if !strings.Contains(out, "75") {
+		t.Error("Slider should display current value")
+	}
+}
+
+// --- Live Calendar tests ---
+
+func TestLiveCalendar(t *testing.T) {
+	out := render(t, Calendar(CalendarOpts{
+		Year:           2025,
+		Month:          time.January,
+		Today:          time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+		SelectEvent:    "selectDay",
+		PrevMonthEvent: "prevMonth",
+		NextMonthEvent: "nextMonth",
+	}))
+	if !strings.Contains(out, "g-calendar") {
+		t.Error("Live Calendar should have g-calendar class")
+	}
+	if !strings.Contains(out, `role="grid"`) {
+		t.Error("Live Calendar should have grid role")
+	}
+	if !strings.Contains(out, "January 2025") {
+		t.Error("Live Calendar should display month and year")
+	}
+	if !strings.Contains(out, `gerbera-click="selectDay"`) {
+		t.Error("Day cells should have select event")
+	}
+	if !strings.Contains(out, `gerbera-click="prevMonth"`) {
+		t.Error("Prev button should have click event")
+	}
+	if !strings.Contains(out, `gerbera-click="nextMonth"`) {
+		t.Error("Next button should have click event")
+	}
+}
+
+func TestLiveCalendarSelected(t *testing.T) {
+	sel := time.Date(2025, 1, 20, 0, 0, 0, 0, time.UTC)
+	out := render(t, Calendar(CalendarOpts{
+		Year:        2025,
+		Month:       time.January,
+		Selected:    &sel,
+		Today:       time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+		SelectEvent: "select",
+	}))
+	if !strings.Contains(out, "g-calendar-day-selected") {
+		t.Error("Live Calendar should highlight selected date")
+	}
+	if !strings.Contains(out, "g-calendar-day-today") {
+		t.Error("Live Calendar should highlight today")
+	}
+}
+
+func TestLiveCalendarNavButtons(t *testing.T) {
+	out := render(t, Calendar(CalendarOpts{
+		Year:           2025,
+		Month:          time.March,
+		Today:          time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
+		PrevMonthEvent: "prev",
+		NextMonthEvent: "next",
+	}))
+	if !strings.Contains(out, `aria-label="Previous month"`) {
+		t.Error("Prev button should have aria-label")
+	}
+	if !strings.Contains(out, `aria-label="Next month"`) {
+		t.Error("Next button should have aria-label")
+	}
+}
+
+// --- Live ChatInput tests ---
+
+func TestLiveChatInput(t *testing.T) {
+	out := render(t, ChatInput(ChatInputOpts{
+		Name:         "msg",
+		Value:        "hello",
+		SendEvent:    "sendMsg",
+		InputEvent:   "typeMsg",
+		KeydownEvent: "keyMsg",
+	}))
+	if !strings.Contains(out, "g-chat-inputbar") {
+		t.Error("Live ChatInput should have inputbar class")
+	}
+	if !strings.Contains(out, `gerbera-click="sendMsg"`) {
+		t.Error("Send button should have click event")
+	}
+	if !strings.Contains(out, `gerbera-input="typeMsg"`) {
+		t.Error("Input should have input event")
+	}
+	if !strings.Contains(out, `gerbera-keydown="keyMsg"`) {
+		t.Error("Input should have keydown event")
+	}
+	if !strings.Contains(out, `value="hello"`) {
+		t.Error("Input should have value")
+	}
+}
+
+func TestLiveChatInputPlaceholder(t *testing.T) {
+	out := render(t, ChatInput(ChatInputOpts{
+		Name:        "msg",
+		Placeholder: "Say something...",
+	}))
+	if !strings.Contains(out, "Say something...") {
+		t.Error("ChatInput should use custom placeholder")
+	}
+}
+
+func TestLiveChatInputDefaultPlaceholder(t *testing.T) {
+	out := render(t, ChatInput(ChatInputOpts{Name: "msg"}))
+	if !strings.Contains(out, "Type a message...") {
+		t.Error("ChatInput should have default placeholder")
+	}
+}
+
+// Keep unused imports referenced
+var _ = ui.FormOption{}
+var _ = time.UTC
