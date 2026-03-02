@@ -53,7 +53,10 @@ func main() {
 ```go
 func viewLayout(w http.ResponseWriter, page *Page) error {
 	return g.ExecuteTemplate(w, "jp",
-		gc.BootStrapCDNHead(page.Title),
+		gd.Head(
+			gd.Title(page.Title),
+			gc.BootstrapCSS(),
+		),
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value(page.Title)),

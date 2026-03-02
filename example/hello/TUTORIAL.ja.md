@@ -5,7 +5,7 @@
 gerbera を使った最小限の Web ページを作成します。このチュートリアルでは以下の機能を学びます。
 
 - `NewServeMux` — 簡易 HTTP サーバーの作成
-- `BootStrapCDNHead` — Bootstrap CSS 付きの `<head>` 生成
+- `BootstrapCSS` — `<head>` に Bootstrap 5 CSS/JS を追加
 - `Body`, `H1`, `P` — 基本的な DOM 要素の構築
 - `Class`, `Value` — 属性・テキストの設定
 
@@ -60,7 +60,10 @@ func main() {
 	addr := flag.String("addr", ":8800", "running address")
 	flag.Parse()
 	mux := g.NewServeMux(
-		gc.BootStrapCDNHead("Gerbera Template Engine !"),
+		gd.Head(
+			gd.Title("Gerbera Template Engine !"),
+			gc.BootstrapCSS(),
+		),
 		body(),
 	)
 	log.Fatal(http.ListenAndServe(*addr, mux))
@@ -68,7 +71,8 @@ func main() {
 ```
 
 - `g.NewServeMux(head, body)` は `http.ServeMux` を返し、ルートパス `/` にハンドラを登録します
-- `gc.BootStrapCDNHead(title)` は Bootstrap CDN の CSS/JS を含む `<head>` を生成します
+- `gd.Head(children...)` は `<head>` 要素を作成し、子要素を追加します
+- `gc.BootstrapCSS()` は Bootstrap 5 の CSS/JS CDN リンクを追加し、charset/viewport メタタグが存在しなければ自動追加します
 
 ## 実行方法
 
@@ -95,7 +99,9 @@ go run example/hello/hello.go -addr :3000
 | 関数 | 説明 |
 |------|------|
 | `g.NewServeMux(children...)` | ルートパスにハンドラを持つ ServeMux を返す |
-| `gc.BootStrapCDNHead(title)` | Bootstrap CDN 付きの `<head>` を生成 |
+| `gc.BootstrapCSS()` | `<head>` に Bootstrap 5 CSS/JS を追加 |
+| `gd.Head(children...)` | `<head>` 要素 |
+| `gd.Title(text)` | `<title>` 要素 |
 | `gd.Body(children...)` | `<body>` 要素 |
 | `gd.H1(children...)` | `<h1>` 要素 |
 | `gd.P(children...)` | `<p>` 要素 |

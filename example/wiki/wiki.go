@@ -148,7 +148,10 @@ func listHandle(w http.ResponseWriter, _ *http.Request) {
 
 func viewLayout(w http.ResponseWriter, page *Page) error {
 	return g.ExecuteTemplate(w, "jp",
-		gc.BootStrapCDNHead(page.Title),
+		gd.Head(
+			gd.Title(page.Title),
+			gc.BootstrapCSS(),
+		),
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value(page.Title)),
@@ -169,7 +172,10 @@ func viewLayout(w http.ResponseWriter, page *Page) error {
 
 func editLayout(w http.ResponseWriter, page *Page) error {
 	return g.ExecuteTemplate(w, "jp",
-		gc.BootStrapCDNHead(page.Title),
+		gd.Head(
+			gd.Title(page.Title),
+			gc.BootstrapCSS(),
+		),
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value(page.Title)),
@@ -209,7 +215,10 @@ func listLayout(w http.ResponseWriter, pages []*Page) error {
 		list[i] = page
 	}
 	return g.ExecuteTemplate(w, "jp",
-		gc.BootStrapCDNHead("ページ一覧"),
+		gd.Head(
+			gd.Title("ページ一覧"),
+			gc.BootstrapCSS(),
+		),
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value("ページ一覧")),

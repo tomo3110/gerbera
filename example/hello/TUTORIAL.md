@@ -5,7 +5,7 @@
 Build a minimal web page using gerbera. This tutorial covers the following features:
 
 - `NewServeMux` — Creating a simple HTTP server
-- `BootStrapCDNHead` — Generating a `<head>` with Bootstrap CSS
+- `BootstrapCSS` — Adding Bootstrap 5 CSS/JS to `<head>`
 - `Body`, `H1`, `P` — Building basic DOM elements
 - `Class`, `Value` — Setting attributes and text content
 
@@ -60,7 +60,10 @@ func main() {
 	addr := flag.String("addr", ":8800", "running address")
 	flag.Parse()
 	mux := g.NewServeMux(
-		gc.BootStrapCDNHead("Gerbera Template Engine !"),
+		gd.Head(
+			gd.Title("Gerbera Template Engine !"),
+			gc.BootstrapCSS(),
+		),
 		body(),
 	)
 	log.Fatal(http.ListenAndServe(*addr, mux))
@@ -68,7 +71,8 @@ func main() {
 ```
 
 - `g.NewServeMux(head, body)` returns an `http.ServeMux` with a handler registered at the root path `/`
-- `gc.BootStrapCDNHead(title)` generates a `<head>` containing Bootstrap CDN CSS/JS links
+- `gd.Head(children...)` creates a `<head>` element with the given children
+- `gc.BootstrapCSS()` adds Bootstrap 5 CSS/JS CDN links and ensures charset/viewport meta tags are present
 
 ## Running
 
@@ -95,7 +99,9 @@ go run example/hello/hello.go -addr :3000
 | Function | Description |
 |----------|-------------|
 | `g.NewServeMux(children...)` | Returns a ServeMux with a handler at the root path |
-| `gc.BootStrapCDNHead(title)` | Generates a `<head>` with Bootstrap CDN |
+| `gc.BootstrapCSS()` | Adds Bootstrap 5 CSS/JS to `<head>` |
+| `gd.Head(children...)` | `<head>` element |
+| `gd.Title(text)` | `<title>` element |
 | `gd.Body(children...)` | `<body>` element |
 | `gd.H1(children...)` | `<h1>` element |
 | `gd.P(children...)` | `<p>` element |

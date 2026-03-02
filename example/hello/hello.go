@@ -15,7 +15,10 @@ func main() {
 	addr := flag.String("addr", ":8800", "running address")
 	flag.Parse()
 	mux := g.NewServeMux(
-		gc.BootStrapCDNHead("Gerbera Template Engine !"),
+		gd.Head(
+			gd.Title("Gerbera Template Engine !"),
+			gc.BootstrapCSS(),
+		),
 		body(),
 	)
 	log.Fatal(http.ListenAndServe(*addr, mux))
