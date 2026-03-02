@@ -3,7 +3,10 @@ package app
 import (
 	"bytes"
 	"os"
+	"os/signal"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	g "github.com/tomo3110/gerbera"
@@ -74,6 +77,12 @@ func Run(viewFactory func() View, opts ...Option) error {
 	HideCursor(os.Stdout)
 	defer ShowCursor(os.Stdout)
 
+	// Inject terminal size into params before Mount
+	if w, h, err := GetTerminalSize(int(os.Stdout.Fd())); err == nil {
+		cfg.params["width"] = strconv.Itoa(w)
+		cfg.params["height"] = strconv.Itoa(h)
+	}
+
 	// Mount
 	if err := view.Mount(cfg.params); err != nil {
 		return err
@@ -97,6 +106,17 @@ func Run(viewFactory func() View, opts ...Option) error {
 				return
 			}
 			eventCh <- ev
+		}
+	}()
+
+	// SIGWINCH handler for terminal resize
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGWINCH)
+	defer signal.Stop(sigCh)
+	go func() {
+		for range sigCh {
+			w, h, _ := GetTerminalSize(int(os.Stdout.Fd()))
+			eventCh <- Event{Type: EventResize, Width: w, Height: h}
 		}
 	}()
 
