@@ -15,7 +15,10 @@ func main() {
 	addr := flag.String("addr", ":8810", "running address")
 	flag.Parse()
 	mux := g.NewServeMux(
-		gc.MaterilalizecssCDNHead("ポートフォリオ - 田中太郎"),
+		gd.Head(
+			gd.Title("ポートフォリオ - 田中太郎"),
+			gc.MaterializeCSS(),
+		),
 		body(),
 	)
 	log.Printf("portfolio server running on %s", *addr)

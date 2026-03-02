@@ -4,7 +4,7 @@
 
 Build a portfolio site styled with Materialize CSS. This tutorial covers the following features:
 
-- `MaterilalizecssCDNHead` — Generating a `<head>` with Materialize CSS
+- `MaterializeCSS` — Adding Materialize CSS/JS to `<head>`
 - Semantic HTML5: `Header`, `Footer`, `Nav`, `Main`, `Section`, `Article`, `Aside`
 - `Img` — Image elements
 - `ID` — Setting the `id` attribute
@@ -20,12 +20,15 @@ Build a portfolio site styled with Materialize CSS. This tutorial covers the fol
 
 ```go
 mux := g.NewServeMux(
-	gc.MaterilalizecssCDNHead("Portfolio - Taro Tanaka"),
+	gd.Head(
+		gd.Title("Portfolio - Taro Tanaka"),
+		gc.MaterializeCSS(),
+	),
 	body(),
 )
 ```
 
-`gc.MaterilalizecssCDNHead(title)` generates a `<head>` containing Materialize CSS CDN links. It can be used as an alternative to Bootstrap.
+`gc.MaterializeCSS()` adds Materialize CSS CDN links to the parent `<head>` element and ensures charset/viewport meta tags are present. It can be used as an alternative to Bootstrap.
 
 ## Step 2: Semantic HTML5 Structure
 
@@ -146,7 +149,9 @@ Open http://localhost:8810 in your browser to verify.
 
 | Function | Description |
 |----------|-------------|
-| `gc.MaterilalizecssCDNHead(title)` | `<head>` with Materialize CSS CDN |
+| `gc.MaterializeCSS()` | Adds Materialize CSS/JS to `<head>` |
+| `gd.Head(children...)` | `<head>` element |
+| `gd.Title(text)` | `<title>` element |
 | `gd.Header(children...)` | `<header>` element |
 | `gd.Footer(children...)` | `<footer>` element |
 | `gd.Nav(children...)` | `<nav>` element |

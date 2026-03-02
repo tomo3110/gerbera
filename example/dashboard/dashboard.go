@@ -53,7 +53,10 @@ func listHandle(w http.ResponseWriter, _ *http.Request) {
 		list[i] = r
 	}
 	if err := g.ExecuteTemplate(w, "ja",
-		gc.BootStrapCDNHead("社員ダッシュボード"),
+		gd.Head(
+			gd.Title("社員ダッシュボード"),
+			gc.BootstrapCSS(),
+		),
 		gd.Body(
 			gp.Class("container"),
 			gd.H2(
@@ -124,7 +127,10 @@ func detailHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := g.ExecuteTemplate(w, "ja",
-		gc.BootStrapCDNHead(found.Name+" - 詳細"),
+		gd.Head(
+			gd.Title(found.Name+" - 詳細"),
+			gc.BootstrapCSS(),
+		),
 		gd.Body(
 			gp.Class("container"),
 			gd.H2(

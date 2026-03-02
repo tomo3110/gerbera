@@ -46,7 +46,10 @@ func main() {
 
 func formHandle(w http.ResponseWriter, _ *http.Request) {
 	if err := g.ExecuteTemplate(w, "ja",
-		gc.BootStrapCDNHead("アンケートフォーム"),
+		gd.Head(
+			gd.Title("アンケートフォーム"),
+			gc.BootstrapCSS(),
+		),
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value("アンケートフォーム")),
@@ -176,7 +179,10 @@ func resultsHandle(w http.ResponseWriter, _ *http.Request) {
 	mu.Unlock()
 
 	if err := g.ExecuteTemplate(w, "ja",
-		gc.BootStrapCDNHead("アンケート結果"),
+		gd.Head(
+			gd.Title("アンケート結果"),
+			gc.BootstrapCSS(),
+		),
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value("アンケート結果")),
