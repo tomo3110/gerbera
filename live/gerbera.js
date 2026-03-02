@@ -18,10 +18,54 @@
     return _decEl.value;
   }
 
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
+  // Check if a node is in the SVG namespace.
+  function isSVG(n) {
+    return n && n.namespaceURI === SVG_NS;
+  }
+
+  // Parse an HTML fragment into a DocumentFragment.
+  // When the context node is inside an SVG, parse as SVG XML so that
+  // child elements are created in the SVG namespace (not XHTML).
+  function parseFragment(html, ctx) {
+    if (isSVG(ctx)) {
+      var wrap = '<svg xmlns="' + SVG_NS + '">' + html + '</svg>';
+      var doc = new DOMParser().parseFromString(wrap, "image/svg+xml");
+      if (!doc.querySelector("parsererror")) {
+        var frag = document.createDocumentFragment();
+        var root = doc.documentElement;
+        for (var i = 0; i < root.childNodes.length; i++) {
+          frag.appendChild(document.importNode(root.childNodes[i], true));
+        }
+        return frag;
+      }
+      // Fallback to HTML parsing on XML parse error
+    }
+    var t = document.createElement("template");
+    t.innerHTML = html;
+    return t.content;
+  }
+
   // Track IME composition state to avoid disrupting input during composition.
   var _composing = false;
   document.addEventListener("compositionstart", function() { _composing = true; });
-  document.addEventListener("compositionend", function() { _composing = false; });
+  document.addEventListener("compositionend", function(e) {
+    _composing = false;
+    // In Safari, the final input event fires before compositionend and gets
+    // suppressed by the _composing guard. Manually send the composed value
+    // so the server state stays in sync.
+    var el = e.target;
+    if (el && el.getAttribute) {
+      var inputEvt = el.getAttribute("gerbera-input");
+      if (inputEvt) {
+        var p = {value: el.value};
+        var gv = el.getAttribute("gerbera-value");
+        if (gv) p.value = gv;
+        send(inputEvt, p);
+      }
+    }
+  });
 
   var EVENTS = ["click","input","change","submit","focus","blur","keydown","dblclick","mouseenter","mouseleave"];
   var TOUCH_EVENTS = ["touchstart","touchend","touchmove"];
@@ -360,7 +404,12 @@
           }
           break;
         case "html":
-          n.innerHTML = v;
+          if (isSVG(n)) {
+            while (n.firstChild) n.removeChild(n.firstChild);
+            if (v) n.appendChild(parseFragment(v, n));
+          } else {
+            n.innerHTML = v;
+          }
           break;
         case "attr":
           var dv = decodeAttr(v);
@@ -375,12 +424,15 @@
           n.removeAttribute(p.key);
           break;
         case "class":
-          n.className = v;
+          if (isSVG(n)) {
+            n.setAttribute("class", v);
+          } else {
+            n.className = v;
+          }
           break;
         case "insert": {
-          var t = document.createElement("template");
-          t.innerHTML = p.html;
-          n.insertBefore(t.content, n.children[p.idx] || null);
+          var frag = parseFragment(p.html, n);
+          n.insertBefore(frag, n.children[p.idx] || null);
           break;
         }
         case "remove":
@@ -394,13 +446,12 @@
           }
           break;
         case "replace": {
-          var t = document.createElement("template");
-          t.innerHTML = p.html;
+          var frag = parseFragment(p.html, n.parentNode);
           // Fire destroyed hook on old element
           if (n._gbHookInstance && n._gbHookInstance.destroyed) {
             n._gbHookInstance.destroyed.call(n._gbHookInstance, n);
           }
-          n.replaceWith(t.content);
+          n.replaceWith(frag);
           break;
         }
       }
@@ -472,7 +523,14 @@
                       else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
                     } else { n.textContent = v; }
                     break;
-                  case "html": n.innerHTML = v; break;
+                  case "html":
+                    if (isSVG(n)) {
+                      while (n.firstChild) n.removeChild(n.firstChild);
+                      if (v) n.appendChild(parseFragment(v, n));
+                    } else {
+                      n.innerHTML = v;
+                    }
+                    break;
                   case "attr":
                     var dv = decodeAttr(v);
                     n.setAttribute(p.key, dv);
@@ -483,20 +541,24 @@
                     }
                     break;
                   case "rattr": n.removeAttribute(p.key); break;
-                  case "class": n.className = v; break;
+                  case "class":
+                    if (isSVG(n)) {
+                      n.setAttribute("class", v);
+                    } else {
+                      n.className = v;
+                    }
+                    break;
                   case "insert": {
-                    var t = document.createElement("template");
-                    t.innerHTML = p.html;
-                    n.insertBefore(t.content, n.children[p.idx] || null);
+                    var frag = parseFragment(p.html, n);
+                    n.insertBefore(frag, n.children[p.idx] || null);
                     break;
                   }
                   case "remove":
                     if (n.children[p.idx]) n.removeChild(n.children[p.idx]);
                     break;
                   case "replace": {
-                    var t = document.createElement("template");
-                    t.innerHTML = p.html;
-                    n.replaceWith(t.content);
+                    var frag = parseFragment(p.html, n.parentNode);
+                    n.replaceWith(frag);
                     break;
                   }
                 }

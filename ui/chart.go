@@ -356,8 +356,8 @@ func describeArc(cx, cy, r, startAngle, endAngle float64) string {
 	if endAngle-startAngle > math.Pi {
 		largeArc = 1
 	}
-	return fmt.Sprintf("M %s %s A %s %s 0 %d 1 %s %s L %s %s Z",
-		ff(cx), ff(cy), ff(r), ff(r), largeArc, ff(x2), ff(y2), ff(x1), ff(y1))
+	return fmt.Sprintf("M %s %s L %s %s A %s %s 0 %d 1 %s %s Z",
+		ff(cx), ff(cy), ff(x1), ff(y1), ff(r), ff(r), largeArc, ff(x2), ff(y2))
 }
 
 // ========== Public chart functions ==========

@@ -1685,11 +1685,38 @@ func TestLetterAvatar(t *testing.T) {
 }
 
 func TestLetterAvatarDeterministic(t *testing.T) {
+	// Same name should always produce the same background color
 	out1 := render(t, LetterAvatar("Alice", AvatarOpts{}))
-	out2 := render(t, LetterAvatar("Alice", AvatarOpts{}))
-	if out1 != out2 {
-		t.Error("LetterAvatar should be deterministic for the same name")
+	out2 := render(t, LetterAvatar("Bob", AvatarOpts{}))
+	// Extract background colors
+	c1 := extractBgColor(out1)
+	c2 := extractBgColor(out2)
+	if c1 == "" {
+		t.Error("LetterAvatar should have a background-color")
 	}
+	if c1 == c2 {
+		t.Error("Different names should (likely) produce different colors")
+	}
+	// Same name produces same color
+	out3 := render(t, LetterAvatar("Alice", AvatarOpts{}))
+	c3 := extractBgColor(out3)
+	if c1 != c3 {
+		t.Errorf("Same name should produce same color: got %s and %s", c1, c3)
+	}
+}
+
+func extractBgColor(html string) string {
+	prefix := "background-color:"
+	idx := strings.Index(html, prefix)
+	if idx == -1 {
+		return ""
+	}
+	start := idx + len(prefix)
+	end := strings.IndexByte(html[start:], '"')
+	if end == -1 {
+		return ""
+	}
+	return html[start : start+end]
 }
 
 func TestAvatarGroup(t *testing.T) {
