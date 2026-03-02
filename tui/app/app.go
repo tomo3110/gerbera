@@ -1,7 +1,9 @@
 package app
 
 import (
+	"bytes"
 	"os"
+	"strings"
 	"time"
 
 	g "github.com/tomo3110/gerbera"
@@ -151,13 +153,22 @@ func renderView(view View) error {
 		}
 	}
 
-	ClearScreen(os.Stdout)
-
+	// Render into a buffer first to avoid flicker.
+	var buf bytes.Buffer
 	for _, child := range root.Children {
-		if err := tui.Render(os.Stdout, child); err != nil {
+		if err := tui.Render(&buf, child); err != nil {
 			return err
 		}
-		os.Stdout.WriteString("\n")
+		buf.WriteByte('\n')
 	}
+
+	// In raw mode, \n (LF) only moves the cursor down without
+	// returning to column 0. Replace \n with \r\n (CR+LF) so
+	// that each line starts at the left edge.
+	output := strings.ReplaceAll(buf.String(), "\n", "\r\n")
+
+	// Write screen-clear + content as a single write to reduce flicker.
+	ClearScreen(os.Stdout)
+	os.Stdout.WriteString(output)
 	return nil
 }
