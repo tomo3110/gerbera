@@ -14,6 +14,9 @@ HTML is built programmatically by composing `ComponentFunc` functions (`func(*El
 - **DOM diffing** — Automatic minimal DOM patching through element tree diffing (`diff/` package)
 - **XSS prevention** — Attribute values are automatically escaped via `html.EscapeString`
 - **Zero dependencies for core** — Only `github.com/gorilla/websocket` is required, and only by the `live/` package
+- **Optimized rendering** — Zero-allocation render layer with `sync.Pool` reuse, pre-computed indentation, and direct `bufio.Writer` writes
+- **Accessibility** — Comprehensive ARIA attribute helpers in `property/` package
+- **Testing utilities** — `live.TestView` for unit-testing LiveView implementations without a browser
 
 ## Quick Start
 
@@ -124,10 +127,10 @@ gerbera/
 ├── map.go             # ConvertToMap interface, Map type
 │
 ├── dom/               # HTML element wrappers (H1, Div, Body, Span, Details, etc.)
-├── property/          # Attribute setters (Class, Attr, ID, Href, Type, For, etc.)
+├── property/          # Attribute setters (Class, Attr, ID, ARIA helpers, etc.)
 ├── expr/              # Control flow: If(), Unless(), Each()
 ├── styles/            # Style(), CSS(), ScopedCSS() for CSS handling
-├── components/        # Pre-built head components (Bootstrap CDN, etc.)
+├── components/        # Pre-built components (Bootstrap CDN, Tabs, etc.)
 ├── diff/              # Element tree diffing and fragment rendering
 ├── live/              # LiveView: View interface, WebSocket handler, client JS
 │
@@ -139,6 +142,10 @@ gerbera/
     ├── report/        # Report output (stdout)
     ├── wiki/          # Multi-route Wiki (server-side rendering)
     ├── counter/       # LiveView counter
+    ├── clock/         # LiveView clock (TickerView)
+    ├── jscommand/     # LiveView JS command examples
+    ├── upload/        # LiveView file upload
+    ├── tabview/       # LiveView tab component demo
     ├── wiki_live/     # LiveView Wiki (SPA-style)
     └── mdviewer/      # LiveView Markdown viewer/editor
 ```
@@ -196,7 +203,10 @@ Event bindings:
 | `gl.Debounce(ms)` | Debounces any event — waits for idle before sending |
 | `gl.DblClick(event)` | Binds a double-click event |
 | `gl.MouseEnter(event)` / `gl.MouseLeave(event)` | Mouse enter/leave events |
-| `gl.TouchStart(event)` / `gl.TouchEnd(event)` | Touch events |
+| `gl.TouchStart(event)` / `gl.TouchEnd(event)` / `gl.TouchMove(event)` | Touch events |
+| `gl.Hook(name)` | Attaches a client-side JS hook |
+| `gl.LiveLink(href)` | Client-side navigation without full page reload |
+| `gl.Loading(cssClass)` | Sets a CSS class during event processing |
 
 ### TickerView
 
@@ -233,6 +243,52 @@ func (v *MyView) HandleEvent(event string, payload gl.Payload) error {
 
 Available commands: `ScrollTo`, `ScrollIntoPct`, `Focus`, `Blur`, `SetAttribute`, `RemoveAttribute`, `AddClass`, `RemoveClass`, `ToggleClass`, `SetProperty`, `Dispatch`, `Show`, `Hide`, `Toggle`.
 
+### Upload Support
+
+Implement the `UploadHandler` interface for file upload handling:
+
+```go
+type MyView struct {
+    gl.CommandQueue
+    // ...
+}
+
+func (v *MyView) HandleUpload(event string, files []gl.UploadedFile) error {
+    for _, f := range files {
+        // f.Name, f.Size, f.ContentType, f.Data
+    }
+    return nil
+}
+```
+
+Event bindings: `gl.Upload(event)`, `gl.UploadAccept(accept)`, `gl.UploadMultiple()`, `gl.UploadMaxSize(bytes)`.
+
+### Form Utilities
+
+The `live/` package includes form helpers for building accessible forms:
+
+```go
+gl.Field("email", gl.FieldOpts{
+    Label: "Email", Type: "email", Placeholder: "you@example.com",
+})
+gl.TextareaField("bio", gl.FieldOpts{Label: "Bio"})
+gl.SelectField("role", []gl.SelectOption{
+    {Value: "admin", Label: "Admin"},
+    {Value: "user", Label: "User"},
+}, gl.FieldOpts{Label: "Role"})
+```
+
+### Testing LiveViews
+
+Use `live.TestView` to unit-test LiveView implementations without a real WebSocket connection:
+
+```go
+tv := gl.NewTestView(&MyView{})
+html, _ := tv.RenderHTML()
+patches, _ := tv.SimulateEvent("inc", gl.Payload{})
+fmt.Println(tv.PatchCount(), tv.HasPatch(diff.OpSetText))
+```
+
 ### Property Helpers
 
 Common HTML attributes have dedicated helpers in the `property/` package:
@@ -248,6 +304,24 @@ Common HTML attributes have dedicated helpers in the `property/` package:
 | `gp.Src(url)` | `gp.Attr("src", url)` |
 | `gp.ClassIf(cond, name)` | Conditional CSS class |
 | `gp.ClassMap(map)` | Multiple conditional CSS classes |
+| `gp.DataAttr(key, val)` | `gp.Attr("data-"+key, val)` |
+| `gp.Tabindex(n)` | `gp.Attr("tabindex", n)` |
+| `gp.Readonly(true)` | `gp.Attr("readonly", "readonly")` |
+| `gp.Title(text)` | `gp.Attr("title", text)` |
+
+ARIA accessibility helpers:
+
+| Function | Equivalent |
+|----------|------------|
+| `gp.Role(role)` | `gp.Attr("role", role)` |
+| `gp.AriaLabel(label)` | `gp.Attr("aria-label", label)` |
+| `gp.AriaHidden(bool)` | `gp.Attr("aria-hidden", "true"/"false")` |
+| `gp.AriaExpanded(bool)` | `gp.Attr("aria-expanded", "true"/"false")` |
+| `gp.AriaSelected(bool)` | `gp.Attr("aria-selected", "true"/"false")` |
+| `gp.AriaControls(id)` | `gp.Attr("aria-controls", id)` |
+| `gp.AriaLive(mode)` | `gp.Attr("aria-live", mode)` |
+
+And more: `AriaDescribedBy`, `AriaLabelledBy`, `AriaDisabled`, `AriaAtomic`, `AriaCurrent`, `AriaHasPopup`, `AriaInvalid`, `AriaRequired`, `AriaValueNow`, `AriaValueMin`, `AriaValueMax`.
 
 ### Styles Helpers
 
@@ -273,6 +347,7 @@ Handler options:
 | `gl.WithLang(lang)` | Sets HTML `lang` attribute (default `"ja"`) |
 | `gl.WithSessionTTL(d)` | Sets session timeout (default 5 minutes) |
 | `gl.WithDebug()` | Enables browser DevPanel and server-side structured logging |
+| `gl.WithMiddleware(mw)` | Adds HTTP middleware to the handler |
 
 ### Debug Mode
 
@@ -305,7 +380,11 @@ Each example includes bilingual tutorials (`TUTORIAL.md` / `TUTORIAL.ja.md`).
 | [report](example/report/) | Report output | stdout | `go run example/report/report.go` |
 | [wiki](example/wiki/) | Multi-route Wiki (SSR) | :8880 | `go run example/wiki/wiki.go` |
 | [counter](example/counter/) | LiveView counter | :8840 | `go run example/counter/counter.go` |
-| [wiki_live](example/wiki_live/) | LiveView Wiki (SPA) | :8850 | `go run example/wiki_live/wiki_gl.go` |
+| [clock](example/clock/) | LiveView clock (TickerView) | :8870 | `go run example/clock/clock.go` |
+| [jscommand](example/jscommand/) | LiveView JS commands | :8875 | `go run example/jscommand/jscommand.go` |
+| [upload](example/upload/) | LiveView file upload | :8885 | `go run example/upload/upload.go` |
+| [tabview](example/tabview/) | LiveView tab component | :8890 | `go run example/tabview/tabview.go` |
+| [wiki_live](example/wiki_live/) | LiveView Wiki (SPA) | :8850 | `go run example/wiki_live/wiki_live.go` |
 | [mdviewer](example/mdviewer/) | LiveView Markdown Viewer | :8860 | `cd example/mdviewer && go run .` |
 
 ## Development
@@ -318,6 +397,14 @@ go test -v ./...  # Verbose test output
 
 Requires Go 1.22 or later.
 
+### Benchmarks
+
+```bash
+go test -bench=. -benchmem ./...   # Run all benchmarks with memory stats
+```
+
+The rendering pipeline is optimized with `sync.Pool` buffer reuse, zero-allocation core render path, and pre-computed indentation strings.
+
 ## License
 
-MIT
+[MIT](LICENSE)
