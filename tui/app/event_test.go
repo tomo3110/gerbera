@@ -75,3 +75,31 @@ func TestParseInputUTF8(t *testing.T) {
 		t.Errorf("expected rune あ, got %v", ev.Runes)
 	}
 }
+
+func TestParseInputIME(t *testing.T) {
+	// IME confirmation sends multiple runes in a single read.
+	ev := parseInput([]byte("日本語"))
+	if ev.Key != "日本語" {
+		t.Errorf("expected key=日本語, got %q", ev.Key)
+	}
+	if len(ev.Runes) != 3 {
+		t.Fatalf("expected 3 runes, got %d", len(ev.Runes))
+	}
+	want := []rune{'日', '本', '語'}
+	for i, r := range ev.Runes {
+		if r != want[i] {
+			t.Errorf("rune[%d] = %q, want %q", i, r, want[i])
+		}
+	}
+}
+
+func TestParseInputMultiASCII(t *testing.T) {
+	// Pasted ASCII text arrives as multiple bytes in one read.
+	ev := parseInput([]byte("hello"))
+	if ev.Key != "hello" {
+		t.Errorf("expected key=hello, got %q", ev.Key)
+	}
+	if len(ev.Runes) != 5 {
+		t.Errorf("expected 5 runes, got %d", len(ev.Runes))
+	}
+}

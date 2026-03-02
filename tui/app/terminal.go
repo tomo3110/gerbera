@@ -99,13 +99,23 @@ func parseInput(buf []byte) Event {
 		return parseEscapeSequence(buf)
 	}
 
-	// Normal UTF-8 character
-	r, _ := utf8.DecodeRune(buf)
-	if r != utf8.RuneError {
-		return Event{Type: EventKey, Key: string(r), Runes: []rune{r}}
+	// Normal UTF-8 characters.
+	// IME confirmation may deliver multiple runes in a single read,
+	// so decode all runes from the buffer.
+	var runes []rune
+	for len(buf) > 0 {
+		r, size := utf8.DecodeRune(buf)
+		if r == utf8.RuneError {
+			break
+		}
+		runes = append(runes, r)
+		buf = buf[size:]
+	}
+	if len(runes) > 0 {
+		return Event{Type: EventKey, Key: string(runes), Runes: runes}
 	}
 
-	return Event{Type: EventKey, Key: string(buf)}
+	return Event{Type: EventKey, Key: ""}
 }
 
 func parseEscapeSequence(buf []byte) Event {
