@@ -2146,4 +2146,34 @@ details[open] > .g-accordion-header::before,
   justify-content: center;
   padding: var(--g-space-md);
 }
+
+/* Chart */
+.g-chart { font-family: var(--g-font); max-width: 100%; height: auto; }
+.g-chart-grid line { stroke: var(--g-border); stroke-opacity: 0.5; stroke-dasharray: 3 3; }
+.g-chart-axes line { stroke: var(--g-text-tertiary); }
+.g-chart-axes text { fill: var(--g-text-secondary); font-size: 11px; }
+.g-chart-title { fill: var(--g-text); font-size: 14px; font-weight: 600; text-anchor: middle; }
+.g-chart-data rect:hover { opacity: 0.8; }
+.g-chart-data circle:hover { opacity: 0.85; }
+.g-chart-data path:hover { opacity: 0.8; }
+.g-chart-line { fill: none; stroke-width: 2; }
+.g-chart-point { stroke: var(--g-bg-surface); stroke-width: 2; }
+.g-chart-slice { stroke: var(--g-bg-surface); stroke-width: 2; }
+.g-chart-legend text { fill: var(--g-text-secondary); }
+.g-chart-tooltip { position: absolute; background: var(--g-bg-surface); border: 1px solid var(--g-border); border-radius: var(--g-radius); padding: var(--g-space-sm); box-shadow: var(--g-shadow); font-size: 12px; pointer-events: none; z-index: 10; }
+
+/* Avatar */
+.g-avatar { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; font-weight: 600; color: var(--g-text-inverse); user-select: none; }
+.g-avatar-circle { border-radius: 50%; }
+.g-avatar-rounded { border-radius: var(--g-radius); }
+.g-avatar-xs { width: 24px; height: 24px; font-size: 10px; }
+.g-avatar-sm { width: 32px; height: 32px; font-size: 12px; }
+.g-avatar-md { width: 40px; height: 40px; font-size: 15px; }
+.g-avatar-lg { width: 48px; height: 48px; font-size: 18px; }
+.g-avatar-xl { width: 64px; height: 64px; font-size: 24px; }
+.g-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.g-avatar-group { display: inline-flex; align-items: center; }
+.g-avatar-group .g-avatar { border: 2px solid var(--g-bg-surface); }
+.g-avatar-group .g-avatar + .g-avatar { margin-left: -8px; }
+.g-avatar-group-more { background: var(--g-bg-inset); color: var(--g-text-secondary); font-size: 11px; }
 `

@@ -96,6 +96,14 @@ type CatalogView struct {
 	TimeHour   int
 	TimeMinute int
 	TimeSecond int
+
+	// Chart demo
+	ChartType      string
+	ChartHoverInfo string
+	ChartClickInfo string
+
+	// Avatar demo
+	AvatarClickInfo string
 }
 
 func (v *CatalogView) Mount(params gl.Params) error {
@@ -120,6 +128,7 @@ func (v *CatalogView) Mount(params gl.Params) error {
 	v.TimeHour = 14
 	v.TimeMinute = 30
 	v.TimeSecond = 0
+	v.ChartType = "line"
 	v.ChatMessages = []gu.ChatMessage{
 		{Author: "Alice", Content: "Hello! Welcome to the chat demo.", Timestamp: "10:00", Sent: false, Avatar: "A"},
 		{Content: "Thanks! This looks great.", Timestamp: "10:01", Sent: true},
@@ -206,6 +215,9 @@ func (v *CatalogView) renderNavLinks() g.ComponentFunc {
 		navLink(v, "drawer", "Drawer"),
 		navLink(v, "searchselect", "SearchSelect"),
 		navLink(v, "confirm", "Confirm"),
+		navDividerLabel("Data Visualization"),
+		navLink(v, "chart", "Charts"),
+		navLink(v, "avatar", "Avatar"),
 		navDividerLabel("Theming"),
 		navLink(v, "theme", "Theme"),
 	)
@@ -295,6 +307,10 @@ func (v *CatalogView) renderContent() g.ComponentFunc {
 		body = v.pageSearchSelect()
 	case "confirm":
 		body = v.pageConfirm()
+	case "chart":
+		body = v.pageChart()
+	case "avatar":
+		body = v.pageAvatar()
 	case "theme":
 		body = v.pageTheme()
 	default:
@@ -310,8 +326,8 @@ func (v *CatalogView) pageOverview() g.ComponentFunc {
 	return gu.Stack(
 		gu.Alert("Welcome to the Gerbera UI Widget Catalog. Use the sidebar to browse components. Responsive: resize your browser to see mobile layout.", "info"),
 		gu.Grid(gu.GridCols3,
-			gu.StatCard("Static Widgets", "18"),
-			gu.StatCard("Live Widgets", "12"),
+			gu.StatCard("Static Widgets", "20"),
+			gu.StatCard("Live Widgets", "14"),
 			gu.StatCard("Icons", fmt.Sprintf("%d", len(gu.IconNames()))),
 		),
 	)
@@ -1546,6 +1562,20 @@ func (v *CatalogView) HandleEvent(event string, payload gl.Payload) error {
 	// Theme
 	case "setTheme":
 		v.ThemeMode = payload["value"]
+
+	// Chart
+	case "chartTypeChange":
+		v.ChartType = payload["value"]
+	case "chartClick":
+		v.ChartClickInfo = payload["value"]
+	case "chartHover":
+		v.ChartHoverInfo = payload["value"]
+	case "chartLeave":
+		v.ChartHoverInfo = ""
+
+	// Avatar
+	case "avatarClick":
+		v.AvatarClickInfo = payload["value"]
 	}
 	return nil
 }
@@ -1653,6 +1683,238 @@ gu.ThemeAuto(gu.ThemeConfig{}, gu.ThemeConfig{})`),
 			),
 		)),
 	)
+}
+
+func (v *CatalogView) chartSampleData() ([]gu.Series, []gu.DataPoint) {
+	revenue := gu.Series{
+		Name: "Revenue",
+		Points: []gu.DataPoint{
+			{Label: "Jan", Value: 420},
+			{Label: "Feb", Value: 380},
+			{Label: "Mar", Value: 510},
+			{Label: "Apr", Value: 470},
+			{Label: "May", Value: 600},
+			{Label: "Jun", Value: 550},
+		},
+	}
+	expenses := gu.Series{
+		Name: "Expenses",
+		Points: []gu.DataPoint{
+			{Label: "Jan", Value: 300},
+			{Label: "Feb", Value: 320},
+			{Label: "Mar", Value: 350},
+			{Label: "Apr", Value: 340},
+			{Label: "May", Value: 380},
+			{Label: "Jun", Value: 400},
+		},
+	}
+	series := []gu.Series{revenue, expenses}
+	pieData := []gu.DataPoint{
+		{Label: "Product", Value: 45},
+		{Label: "Service", Value: 30},
+		{Label: "Support", Value: 15},
+		{Label: "Other", Value: 10},
+	}
+	return series, pieData
+}
+
+func (v *CatalogView) pageChart() g.ComponentFunc {
+	series, pieData := v.chartSampleData()
+
+	chartTypes := []gu.ButtonGroupItem{
+		{Label: "Line", Value: "line", Active: v.ChartType == "line"},
+		{Label: "Column", Value: "column", Active: v.ChartType == "column"},
+		{Label: "Bar", Value: "bar", Active: v.ChartType == "bar"},
+		{Label: "Pie", Value: "pie", Active: v.ChartType == "pie"},
+		{Label: "Scatter", Value: "scatter", Active: v.ChartType == "scatter"},
+		{Label: "Histogram", Value: "histogram", Active: v.ChartType == "histogram"},
+		{Label: "Stacked", Value: "stacked", Active: v.ChartType == "stacked"},
+	}
+
+	liveOpts := gul.LiveChartOpts{
+		ChartOpts: gu.ChartOpts{
+			Width:       600,
+			Height:      400,
+			Title:       "Monthly Data",
+			ShowGrid:    true,
+			ShowLegend:  true,
+			ShowTooltip: true,
+		},
+		ClickEvent:      "chartClick",
+		MouseEnterEvent: "chartHover",
+		MouseLeaveEvent: "chartLeave",
+	}
+
+	var liveChart g.ComponentFunc
+	switch v.ChartType {
+	case "column":
+		liveChart = gul.ColumnChart(series, liveOpts)
+	case "bar":
+		liveChart = gul.BarChart(series, liveOpts)
+	case "pie":
+		liveChart = gul.PieChart(pieData, liveOpts)
+	case "scatter":
+		liveChart = gul.ScatterPlot(series, liveOpts)
+	case "histogram":
+		histValues := []float64{10, 15, 20, 25, 30, 30, 35, 40, 45, 50, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95}
+		liveChart = gul.Histogram(histValues, gul.LiveHistogramOpts{
+			HistogramOpts:   gu.HistogramOpts{ChartOpts: liveOpts.ChartOpts, BinCount: 8},
+			ClickEvent:      "chartClick",
+			MouseEnterEvent: "chartHover",
+			MouseLeaveEvent: "chartLeave",
+		})
+	case "stacked":
+		liveChart = gul.StackedBarChart(series, liveOpts)
+	default:
+		liveChart = gul.LineChart(series, liveOpts)
+	}
+
+	items := []g.ComponentFunc{
+		section("Charts (Live)", "Interactive charts with server-driven events. Click on data points."),
+		gul.ButtonGroup(gul.ButtonGroupOpts{
+			Items:       chartTypes,
+			ChangeEvent: "chartTypeChange",
+		}),
+		gd.Div(gp.Attr("style", "margin-top:16px"), liveChart),
+	}
+
+	// Hover info
+	if v.ChartHoverInfo != "" {
+		items = append(items, gd.Div(
+			gp.Class("g-chart-tooltip"),
+			gp.Attr("style", "position:relative;display:inline-block;margin-top:8px"),
+			gp.Value("Hover: "+v.ChartHoverInfo),
+		))
+	}
+
+	// Click info
+	if v.ChartClickInfo != "" {
+		items = append(items, gd.Div(gp.Attr("style", "margin-top:8px"),
+			gu.Alert("Clicked: "+v.ChartClickInfo, "info"),
+		))
+	}
+
+	// Static chart gallery
+	staticOpts := gu.ChartOpts{
+		Width:       400,
+		Height:      280,
+		ShowGrid:    true,
+		ShowLegend:  true,
+		ShowTooltip: true,
+	}
+
+	items = append(items,
+		section("Static Chart Gallery", "All 7 chart types rendered as static SVG."),
+		gu.Grid(gu.GridCols2,
+			gu.Card(
+				gu.CardHeader("Line Chart"),
+				gd.Div(gp.Class("g-page-body"),
+					gu.LineChart(series, gu.ChartOpts{Width: 400, Height: 280, ShowGrid: true, ShowLegend: true, ShowTooltip: true, Title: "Line"}),
+				),
+			),
+			gu.Card(
+				gu.CardHeader("Column Chart"),
+				gd.Div(gp.Class("g-page-body"),
+					gu.ColumnChart(series, gu.ChartOpts{Width: 400, Height: 280, ShowGrid: true, ShowLegend: true, Title: "Column"}),
+				),
+			),
+			gu.Card(
+				gu.CardHeader("Bar Chart"),
+				gd.Div(gp.Class("g-page-body"),
+					gu.BarChart(series, gu.ChartOpts{Width: 400, Height: 280, ShowGrid: true, ShowLegend: true, Title: "Bar"}),
+				),
+			),
+			gu.Card(
+				gu.CardHeader("Pie Chart"),
+				gd.Div(gp.Class("g-page-body"),
+					gu.PieChart(pieData, gu.ChartOpts{Width: 400, Height: 280, ShowLegend: true, Title: "Pie"}),
+				),
+			),
+			gu.Card(
+				gu.CardHeader("Scatter Plot"),
+				gd.Div(gp.Class("g-page-body"),
+					gu.ScatterPlot(series, staticOpts),
+				),
+			),
+			gu.Card(
+				gu.CardHeader("Histogram"),
+				gd.Div(gp.Class("g-page-body"),
+					gu.Histogram([]float64{10, 15, 20, 25, 30, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100},
+						gu.HistogramOpts{ChartOpts: staticOpts, BinCount: 8}),
+				),
+			),
+			gu.Card(
+				gu.CardHeader("Stacked Bar Chart"),
+				gd.Div(gp.Class("g-page-body"),
+					gu.StackedBarChart(series, gu.ChartOpts{Width: 400, Height: 280, ShowGrid: true, ShowLegend: true, Title: "Stacked"}),
+				),
+			),
+		),
+	)
+
+	return gu.Stack(items...)
+}
+
+func (v *CatalogView) pageAvatar() g.ComponentFunc {
+	items := []g.ComponentFunc{
+		section("Image Avatar", "Avatar with an image. Sizes: xs, sm, md, lg, xl."),
+		gu.HStack(
+			gu.ImageAvatar("https://i.pravatar.cc/64?u=1", gu.AvatarOpts{Size: "xs", Alt: "User 1"}),
+			gu.ImageAvatar("https://i.pravatar.cc/64?u=2", gu.AvatarOpts{Size: "sm", Alt: "User 2"}),
+			gu.ImageAvatar("https://i.pravatar.cc/64?u=3", gu.AvatarOpts{Size: "md", Alt: "User 3"}),
+			gu.ImageAvatar("https://i.pravatar.cc/64?u=4", gu.AvatarOpts{Size: "lg", Alt: "User 4"}),
+			gu.ImageAvatar("https://i.pravatar.cc/64?u=5", gu.AvatarOpts{Size: "xl", Alt: "User 5"}),
+		),
+
+		section("Rounded Shape", "Avatar with rounded corners instead of circle."),
+		gu.HStack(
+			gu.ImageAvatar("https://i.pravatar.cc/64?u=6", gu.AvatarOpts{Size: "lg", Shape: "rounded", Alt: "Rounded"}),
+			gu.LetterAvatar("Rounded", gu.AvatarOpts{Size: "lg", Shape: "rounded"}),
+		),
+
+		section("Letter Avatar", "Avatar with initials. Background color is deterministic from the name."),
+		gu.HStack(
+			gu.LetterAvatar("Alice", gu.AvatarOpts{Size: "lg"}),
+			gu.LetterAvatar("Bob", gu.AvatarOpts{Size: "lg"}),
+			gu.LetterAvatar("Charlie", gu.AvatarOpts{Size: "lg"}),
+			gu.LetterAvatar("Diana", gu.AvatarOpts{Size: "lg"}),
+			gu.LetterAvatar("Eve", gu.AvatarOpts{Size: "lg"}),
+			gu.LetterAvatar("Frank", gu.AvatarOpts{Size: "lg"}),
+		),
+
+		section("Avatar Group", "Overlapping avatar group with optional max display count."),
+		gu.AvatarGroup([]g.ComponentFunc{
+			gu.LetterAvatar("Alice", gu.AvatarOpts{}),
+			gu.LetterAvatar("Bob", gu.AvatarOpts{}),
+			gu.LetterAvatar("Charlie", gu.AvatarOpts{}),
+			gu.LetterAvatar("Diana", gu.AvatarOpts{}),
+			gu.LetterAvatar("Eve", gu.AvatarOpts{}),
+		}, gu.AvatarGroupOpts{Max: 3}),
+
+		section("Live Avatar (Click)", "Click on avatars to see the event payload."),
+		gu.HStack(
+			gul.ImageAvatar("https://i.pravatar.cc/64?u=10", gul.LiveAvatarOpts{
+				AvatarOpts: gu.AvatarOpts{Size: "lg", Alt: "Clickable"},
+				ClickEvent: "avatarClick",
+			}),
+			gul.LetterAvatar("Alice", gul.LiveAvatarOpts{
+				AvatarOpts: gu.AvatarOpts{Size: "lg"},
+				ClickEvent: "avatarClick",
+			}),
+			gul.LetterAvatar("Bob", gul.LiveAvatarOpts{
+				AvatarOpts: gu.AvatarOpts{Size: "lg"},
+				ClickEvent: "avatarClick",
+			}),
+		),
+	}
+
+	if v.AvatarClickInfo != "" {
+		items = append(items, gd.Div(gp.Attr("style", "margin-top:8px"),
+			gu.Alert("Avatar clicked: "+v.AvatarClickInfo, "info"),
+		))
+	}
+
+	return gu.Stack(items...)
 }
 
 func section(title, desc string) g.ComponentFunc {

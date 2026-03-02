@@ -1478,6 +1478,259 @@ func TestFormatTime(t *testing.T) {
 	}
 }
 
+// ---------- Chart tests ----------
+
+func TestLineChart(t *testing.T) {
+	series := []Series{
+		{Name: "Revenue", Points: []DataPoint{
+			{Label: "Jan", Value: 100},
+			{Label: "Feb", Value: 200},
+			{Label: "Mar", Value: 150},
+		}},
+	}
+	out := render(t, LineChart(series, ChartOpts{ShowTooltip: true, ShowGrid: true, ShowLegend: true, Title: "Revenue"}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("LineChart should render SVG element")
+	}
+	if !strings.Contains(out, "g-chart") {
+		t.Error("LineChart should have g-chart class")
+	}
+	if !strings.Contains(out, "g-chart-line") {
+		t.Error("LineChart should have g-chart-line class on polyline")
+	}
+	if !strings.Contains(out, "g-chart-point") {
+		t.Error("LineChart should have g-chart-point class on circles")
+	}
+	if !strings.Contains(out, "<title>") {
+		t.Error("LineChart with ShowTooltip should contain <title> elements")
+	}
+	if !strings.Contains(out, "g-chart-grid") {
+		t.Error("LineChart with ShowGrid should contain grid")
+	}
+	if !strings.Contains(out, "g-chart-legend") {
+		t.Error("LineChart with ShowLegend should contain legend")
+	}
+	if !strings.Contains(out, "g-chart-title") {
+		t.Error("LineChart with Title should contain title text")
+	}
+}
+
+func TestColumnChart(t *testing.T) {
+	series := []Series{
+		{Name: "Sales", Points: []DataPoint{
+			{Label: "Q1", Value: 300},
+			{Label: "Q2", Value: 450},
+		}},
+	}
+	out := render(t, ColumnChart(series, ChartOpts{}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("ColumnChart should render SVG element")
+	}
+	if !strings.Contains(out, "<rect") {
+		t.Error("ColumnChart should contain rect elements")
+	}
+}
+
+func TestBarChart(t *testing.T) {
+	series := []Series{
+		{Name: "Score", Points: []DataPoint{
+			{Label: "Alice", Value: 85},
+			{Label: "Bob", Value: 92},
+		}},
+	}
+	out := render(t, BarChart(series, ChartOpts{ShowTooltip: true}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("BarChart should render SVG element")
+	}
+	if !strings.Contains(out, "<rect") {
+		t.Error("BarChart should contain rect elements")
+	}
+	if !strings.Contains(out, "<title>") {
+		t.Error("BarChart with ShowTooltip should contain tooltips")
+	}
+}
+
+func TestPieChart(t *testing.T) {
+	data := []DataPoint{
+		{Label: "A", Value: 30},
+		{Label: "B", Value: 70},
+	}
+	out := render(t, PieChart(data, ChartOpts{ShowLegend: true, ShowTooltip: true}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("PieChart should render SVG element")
+	}
+	if !strings.Contains(out, "g-chart-slice") {
+		t.Error("PieChart should contain g-chart-slice class")
+	}
+	if !strings.Contains(out, "g-chart-legend") {
+		t.Error("PieChart with ShowLegend should have legend")
+	}
+}
+
+func TestPieChartSingleSlice(t *testing.T) {
+	data := []DataPoint{{Label: "All", Value: 100}}
+	out := render(t, PieChart(data, ChartOpts{}))
+	if !strings.Contains(out, "<circle") {
+		t.Error("PieChart with single slice should use circle")
+	}
+}
+
+func TestScatterPlot(t *testing.T) {
+	series := []Series{
+		{Name: "Points", Points: []DataPoint{
+			{Label: "X1", Value: 10},
+			{Label: "X2", Value: 20},
+		}},
+	}
+	out := render(t, ScatterPlot(series, ChartOpts{}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("ScatterPlot should render SVG element")
+	}
+	if !strings.Contains(out, "g-chart-point") {
+		t.Error("ScatterPlot should contain g-chart-point circles")
+	}
+}
+
+func TestHistogram(t *testing.T) {
+	values := []float64{1, 2, 2, 3, 3, 3, 4, 4, 5, 10}
+	out := render(t, Histogram(values, HistogramOpts{BinCount: 5}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("Histogram should render SVG element")
+	}
+	if !strings.Contains(out, "<rect") {
+		t.Error("Histogram should contain rect elements")
+	}
+}
+
+func TestStackedBarChart(t *testing.T) {
+	series := []Series{
+		{Name: "A", Points: []DataPoint{{Label: "Row1", Value: 30}, {Label: "Row2", Value: 20}}},
+		{Name: "B", Points: []DataPoint{{Label: "Row1", Value: 50}, {Label: "Row2", Value: 40}}},
+	}
+	out := render(t, StackedBarChart(series, ChartOpts{ShowGrid: true, ShowLegend: true}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("StackedBarChart should render SVG element")
+	}
+	if !strings.Contains(out, "<rect") {
+		t.Error("StackedBarChart should contain rect elements")
+	}
+	if !strings.Contains(out, "g-chart-legend") {
+		t.Error("StackedBarChart with ShowLegend should have legend")
+	}
+}
+
+func TestChartEmpty(t *testing.T) {
+	out := render(t, LineChart(nil, ChartOpts{}))
+	if !strings.Contains(out, "No data") {
+		t.Error("Empty chart should show 'No data' message")
+	}
+}
+
+func TestChartMinMaxEqual(t *testing.T) {
+	series := []Series{
+		{Name: "Flat", Points: []DataPoint{
+			{Label: "A", Value: 5},
+			{Label: "B", Value: 5},
+		}},
+	}
+	// Should not panic
+	out := render(t, ColumnChart(series, ChartOpts{}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("Chart with equal min/max should still render")
+	}
+}
+
+// ---------- Avatar tests ----------
+
+func TestImageAvatar(t *testing.T) {
+	out := render(t, ImageAvatar("https://example.com/photo.jpg", AvatarOpts{Size: "lg", Alt: "User"}))
+	if !strings.Contains(out, "g-avatar") {
+		t.Error("ImageAvatar should have g-avatar class")
+	}
+	if !strings.Contains(out, "g-avatar-lg") {
+		t.Error("ImageAvatar should have g-avatar-lg class for lg size")
+	}
+	if !strings.Contains(out, "g-avatar-circle") {
+		t.Error("ImageAvatar should default to circle shape")
+	}
+	if !strings.Contains(out, `src="https://example.com/photo.jpg"`) {
+		t.Error("ImageAvatar should contain img src")
+	}
+	if !strings.Contains(out, `alt="User"`) {
+		t.Error("ImageAvatar should have alt text")
+	}
+}
+
+func TestImageAvatarRounded(t *testing.T) {
+	out := render(t, ImageAvatar("photo.jpg", AvatarOpts{Shape: "rounded"}))
+	if !strings.Contains(out, "g-avatar-rounded") {
+		t.Error("ImageAvatar with rounded shape should have g-avatar-rounded class")
+	}
+}
+
+func TestLetterAvatar(t *testing.T) {
+	out := render(t, LetterAvatar("Tomo", AvatarOpts{Size: "xl"}))
+	if !strings.Contains(out, "g-avatar") {
+		t.Error("LetterAvatar should have g-avatar class")
+	}
+	if !strings.Contains(out, "g-avatar-xl") {
+		t.Error("LetterAvatar should have g-avatar-xl class")
+	}
+	if !strings.Contains(out, "background-color:") {
+		t.Error("LetterAvatar should have background color style")
+	}
+	if !strings.Contains(out, "T") {
+		t.Error("LetterAvatar should display initial letter")
+	}
+}
+
+func TestLetterAvatarDeterministic(t *testing.T) {
+	out1 := render(t, LetterAvatar("Alice", AvatarOpts{}))
+	out2 := render(t, LetterAvatar("Alice", AvatarOpts{}))
+	if out1 != out2 {
+		t.Error("LetterAvatar should be deterministic for the same name")
+	}
+}
+
+func TestAvatarGroup(t *testing.T) {
+	avatars := []gerbera.ComponentFunc{
+		LetterAvatar("Alice", AvatarOpts{}),
+		LetterAvatar("Bob", AvatarOpts{}),
+		LetterAvatar("Charlie", AvatarOpts{}),
+		LetterAvatar("Diana", AvatarOpts{}),
+		LetterAvatar("Eve", AvatarOpts{}),
+	}
+	out := render(t, AvatarGroup(avatars, AvatarGroupOpts{Max: 3}))
+	if !strings.Contains(out, "g-avatar-group") {
+		t.Error("AvatarGroup should have g-avatar-group class")
+	}
+	if !strings.Contains(out, "g-avatar-group-more") {
+		t.Error("AvatarGroup with overflow should show +N more")
+	}
+	if !strings.Contains(out, "+2") {
+		t.Error("AvatarGroup should show +2 for 5 avatars with max 3")
+	}
+}
+
+func TestAvatarGroupNoOverflow(t *testing.T) {
+	avatars := []gerbera.ComponentFunc{
+		LetterAvatar("Alice", AvatarOpts{}),
+		LetterAvatar("Bob", AvatarOpts{}),
+	}
+	out := render(t, AvatarGroup(avatars, AvatarGroupOpts{}))
+	if strings.Contains(out, "g-avatar-group-more") {
+		t.Error("AvatarGroup without overflow should not show +N more")
+	}
+}
+
+func TestAvatarDefaultSize(t *testing.T) {
+	out := render(t, ImageAvatar("photo.jpg", AvatarOpts{}))
+	if !strings.Contains(out, "g-avatar-md") {
+		t.Error("Avatar should default to md size")
+	}
+}
+
 // Ensure unused imports are referenced
 var _ = gd.Div
 var _ = property.Class
+var _ = time.UTC

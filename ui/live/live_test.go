@@ -792,6 +792,196 @@ func TestLiveTimePickerDataValueWithSec(t *testing.T) {
 	}
 }
 
+// ---------- Live Chart tests ----------
+
+func TestLiveLineChart(t *testing.T) {
+	series := []ui.Series{
+		{Name: "Revenue", Points: []ui.DataPoint{
+			{Label: "Jan", Value: 100},
+			{Label: "Feb", Value: 200},
+		}},
+	}
+	out := render(t, LineChart(series, LiveChartOpts{
+		ChartOpts:       ui.ChartOpts{ShowTooltip: true},
+		ClickEvent:      "chartClick",
+		MouseEnterEvent: "chartHover",
+		MouseLeaveEvent: "chartLeave",
+	}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("Live LineChart should render SVG")
+	}
+	if !strings.Contains(out, `gerbera-click="chartClick"`) {
+		t.Error("Live LineChart should have click event")
+	}
+	if !strings.Contains(out, `gerbera-mouseenter="chartHover"`) {
+		t.Error("Live LineChart should have mouseenter event")
+	}
+	if !strings.Contains(out, `gerbera-mouseleave="chartLeave"`) {
+		t.Error("Live LineChart should have mouseleave event")
+	}
+}
+
+func TestLiveColumnChart(t *testing.T) {
+	series := []ui.Series{
+		{Name: "Sales", Points: []ui.DataPoint{{Label: "Q1", Value: 300}}},
+	}
+	out := render(t, ColumnChart(series, LiveChartOpts{
+		ClickEvent: "colClick",
+	}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("Live ColumnChart should render SVG")
+	}
+	if !strings.Contains(out, `gerbera-click="colClick"`) {
+		t.Error("Live ColumnChart should have click event")
+	}
+}
+
+func TestLiveBarChart(t *testing.T) {
+	series := []ui.Series{
+		{Name: "Score", Points: []ui.DataPoint{{Label: "A", Value: 85}}},
+	}
+	out := render(t, BarChart(series, LiveChartOpts{
+		ClickEvent: "barClick",
+	}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("Live BarChart should render SVG")
+	}
+	if !strings.Contains(out, `gerbera-click="barClick"`) {
+		t.Error("Live BarChart should have click event")
+	}
+}
+
+func TestLivePieChart(t *testing.T) {
+	data := []ui.DataPoint{
+		{Label: "A", Value: 50},
+		{Label: "B", Value: 50},
+	}
+	out := render(t, PieChart(data, LiveChartOpts{
+		ClickEvent: "pieClick",
+	}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("Live PieChart should render SVG")
+	}
+	if !strings.Contains(out, `gerbera-click="pieClick"`) {
+		t.Error("Live PieChart should have click event")
+	}
+}
+
+func TestLiveScatterPlot(t *testing.T) {
+	series := []ui.Series{
+		{Name: "Pts", Points: []ui.DataPoint{{Label: "X1", Value: 10}}},
+	}
+	out := render(t, ScatterPlot(series, LiveChartOpts{
+		ClickEvent: "scatterClick",
+	}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("Live ScatterPlot should render SVG")
+	}
+	if !strings.Contains(out, `gerbera-click="scatterClick"`) {
+		t.Error("Live ScatterPlot should have click event")
+	}
+}
+
+func TestLiveHistogram(t *testing.T) {
+	values := []float64{1, 2, 3, 4, 5}
+	out := render(t, Histogram(values, LiveHistogramOpts{
+		HistogramOpts: ui.HistogramOpts{BinCount: 3},
+		ClickEvent:    "histClick",
+	}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("Live Histogram should render SVG")
+	}
+	if !strings.Contains(out, `gerbera-click="histClick"`) {
+		t.Error("Live Histogram should have click event")
+	}
+}
+
+func TestLiveStackedBarChart(t *testing.T) {
+	series := []ui.Series{
+		{Name: "A", Points: []ui.DataPoint{{Label: "R1", Value: 30}}},
+		{Name: "B", Points: []ui.DataPoint{{Label: "R1", Value: 50}}},
+	}
+	out := render(t, StackedBarChart(series, LiveChartOpts{
+		ClickEvent: "stackClick",
+	}))
+	if !strings.Contains(out, "<svg") {
+		t.Error("Live StackedBarChart should render SVG")
+	}
+	if !strings.Contains(out, `gerbera-click="stackClick"`) {
+		t.Error("Live StackedBarChart should have click event")
+	}
+}
+
+// ---------- Live Avatar tests ----------
+
+func TestLiveImageAvatar(t *testing.T) {
+	out := render(t, ImageAvatar("photo.jpg", LiveAvatarOpts{
+		AvatarOpts: ui.AvatarOpts{Size: "lg", Alt: "User"},
+		ClickEvent: "avatarClick",
+	}))
+	if !strings.Contains(out, "g-avatar") {
+		t.Error("Live ImageAvatar should have g-avatar class")
+	}
+	if !strings.Contains(out, "g-avatar-lg") {
+		t.Error("Live ImageAvatar should have size class")
+	}
+	if !strings.Contains(out, `gerbera-click="avatarClick"`) {
+		t.Error("Live ImageAvatar should have click event")
+	}
+	if !strings.Contains(out, `gerbera-value="photo.jpg"`) {
+		t.Error("Live ImageAvatar should have click value")
+	}
+}
+
+func TestLiveLetterAvatar(t *testing.T) {
+	out := render(t, LetterAvatar("Alice", LiveAvatarOpts{
+		ClickEvent: "avatarClick",
+	}))
+	if !strings.Contains(out, "g-avatar") {
+		t.Error("Live LetterAvatar should have g-avatar class")
+	}
+	if !strings.Contains(out, `gerbera-click="avatarClick"`) {
+		t.Error("Live LetterAvatar should have click event")
+	}
+	if !strings.Contains(out, `gerbera-value="Alice"`) {
+		t.Error("Live LetterAvatar should have click value")
+	}
+	if !strings.Contains(out, "A") {
+		t.Error("Live LetterAvatar should show initial")
+	}
+}
+
+func TestLiveAvatarGroup(t *testing.T) {
+	avatars := []gerbera.ComponentFunc{
+		LetterAvatar("Alice", LiveAvatarOpts{}),
+		LetterAvatar("Bob", LiveAvatarOpts{}),
+		LetterAvatar("Charlie", LiveAvatarOpts{}),
+	}
+	out := render(t, AvatarGroup(avatars, LiveAvatarGroupOpts{
+		AvatarGroupOpts: ui.AvatarGroupOpts{Max: 2},
+		ClickEvent:      "moreClick",
+	}))
+	if !strings.Contains(out, "g-avatar-group") {
+		t.Error("Live AvatarGroup should have g-avatar-group class")
+	}
+	if !strings.Contains(out, "g-avatar-group-more") {
+		t.Error("Live AvatarGroup with overflow should show +N more")
+	}
+	if !strings.Contains(out, "+1") {
+		t.Error("Live AvatarGroup should show +1")
+	}
+	if !strings.Contains(out, `gerbera-click="moreClick"`) {
+		t.Error("Live AvatarGroup +N should have click event")
+	}
+}
+
+func TestLiveAvatarNoEvent(t *testing.T) {
+	out := render(t, ImageAvatar("photo.jpg", LiveAvatarOpts{}))
+	if strings.Contains(out, "gerbera-click") {
+		t.Error("Live ImageAvatar without event should not have click binding")
+	}
+}
+
 // Keep unused imports referenced
 var _ = ui.FormOption{}
 var _ = time.UTC
