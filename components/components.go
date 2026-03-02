@@ -1,7 +1,16 @@
 package components
 
 import (
+	"fmt"
+
 	"github.com/tomo3110/gerbera"
+)
+
+// Default CDN versions.
+const (
+	DefaultBootstrapVersion   = "5.3.3"
+	DefaultMaterializeVersion = "1.0.0"
+	DefaultTailwindVersion    = "4"
 )
 
 // ensureDefaults inspects parent.Children for charset and viewport meta tags,
@@ -39,37 +48,48 @@ func ensureDefaults(parent *gerbera.Element) {
 	}
 }
 
-// BootstrapCSS adds Bootstrap 5.3.3 CSS and JS (jsdelivr CDN with SRI) to the
-// parent element. It also ensures charset and viewport meta tags are present.
-func BootstrapCSS() gerbera.ComponentFunc {
+// BootstrapCSS adds Bootstrap CSS and JS (jsdelivr CDN) to the parent element.
+// It also ensures charset and viewport meta tags are present.
+// When called without arguments, uses the default version (5.3.3) with SRI hashes.
+// When a version is specified, SRI hashes are omitted.
+func BootstrapCSS(version ...string) gerbera.ComponentFunc {
+	ver := DefaultBootstrapVersion
+	if len(version) > 0 {
+		ver = version[0]
+	}
 	return func(parent *gerbera.Element) error {
 		ensureDefaults(parent)
+		cssURL := fmt.Sprintf("https://cdn.jsdelivr.net/npm/bootstrap@%s/dist/css/bootstrap.min.css", ver)
+		jsURL := fmt.Sprintf("https://cdn.jsdelivr.net/npm/bootstrap@%s/dist/js/bootstrap.bundle.min.js", ver)
+		linkAttr := gerbera.AttrMap{
+			"rel":  "stylesheet",
+			"href": cssURL,
+		}
+		scriptAttr := gerbera.AttrMap{
+			"src": jsURL,
+		}
+		if ver == DefaultBootstrapVersion {
+			linkAttr["integrity"] = "sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+			linkAttr["crossorigin"] = "anonymous"
+			scriptAttr["integrity"] = "sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+			scriptAttr["crossorigin"] = "anonymous"
+		}
 		parent.Children = append(parent.Children,
-			&gerbera.Element{
-				TagName: "link",
-				Attr: gerbera.AttrMap{
-					"rel":         "stylesheet",
-					"href":        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
-					"integrity":   "sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH",
-					"crossorigin": "anonymous",
-				},
-			},
-			&gerbera.Element{
-				TagName: "script",
-				Attr: gerbera.AttrMap{
-					"src":         "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",
-					"integrity":   "sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz",
-					"crossorigin": "anonymous",
-				},
-			},
+			&gerbera.Element{TagName: "link", Attr: linkAttr},
+			&gerbera.Element{TagName: "script", Attr: scriptAttr},
 		)
 		return nil
 	}
 }
 
-// MaterializeCSS adds Materialize CSS 1.0.0 CSS and JS (cdnjs CDN) to the
-// parent element. It also ensures charset and viewport meta tags are present.
-func MaterializeCSS() gerbera.ComponentFunc {
+// MaterializeCSS adds Materialize CSS and JS (cdnjs CDN) to the parent element.
+// It also ensures charset and viewport meta tags are present.
+// When called without arguments, uses the default version (1.0.0).
+func MaterializeCSS(version ...string) gerbera.ComponentFunc {
+	ver := DefaultMaterializeVersion
+	if len(version) > 0 {
+		ver = version[0]
+	}
 	return func(parent *gerbera.Element) error {
 		ensureDefaults(parent)
 		parent.Children = append(parent.Children,
@@ -77,13 +97,13 @@ func MaterializeCSS() gerbera.ComponentFunc {
 				TagName: "link",
 				Attr: gerbera.AttrMap{
 					"rel":  "stylesheet",
-					"href": "https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css",
+					"href": fmt.Sprintf("https://cdnjs.cloudflare.com/ajax/libs/materialize/%s/css/materialize.min.css", ver),
 				},
 			},
 			&gerbera.Element{
 				TagName: "script",
 				Attr: gerbera.AttrMap{
-					"src": "https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js",
+					"src": fmt.Sprintf("https://cdnjs.cloudflare.com/ajax/libs/materialize/%s/js/materialize.min.js", ver),
 				},
 			},
 		)
@@ -91,16 +111,21 @@ func MaterializeCSS() gerbera.ComponentFunc {
 	}
 }
 
-// TailwindCSS adds Tailwind CSS 4 browser script (jsdelivr CDN) to the parent
+// TailwindCSS adds Tailwind CSS browser script (jsdelivr CDN) to the parent
 // element. It also ensures charset and viewport meta tags are present.
-func TailwindCSS() gerbera.ComponentFunc {
+// When called without arguments, uses the default version (4).
+func TailwindCSS(version ...string) gerbera.ComponentFunc {
+	ver := DefaultTailwindVersion
+	if len(version) > 0 {
+		ver = version[0]
+	}
 	return func(parent *gerbera.Element) error {
 		ensureDefaults(parent)
 		parent.Children = append(parent.Children,
 			&gerbera.Element{
 				TagName: "script",
 				Attr: gerbera.AttrMap{
-					"src": "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4",
+					"src": fmt.Sprintf("https://cdn.jsdelivr.net/npm/@tailwindcss/browser@%s", ver),
 				},
 			},
 		)

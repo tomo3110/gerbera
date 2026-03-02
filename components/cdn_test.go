@@ -220,6 +220,60 @@ func TestBootstrapCSS_CharsetPrepended(t *testing.T) {
 	}
 }
 
+func TestBootstrapCSS_CustomVersion(t *testing.T) {
+	head := buildHead(t, BootstrapCSS("5.2.0"))
+
+	// CSS link with custom version
+	if !hasChild(head, "link", map[string]string{
+		"rel":  "stylesheet",
+		"href": "https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css",
+	}) {
+		t.Error("missing Bootstrap 5.2.0 CSS link")
+	}
+	// JS script with custom version
+	if !hasChild(head, "script", map[string]string{
+		"src": "https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js",
+	}) {
+		t.Error("missing Bootstrap 5.2.0 JS script")
+	}
+	// SRI hash should NOT be present for custom version
+	for _, child := range head.Children {
+		if child.TagName == "link" || child.TagName == "script" {
+			if _, ok := child.Attr["integrity"]; ok {
+				t.Errorf("integrity attribute should not be present for custom version on %s", child.TagName)
+			}
+			if _, ok := child.Attr["crossorigin"]; ok {
+				t.Errorf("crossorigin attribute should not be present for custom version on %s", child.TagName)
+			}
+		}
+	}
+}
+
+func TestMaterializeCSS_CustomVersion(t *testing.T) {
+	head := buildHead(t, MaterializeCSS("0.100.2"))
+
+	if !hasChild(head, "link", map[string]string{
+		"href": "https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css",
+	}) {
+		t.Error("missing Materialize 0.100.2 CSS link")
+	}
+	if !hasChild(head, "script", map[string]string{
+		"src": "https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js",
+	}) {
+		t.Error("missing Materialize 0.100.2 JS script")
+	}
+}
+
+func TestTailwindCSS_CustomVersion(t *testing.T) {
+	head := buildHead(t, TailwindCSS("4.1"))
+
+	if !hasChild(head, "script", map[string]string{
+		"src": "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1",
+	}) {
+		t.Error("missing Tailwind 4.1 script")
+	}
+}
+
 func TestBootstrapCSS_IntegrationWithRender(t *testing.T) {
 	// Build a head with Title + BootstrapCSS, render to HTML and check output
 	head := &gerbera.Element{TagName: "head"}
