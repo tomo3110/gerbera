@@ -692,7 +692,7 @@ func (v *CatalogView) pagePagination() g.ComponentFunc {
 	return gu.Stack(
 		section("Pagination", "Page navigation with ellipsis for large page counts (LiveView)."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gul.Pagination(gul.PaginationOpts{
+			gu.Pagination(gu.PaginationOpts{
 				Page:      v.PaginationPage,
 				PageSize:  10,
 				Total:     total,
@@ -714,15 +714,12 @@ func (v *CatalogView) pageButtonGroup() g.ComponentFunc {
 	return gu.Stack(
 		section("ButtonGroup", "Segmented control / button group (LiveView)."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gul.ButtonGroup(gul.ButtonGroupOpts{
-				Items: []gu.ButtonGroupItem{
-					{Label: "Day", Value: "day", Active: v.BtnGroupValue == "day"},
-					{Label: "Week", Value: "week", Active: v.BtnGroupValue == "week"},
-					{Label: "Month", Value: "month", Active: v.BtnGroupValue == "month"},
-					{Label: "Year", Value: "year", Active: v.BtnGroupValue == "year"},
-				},
-				ChangeEvent: "btnGroupChange",
-			}),
+			gu.ButtonGroup([]gu.ButtonGroupItem{
+				{Label: "Day", Value: "day", Active: v.BtnGroupValue == "day"},
+				{Label: "Week", Value: "week", Active: v.BtnGroupValue == "week"},
+				{Label: "Month", Value: "month", Active: v.BtnGroupValue == "month"},
+				{Label: "Year", Value: "year", Active: v.BtnGroupValue == "year"},
+			}, gu.ButtonGroupOpts{ClickEvent: "btnGroupChange"}),
 			gd.Div(gp.Attr("style", "margin-top:12px"),
 				gd.Span(gp.Attr("style", "font-size:13px;color:var(--g-text-secondary)"),
 					gp.Value("Selected: "+v.BtnGroupValue)),
@@ -734,7 +731,7 @@ func (v *CatalogView) pageButtonGroup() g.ComponentFunc {
 				{Label: "Left", Value: "left", Active: true},
 				{Label: "Center", Value: "center"},
 				{Label: "Right", Value: "right"},
-			}),
+			}, gu.ButtonGroupOpts{}),
 		)),
 		section("Small ButtonGroup", "Compact variant with ButtonGroupSmall modifier."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
@@ -742,7 +739,7 @@ func (v *CatalogView) pageButtonGroup() g.ComponentFunc {
 				{Label: "S", Value: "s", Active: true},
 				{Label: "M", Value: "m"},
 				{Label: "L", Value: "l"},
-			}, gu.ButtonGroupSmall),
+			}, gu.ButtonGroupOpts{Small: true}),
 		)),
 	)
 }
@@ -751,22 +748,18 @@ func (v *CatalogView) pageAccordion() g.ComponentFunc {
 	return gu.Stack(
 		section("Accordion", "Collapsible sections with server-controlled open/close (LiveView)."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gul.Accordion(gul.AccordionOpts{
-				Items: []gu.AccordionItem{
-					{Title: "What is Gerbera?", Content: gd.P(gp.Value("Gerbera is a Go HTML template engine that uses functional composition instead of traditional template files.")), Open: v.AccordionOpen[0]},
-					{Title: "How does it work?", Content: gd.P(gp.Value("HTML is built programmatically by composing ComponentFunc functions.")), Open: v.AccordionOpen[1]},
-					{Title: "Is it production ready?", Content: gd.P(gp.Value("Gerbera uses sync.Pool for zero-allocation rendering and is suitable for production use.")), Open: v.AccordionOpen[2]},
-				},
-				Exclusive:   true,
-				ToggleEvent: "accordionToggle",
-			}),
+			gu.Accordion([]gu.AccordionItem{
+				{Title: "What is Gerbera?", Content: gd.P(gp.Value("Gerbera is a Go HTML template engine that uses functional composition instead of traditional template files.")), Open: v.AccordionOpen[0]},
+				{Title: "How does it work?", Content: gd.P(gp.Value("HTML is built programmatically by composing ComponentFunc functions.")), Open: v.AccordionOpen[1]},
+				{Title: "Is it production ready?", Content: gd.P(gp.Value("Gerbera uses sync.Pool for zero-allocation rendering and is suitable for production use.")), Open: v.AccordionOpen[2]},
+			}, gu.AccordionOpts{Exclusive: true, ToggleEvent: "accordionToggle"}),
 		)),
 		section("Static Accordion", "Native details/summary based, no LiveView required."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
 			gu.Accordion([]gu.AccordionItem{
 				{Title: "First Section", Content: gd.P(gp.Value("This uses native HTML details/summary elements.")), Open: true},
 				{Title: "Second Section", Content: gd.P(gp.Value("Browser handles open/close without JavaScript.")), Open: false},
-			}),
+			}, gu.AccordionOpts{}),
 		)),
 	)
 }
@@ -792,10 +785,7 @@ func (v *CatalogView) pageStepper() g.ComponentFunc {
 	return gu.Stack(
 		section("Stepper", "Step-by-step progress indicator (LiveView). Click completed steps to go back."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gul.Stepper(gul.StepperOpts{
-				Steps:      steps,
-				ClickEvent: "stepperClick",
-			}),
+			gu.Stepper(steps, gu.StepperOpts{ClickEvent: "stepperClick"}),
 			gd.Div(gp.Attr("style", "margin-top:16px"),
 				gu.HStack(
 					expr.If(v.StepperCurrent > 0,
@@ -813,7 +803,7 @@ func (v *CatalogView) pageStepper() g.ComponentFunc {
 				{Label: "Sign Up", Status: gu.StepCompleted},
 				{Label: "Verify Email", Status: gu.StepActive, Description: "Check your inbox"},
 				{Label: "Set Profile", Status: gu.StepUpcoming},
-			}, gu.StepperVertical),
+			}, gu.StepperOpts{Vertical: true}),
 		)),
 	)
 }
@@ -831,7 +821,7 @@ func (v *CatalogView) pageInfiniteScroll() g.ComponentFunc {
 	return gu.Stack(
 		section("InfiniteScroll", "Scrollable list with load-more, view toggle (LiveView)."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gul.InfiniteScroll(gul.InfiniteScrollOpts{
+			gu.InfiniteScroll(gu.InfiniteScrollOpts{
 				View:          v.InfScrollView,
 				Loading:       v.InfScrollLoading,
 				ShowToggle:    true,
@@ -841,7 +831,7 @@ func (v *CatalogView) pageInfiniteScroll() g.ComponentFunc {
 		)),
 		section("Static InfiniteScroll", "Non-interactive version."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gu.InfiniteScroll(gu.InfiniteScrollList, false, true,
+			gu.InfiniteScroll(gu.InfiniteScrollOpts{View: gu.InfiniteScrollList, ShowToggle: true},
 				gu.Card(gd.Div(gp.Class("g-page-body"), gd.Span(gp.Value("Static Item 1")))),
 				gu.Card(gd.Div(gp.Class("g-page-body"), gd.Span(gp.Value("Static Item 2")))),
 				gu.Card(gd.Div(gp.Class("g-page-body"), gd.Span(gp.Value("Static Item 3")))),
@@ -1094,9 +1084,7 @@ func (v *CatalogView) pageNumberInput() g.ComponentFunc {
 		gu.Card(gd.Div(gp.Class("g-page-body"),
 			gu.FormGroup(
 				gu.FormLabel("Quantity", "num-qty"),
-				gul.NumberInput(gul.NumberInputOpts{
-					Name:           "qty",
-					Value:          v.NumVal,
+				gu.NumberInput("qty", v.NumVal, gu.NumberInputOpts{
 					Min:            &min,
 					Max:            &max,
 					Step:           1,
@@ -1121,9 +1109,7 @@ func (v *CatalogView) pageSlider() g.ComponentFunc {
 	return gu.Stack(
 		section("Slider", "Range slider with label and live value display (LiveView)."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gul.Slider(gul.SliderOpts{
-				Name:       "volume",
-				Value:      v.SliderVal,
+			gu.Slider("volume", v.SliderVal, gu.SliderOpts{
 				Min:        0,
 				Max:        100,
 				Step:       1,
@@ -1147,11 +1133,7 @@ func (v *CatalogView) pageTimePicker() g.ComponentFunc {
 		gu.Card(gd.Div(gp.Class("g-page-body"),
 			gu.FormGroup(
 				gu.FormLabel("Alarm Time (24h)", "tp-alarm"),
-				gul.TimePicker(gul.TimePickerOpts{
-					Name:        "alarm",
-					Hour:        v.TimeHour,
-					Minute:      v.TimeMinute,
-					Second:      v.TimeSecond,
+				gu.TimePicker("alarm", v.TimeHour, v.TimeMinute, v.TimeSecond, gu.TimePickerOpts{
 					Use24H:      true,
 					ChangeEvent: "timeChange",
 				}),
@@ -1163,21 +1145,14 @@ func (v *CatalogView) pageTimePicker() g.ComponentFunc {
 		)),
 		section("12-Hour Format", "TimePicker with AM/PM toggle."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gul.TimePicker(gul.TimePickerOpts{
-				Name:        "alarm12",
-				Hour:        v.TimeHour,
-				Minute:      v.TimeMinute,
+			gu.TimePicker("alarm12", v.TimeHour, v.TimeMinute, 0, gu.TimePickerOpts{
 				Use24H:      false,
 				ChangeEvent: "timeChange",
 			}),
 		)),
 		section("With Seconds", "TimePicker showing seconds field."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gul.TimePicker(gul.TimePickerOpts{
-				Name:        "precise",
-				Hour:        v.TimeHour,
-				Minute:      v.TimeMinute,
-				Second:      v.TimeSecond,
+			gu.TimePicker("precise", v.TimeHour, v.TimeMinute, v.TimeSecond, gu.TimePickerOpts{
 				Use24H:      true,
 				ShowSec:     true,
 				ChangeEvent: "timeChange",
@@ -1194,7 +1169,7 @@ func (v *CatalogView) pageCalendar() g.ComponentFunc {
 	return gu.Stack(
 		section("Calendar", "Month-view calendar with navigation and date selection (LiveView)."),
 		gu.Card(gd.Div(gp.Class("g-page-body"),
-			gul.Calendar(gul.CalendarOpts{
+			gu.Calendar(gu.CalendarOpts{
 				Year:             v.CalYear,
 				Month:            v.CalMonth,
 				Selected:         v.CalSelected,
@@ -1239,9 +1214,7 @@ func (v *CatalogView) pageChat() g.ComponentFunc {
 		section("Chat", "Chat message list with input area (LiveView)."),
 		gu.Card(
 			gu.ChatContainer(msgViews...),
-			gul.ChatInput(gul.ChatInputOpts{
-				Name:         "chatMsg",
-				Value:        v.ChatDraft,
+			gu.ChatInput("chatMsg", v.ChatDraft, gu.ChatInputOpts{
 				Placeholder:  "Type a message...",
 				SendEvent:    "chatSend",
 				InputEvent:   "chatInput",
@@ -1254,7 +1227,7 @@ func (v *CatalogView) pageChat() g.ComponentFunc {
 				gu.ChatMessageView(gu.ChatMessage{Author: "System", Content: "Welcome to the chat.", Timestamp: "09:00", Sent: false}),
 				gu.ChatMessageView(gu.ChatMessage{Content: "Hello!", Timestamp: "09:01", Sent: true}),
 			),
-			gu.ChatInput("msg", ""),
+			gu.ChatInput("msg", "", gu.ChatInputOpts{}),
 		),
 	)
 }
@@ -1731,15 +1704,13 @@ func (v *CatalogView) pageChart() g.ComponentFunc {
 		{Label: "Stacked", Value: "stacked", Active: v.ChartType == "stacked"},
 	}
 
-	liveOpts := gul.LiveChartOpts{
-		ChartOpts: gu.ChartOpts{
-			Width:       600,
-			Height:      400,
-			Title:       "Monthly Data",
-			ShowGrid:    true,
-			ShowLegend:  true,
-			ShowTooltip: true,
-		},
+	liveOpts := gu.ChartOpts{
+		Width:           600,
+		Height:          400,
+		Title:           "Monthly Data",
+		ShowGrid:        true,
+		ShowLegend:      true,
+		ShowTooltip:     true,
 		ClickEvent:      "chartClick",
 		MouseEnterEvent: "chartHover",
 		MouseLeaveEvent: "chartLeave",
@@ -1748,33 +1719,32 @@ func (v *CatalogView) pageChart() g.ComponentFunc {
 	var liveChart g.ComponentFunc
 	switch v.ChartType {
 	case "column":
-		liveChart = gul.ColumnChart(series, liveOpts)
+		liveChart = gu.ColumnChart(series, liveOpts)
 	case "bar":
-		liveChart = gul.BarChart(series, liveOpts)
+		liveChart = gu.BarChart(series, liveOpts)
 	case "pie":
-		liveChart = gul.PieChart(pieData, liveOpts)
+		liveChart = gu.PieChart(pieData, liveOpts)
 	case "scatter":
-		liveChart = gul.ScatterPlot(series, liveOpts)
+		liveChart = gu.ScatterPlot(series, liveOpts)
 	case "histogram":
 		histValues := []float64{10, 15, 20, 25, 30, 30, 35, 40, 45, 50, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95}
-		liveChart = gul.Histogram(histValues, gul.LiveHistogramOpts{
-			HistogramOpts:   gu.HistogramOpts{ChartOpts: liveOpts.ChartOpts, BinCount: 8},
-			ClickEvent:      "chartClick",
-			MouseEnterEvent: "chartHover",
-			MouseLeaveEvent: "chartLeave",
+		liveChart = gu.Histogram(histValues, gu.HistogramOpts{
+			ChartOpts: gu.ChartOpts{
+				Width: 600, Height: 400, Title: "Monthly Data",
+				ShowGrid: true, ShowLegend: true, ShowTooltip: true,
+				ClickEvent: "chartClick", MouseEnterEvent: "chartHover", MouseLeaveEvent: "chartLeave",
+			},
+			BinCount: 8,
 		})
 	case "stacked":
-		liveChart = gul.StackedBarChart(series, liveOpts)
+		liveChart = gu.StackedBarChart(series, liveOpts)
 	default:
-		liveChart = gul.LineChart(series, liveOpts)
+		liveChart = gu.LineChart(series, liveOpts)
 	}
 
 	items := []g.ComponentFunc{
 		section("Charts (Live)", "Interactive charts with server-driven events. Click on data points."),
-		gul.ButtonGroup(gul.ButtonGroupOpts{
-			Items:       chartTypes,
-			ChangeEvent: "chartTypeChange",
-		}),
+		gu.ButtonGroup(chartTypes, gu.ButtonGroupOpts{ClickEvent: "chartTypeChange"}),
 		gd.Div(gp.Attr("style", "margin-top:16px"), liveChart),
 	}
 
@@ -1893,17 +1863,14 @@ func (v *CatalogView) pageAvatar() g.ComponentFunc {
 
 		section("Live Avatar (Click)", "Click on avatars to see the event payload."),
 		gu.HStack(
-			gul.ImageAvatar("https://i.pravatar.cc/64?u=10", gul.LiveAvatarOpts{
-				AvatarOpts: gu.AvatarOpts{Size: "lg", Alt: "Clickable"},
-				ClickEvent: "avatarClick",
+			gu.ImageAvatar("https://i.pravatar.cc/64?u=10", gu.AvatarOpts{
+				Size: "lg", Alt: "Clickable", ClickEvent: "avatarClick",
 			}),
-			gul.LetterAvatar("Alice", gul.LiveAvatarOpts{
-				AvatarOpts: gu.AvatarOpts{Size: "lg"},
-				ClickEvent: "avatarClick",
+			gu.LetterAvatar("Alice", gu.AvatarOpts{
+				Size: "lg", ClickEvent: "avatarClick",
 			}),
-			gul.LetterAvatar("Bob", gul.LiveAvatarOpts{
-				AvatarOpts: gu.AvatarOpts{Size: "lg"},
-				ClickEvent: "avatarClick",
+			gu.LetterAvatar("Bob", gu.AvatarOpts{
+				Size: "lg", ClickEvent: "avatarClick",
 			}),
 		),
 	}

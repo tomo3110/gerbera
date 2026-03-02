@@ -11,10 +11,13 @@ import (
 
 // NumberInputOpts configures a NumberInput.
 type NumberInputOpts struct {
-	Min      *int
-	Max      *int
-	Step     int
-	Disabled bool
+	Min            *int
+	Max            *int
+	Step           int
+	Disabled       bool
+	ChangeEvent    string // gerbera-change on input field
+	IncrementEvent string // gerbera-click on + button
+	DecrementEvent string // gerbera-click on - button
 }
 
 // NumberInput renders a number input with decrement and increment buttons.
@@ -52,6 +55,33 @@ func NumberInput(name string, value int, opts NumberInputOpts, extra ...gerbera.
 	}
 	inputAttrs = append(inputAttrs, minAttr...)
 	inputAttrs = append(inputAttrs, maxAttr...)
+	if opts.ChangeEvent != "" {
+		inputAttrs = append(inputAttrs, property.Attr("gerbera-change", opts.ChangeEvent))
+	}
+
+	decBtn := []gerbera.ComponentFunc{
+		property.Class("g-numberinput-btn", "g-numberinput-dec"),
+		property.Attr("type", "button"),
+		property.Attr("tabindex", "-1"),
+		property.AriaLabel(fmt.Sprintf("Decrease %s", name)),
+		property.Disabled(decDisabled),
+		property.Value("\u2212"),
+	}
+	if opts.DecrementEvent != "" {
+		decBtn = append(decBtn, property.Attr("gerbera-click", opts.DecrementEvent))
+	}
+
+	incBtn := []gerbera.ComponentFunc{
+		property.Class("g-numberinput-btn", "g-numberinput-inc"),
+		property.Attr("type", "button"),
+		property.Attr("tabindex", "-1"),
+		property.AriaLabel(fmt.Sprintf("Increase %s", name)),
+		property.Disabled(incDisabled),
+		property.Value("+"),
+	}
+	if opts.IncrementEvent != "" {
+		incBtn = append(incBtn, property.Attr("gerbera-click", opts.IncrementEvent))
+	}
 
 	wrapAttrs := []gerbera.ComponentFunc{
 		property.Class("g-numberinput"),
@@ -61,23 +91,9 @@ func NumberInput(name string, value int, opts NumberInputOpts, extra ...gerbera.
 	wrapAttrs = append(wrapAttrs, ariaAttrs...)
 	wrapAttrs = append(wrapAttrs, extra...)
 	wrapAttrs = append(wrapAttrs,
-		dom.Button(
-			property.Class("g-numberinput-btn", "g-numberinput-dec"),
-			property.Attr("type", "button"),
-			property.Attr("tabindex", "-1"),
-			property.AriaLabel(fmt.Sprintf("Decrease %s", name)),
-			property.Disabled(decDisabled),
-			property.Value("\u2212"),
-		),
+		dom.Button(decBtn...),
 		dom.Input(inputAttrs...),
-		dom.Button(
-			property.Class("g-numberinput-btn", "g-numberinput-inc"),
-			property.Attr("type", "button"),
-			property.Attr("tabindex", "-1"),
-			property.AriaLabel(fmt.Sprintf("Increase %s", name)),
-			property.Disabled(incDisabled),
-			property.Value("+"),
-		),
+		dom.Button(incBtn...),
 	)
 
 	return dom.Div(wrapAttrs...)

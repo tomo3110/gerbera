@@ -10,10 +10,11 @@ import (
 
 // SliderOpts configures a Slider.
 type SliderOpts struct {
-	Min   int
-	Max   int
-	Step  int
-	Label string
+	Min        int
+	Max        int
+	Step       int
+	Label      string
+	InputEvent string // gerbera-input on range input
 }
 
 // Slider renders a range slider with label and current value display.
@@ -31,6 +32,24 @@ func Slider(name string, value int, opts SliderOpts, extra ...gerbera.ComponentF
 		label = name
 	}
 
+	inputAttrs := []gerbera.ComponentFunc{
+		property.Class("g-slider-input"),
+		property.Type("range"),
+		property.Name(name),
+		property.Attr("value", strconv.Itoa(value)),
+		property.Attr("min", strconv.Itoa(opts.Min)),
+		property.Attr("max", strconv.Itoa(opts.Max)),
+		property.Attr("step", strconv.Itoa(step)),
+		property.Role("slider"),
+		property.AriaValueNow(value),
+		property.AriaValueMin(opts.Min),
+		property.AriaValueMax(opts.Max),
+		property.AriaLabel(label),
+	}
+	if opts.InputEvent != "" {
+		inputAttrs = append(inputAttrs, property.Attr("gerbera-input", opts.InputEvent))
+	}
+
 	wrapAttrs := []gerbera.ComponentFunc{
 		property.Class("g-slider"),
 	}
@@ -41,20 +60,7 @@ func Slider(name string, value int, opts SliderOpts, extra ...gerbera.ComponentF
 			dom.Span(property.Class("g-slider-label"), property.Value(label)),
 			dom.Span(property.Class("g-slider-value"), property.Value(strconv.Itoa(value))),
 		),
-		dom.Input(
-			property.Class("g-slider-input"),
-			property.Type("range"),
-			property.Name(name),
-			property.Attr("value", strconv.Itoa(value)),
-			property.Attr("min", strconv.Itoa(opts.Min)),
-			property.Attr("max", strconv.Itoa(opts.Max)),
-			property.Attr("step", strconv.Itoa(step)),
-			property.Role("slider"),
-			property.AriaValueNow(value),
-			property.AriaValueMin(opts.Min),
-			property.AriaValueMax(opts.Max),
-			property.AriaLabel(label),
-		),
+		dom.Input(inputAttrs...),
 	)
 
 	return dom.Div(wrapAttrs...)

@@ -1130,7 +1130,7 @@ func TestChatMessageSent(t *testing.T) {
 }
 
 func TestChatInput(t *testing.T) {
-	out := render(t, ChatInput("message", ""))
+	out := render(t, ChatInput("message", "", ChatInputOpts{}))
 	if !strings.Contains(out, "g-chat-inputbar") {
 		t.Error("ChatInput should have inputbar class")
 	}
@@ -1191,7 +1191,7 @@ func TestButtonGroup(t *testing.T) {
 		{Label: "Day", Value: "day", Active: true},
 		{Label: "Week", Value: "week"},
 		{Label: "Month", Value: "month"},
-	}))
+	}, ButtonGroupOpts{}))
 	if !strings.Contains(out, "g-btngroup") {
 		t.Error("ButtonGroup should have g-btngroup class")
 	}
@@ -1215,7 +1215,7 @@ func TestButtonGroup(t *testing.T) {
 func TestButtonGroupSmall(t *testing.T) {
 	out := render(t, ButtonGroup([]ButtonGroupItem{
 		{Label: "A", Value: "a"},
-	}, ButtonGroupSmall))
+	}, ButtonGroupOpts{Small: true}))
 	if !strings.Contains(out, "g-btngroup-sm") {
 		t.Error("ButtonGroupSmall should add sm class")
 	}
@@ -1227,7 +1227,7 @@ func TestAccordion(t *testing.T) {
 	out := render(t, Accordion([]AccordionItem{
 		{Title: "Section 1", Content: gerbera.Literal("Content 1"), Open: true},
 		{Title: "Section 2", Content: gerbera.Literal("Content 2"), Open: false},
-	}))
+	}, AccordionOpts{}))
 	if !strings.Contains(out, "g-accordion") {
 		t.Error("Accordion should have g-accordion class")
 	}
@@ -1251,7 +1251,7 @@ func TestAccordion(t *testing.T) {
 func TestAccordionClosed(t *testing.T) {
 	out := render(t, Accordion([]AccordionItem{
 		{Title: "Closed", Content: gerbera.Literal("Hidden"), Open: false},
-	}))
+	}, AccordionOpts{}))
 	if !strings.Contains(out, "g-accordion-body") {
 		// Static accordion always renders the body; it's hidden via CSS
 		// Just ensure the structure is correct
@@ -1268,7 +1268,7 @@ func TestStepper(t *testing.T) {
 		{Label: "Cart", Status: StepCompleted},
 		{Label: "Shipping", Status: StepActive, Description: "Enter address"},
 		{Label: "Payment", Status: StepUpcoming},
-	}))
+	}, StepperOpts{}))
 	if !strings.Contains(out, "g-stepper") {
 		t.Error("Stepper should have g-stepper class")
 	}
@@ -1305,7 +1305,7 @@ func TestStepperVertical(t *testing.T) {
 	out := render(t, Stepper([]Step{
 		{Label: "Step 1", Status: StepCompleted},
 		{Label: "Step 2", Status: StepActive},
-	}, StepperVertical))
+	}, StepperOpts{Vertical: true}))
 	if !strings.Contains(out, "g-stepper-vertical") {
 		t.Error("StepperVertical should add vertical class")
 	}
@@ -1314,7 +1314,7 @@ func TestStepperVertical(t *testing.T) {
 // --- InfiniteScroll tests ---
 
 func TestInfiniteScroll(t *testing.T) {
-	out := render(t, InfiniteScroll(InfiniteScrollList, false, false,
+	out := render(t, InfiniteScroll(InfiniteScrollOpts{View: InfiniteScrollList},
 		gerbera.Literal("Item 1"),
 		gerbera.Literal("Item 2"),
 	))
@@ -1333,14 +1333,14 @@ func TestInfiniteScroll(t *testing.T) {
 }
 
 func TestInfiniteScrollGrid(t *testing.T) {
-	out := render(t, InfiniteScroll(InfiniteScrollGrid, false, false))
+	out := render(t, InfiniteScroll(InfiniteScrollOpts{View: InfiniteScrollGrid}))
 	if !strings.Contains(out, "g-infinitescroll-grid") {
 		t.Error("Grid view should have grid class")
 	}
 }
 
 func TestInfiniteScrollLoading(t *testing.T) {
-	out := render(t, InfiniteScroll(InfiniteScrollList, true, false))
+	out := render(t, InfiniteScroll(InfiniteScrollOpts{View: InfiniteScrollList, Loading: true}))
 	if !strings.Contains(out, "g-infinitescroll-loader") {
 		t.Error("Loading state should show loader")
 	}
@@ -1350,7 +1350,7 @@ func TestInfiniteScrollLoading(t *testing.T) {
 }
 
 func TestInfiniteScrollToggle(t *testing.T) {
-	out := render(t, InfiniteScroll(InfiniteScrollList, false, true))
+	out := render(t, InfiniteScroll(InfiniteScrollOpts{View: InfiniteScrollList, ShowToggle: true}))
 	if !strings.Contains(out, "g-infinitescroll-toolbar") {
 		t.Error("ShowToggle should render toolbar")
 	}
@@ -1754,6 +1754,415 @@ func TestAvatarDefaultSize(t *testing.T) {
 	out := render(t, ImageAvatar("photo.jpg", AvatarOpts{}))
 	if !strings.Contains(out, "g-avatar-md") {
 		t.Error("Avatar should default to md size")
+	}
+}
+
+// ---------- Event attribute tests (migrated from ui/live) ----------
+
+func TestPaginationWithEvents(t *testing.T) {
+	out := render(t, Pagination(PaginationOpts{
+		Page:      2,
+		PageSize:  10,
+		Total:     100,
+		PageEvent: "paginateTo",
+	}))
+	if !strings.Contains(out, `gerbera-click="paginateTo"`) {
+		t.Error("Page buttons should have click event")
+	}
+	if !strings.Contains(out, `aria-current="page"`) {
+		t.Error("Active page should have aria-current")
+	}
+}
+
+func TestPaginationFirstPageEvents(t *testing.T) {
+	out := render(t, Pagination(PaginationOpts{
+		Page:      0,
+		PageSize:  10,
+		Total:     50,
+		PageEvent: "page",
+	}))
+	if !strings.Contains(out, "g-pagination-prev") {
+		t.Error("Should have prev button")
+	}
+}
+
+func TestButtonGroupWithEvents(t *testing.T) {
+	out := render(t, ButtonGroup([]ButtonGroupItem{
+		{Label: "Day", Value: "day", Active: true},
+		{Label: "Week", Value: "week"},
+	}, ButtonGroupOpts{ClickEvent: "btnGroupChange"}))
+	if !strings.Contains(out, `gerbera-click="btnGroupChange"`) {
+		t.Error("Buttons should have click event")
+	}
+	if !strings.Contains(out, `gerbera-value="week"`) {
+		t.Error("Buttons should have click value")
+	}
+}
+
+func TestAccordionWithEvents(t *testing.T) {
+	out := render(t, Accordion([]AccordionItem{
+		{Title: "Section 1", Content: gerbera.Literal("Content 1"), Open: true},
+		{Title: "Section 2", Content: gerbera.Literal("Content 2"), Open: false},
+	}, AccordionOpts{ToggleEvent: "accordionToggle"}))
+	if !strings.Contains(out, `gerbera-click="accordionToggle"`) {
+		t.Error("Headers should have click event")
+	}
+	if !strings.Contains(out, `aria-expanded="true"`) {
+		t.Error("Open item should have aria-expanded=true")
+	}
+	if !strings.Contains(out, `aria-expanded="false"`) {
+		t.Error("Closed item should have aria-expanded=false")
+	}
+	if !strings.Contains(out, "Content 1") {
+		t.Error("Open item should show content")
+	}
+	if strings.Contains(out, "Content 2") {
+		t.Error("Closed item should not show content")
+	}
+	if !strings.Contains(out, `role="region"`) {
+		t.Error("Body should have region role")
+	}
+}
+
+func TestAccordionAriaLinkage(t *testing.T) {
+	out := render(t, Accordion([]AccordionItem{
+		{Title: "First", Content: gerbera.Literal("Body"), Open: true},
+	}, AccordionOpts{ToggleEvent: "toggle"}))
+	if !strings.Contains(out, `id="g-accordion-header-0"`) {
+		t.Error("Header should have ID")
+	}
+	if !strings.Contains(out, `id="g-accordion-body-0"`) {
+		t.Error("Body should have ID")
+	}
+	if !strings.Contains(out, `aria-controls="g-accordion-body-0"`) {
+		t.Error("Header should have aria-controls")
+	}
+	if !strings.Contains(out, `aria-labelledby="g-accordion-header-0"`) {
+		t.Error("Body should have aria-labelledby")
+	}
+}
+
+func TestStepperWithEvents(t *testing.T) {
+	out := render(t, Stepper([]Step{
+		{Label: "Cart", Status: StepCompleted},
+		{Label: "Shipping", Status: StepActive, Description: "Enter address"},
+		{Label: "Payment", Status: StepUpcoming},
+	}, StepperOpts{ClickEvent: "stepperClick"}))
+	if !strings.Contains(out, `gerbera-click="stepperClick"`) {
+		t.Error("Completed step should have click event")
+	}
+	if !strings.Contains(out, `aria-current="step"`) {
+		t.Error("Active step should have aria-current")
+	}
+}
+
+func TestStepperVerticalOpts(t *testing.T) {
+	out := render(t, Stepper([]Step{
+		{Label: "A", Status: StepCompleted},
+		{Label: "B", Status: StepActive},
+	}, StepperOpts{Vertical: true}))
+	if !strings.Contains(out, "g-stepper-vertical") {
+		t.Error("Vertical stepper should have vertical class")
+	}
+}
+
+func TestInfiniteScrollWithEvents(t *testing.T) {
+	out := render(t, InfiniteScroll(InfiniteScrollOpts{
+		View:          InfiniteScrollList,
+		Loading:       true,
+		ShowToggle:    true,
+		LoadMoreEvent: "loadMore",
+		ToggleEvent:   "toggleView",
+	}, gerbera.Literal("Item")))
+	if !strings.Contains(out, `gerbera-scroll="loadMore"`) {
+		t.Error("Content should have scroll event")
+	}
+	if !strings.Contains(out, `gerbera-click="toggleView"`) {
+		t.Error("Toggle buttons should have click event")
+	}
+	if !strings.Contains(out, "g-infinitescroll-loader") {
+		t.Error("Loading should show loader")
+	}
+	if !strings.Contains(out, "g-spinner") {
+		t.Error("Loader should contain spinner")
+	}
+}
+
+func TestInfiniteScrollGridEvents(t *testing.T) {
+	out := render(t, InfiniteScroll(InfiniteScrollOpts{View: InfiniteScrollGrid}))
+	if !strings.Contains(out, "g-infinitescroll-grid") {
+		t.Error("Grid view should have grid class")
+	}
+}
+
+func TestNumberInputWithEvents(t *testing.T) {
+	out := render(t, NumberInput("qty", 5, NumberInputOpts{
+		IncrementEvent: "inc",
+		DecrementEvent: "dec",
+		ChangeEvent:    "change",
+	}))
+	if !strings.Contains(out, `gerbera-click="inc"`) {
+		t.Error("Increment button should have click event")
+	}
+	if !strings.Contains(out, `gerbera-click="dec"`) {
+		t.Error("Decrement button should have click event")
+	}
+	if !strings.Contains(out, `gerbera-change="change"`) {
+		t.Error("Input should have change event")
+	}
+}
+
+func TestSliderWithEvents(t *testing.T) {
+	out := render(t, Slider("volume", 75, SliderOpts{
+		Min:        0,
+		Max:        100,
+		Label:      "Volume",
+		InputEvent: "slideVolume",
+	}))
+	if !strings.Contains(out, `gerbera-input="slideVolume"`) {
+		t.Error("Slider should have input event")
+	}
+	if !strings.Contains(out, "Volume") {
+		t.Error("Slider should display label")
+	}
+}
+
+func TestCalendarWithEvents(t *testing.T) {
+	out := render(t, Calendar(CalendarOpts{
+		Year:           2025,
+		Month:          time.January,
+		Today:          time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+		SelectEvent:    "selectDay",
+		PrevMonthEvent: "prevMonth",
+		NextMonthEvent: "nextMonth",
+	}))
+	if !strings.Contains(out, `gerbera-click="selectDay"`) {
+		t.Error("Day cells should have select event")
+	}
+	if !strings.Contains(out, `gerbera-click="prevMonth"`) {
+		t.Error("Prev button should have click event")
+	}
+	if !strings.Contains(out, `gerbera-click="nextMonth"`) {
+		t.Error("Next button should have click event")
+	}
+}
+
+func TestCalendarNavButtons(t *testing.T) {
+	out := render(t, Calendar(CalendarOpts{
+		Year:           2025,
+		Month:          time.March,
+		Today:          time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
+		PrevMonthEvent: "prev",
+		NextMonthEvent: "next",
+	}))
+	if !strings.Contains(out, `aria-label="Previous month"`) {
+		t.Error("Prev button should have aria-label")
+	}
+	if !strings.Contains(out, `aria-label="Next month"`) {
+		t.Error("Next button should have aria-label")
+	}
+}
+
+func TestTimePickerWithEvents(t *testing.T) {
+	out := render(t, TimePicker("alarm", 14, 30, 0, TimePickerOpts{
+		Use24H:      true,
+		ChangeEvent: "timeChange",
+	}))
+	if !strings.Contains(out, `gerbera-click="timeChange"`) {
+		t.Error("Buttons should have click event")
+	}
+	if !strings.Contains(out, `gerbera-change="timeChange"`) {
+		t.Error("Inputs should have change event")
+	}
+}
+
+func TestTimePickerDataValue(t *testing.T) {
+	out := render(t, TimePicker("time", 14, 30, 0, TimePickerOpts{
+		Use24H:      true,
+		ChangeEvent: "change",
+	}))
+	if !strings.Contains(out, `data-value="14:30"`) {
+		t.Error("TimePicker with ChangeEvent should have data-value")
+	}
+}
+
+func TestTimePickerDataValueWithSec(t *testing.T) {
+	out := render(t, TimePicker("time", 14, 30, 15, TimePickerOpts{
+		Use24H:      true,
+		ShowSec:     true,
+		ChangeEvent: "change",
+	}))
+	if !strings.Contains(out, `data-value="14:30:15"`) {
+		t.Error("TimePicker with ShowSec should have data-value with seconds")
+	}
+}
+
+func TestChatInputWithEvents(t *testing.T) {
+	out := render(t, ChatInput("msg", "hello", ChatInputOpts{
+		SendEvent:    "sendMsg",
+		InputEvent:   "typeMsg",
+		KeydownEvent: "keyMsg",
+	}))
+	if !strings.Contains(out, `gerbera-click="sendMsg"`) {
+		t.Error("Send button should have click event")
+	}
+	if !strings.Contains(out, `gerbera-input="typeMsg"`) {
+		t.Error("Input should have input event")
+	}
+	if !strings.Contains(out, `gerbera-keydown="keyMsg"`) {
+		t.Error("Input should have keydown event")
+	}
+}
+
+func TestChatInputPlaceholder(t *testing.T) {
+	out := render(t, ChatInput("msg", "", ChatInputOpts{
+		Placeholder: "Say something...",
+	}))
+	if !strings.Contains(out, "Say something...") {
+		t.Error("ChatInput should use custom placeholder")
+	}
+}
+
+func TestChatInputDefaultPlaceholder(t *testing.T) {
+	out := render(t, ChatInput("msg", "", ChatInputOpts{}))
+	if !strings.Contains(out, "Type a message...") {
+		t.Error("ChatInput should have default placeholder")
+	}
+}
+
+func TestImageAvatarWithEvents(t *testing.T) {
+	out := render(t, ImageAvatar("photo.jpg", AvatarOpts{
+		Size:       "lg",
+		Alt:        "User",
+		ClickEvent: "avatarClick",
+	}))
+	if !strings.Contains(out, `gerbera-click="avatarClick"`) {
+		t.Error("ImageAvatar should have click event")
+	}
+	if !strings.Contains(out, `gerbera-value="photo.jpg"`) {
+		t.Error("ImageAvatar should have click value")
+	}
+}
+
+func TestLetterAvatarWithEvents(t *testing.T) {
+	out := render(t, LetterAvatar("Alice", AvatarOpts{ClickEvent: "avatarClick"}))
+	if !strings.Contains(out, `gerbera-click="avatarClick"`) {
+		t.Error("LetterAvatar should have click event")
+	}
+	if !strings.Contains(out, `gerbera-value="Alice"`) {
+		t.Error("LetterAvatar should have click value")
+	}
+}
+
+func TestAvatarGroupWithEvents(t *testing.T) {
+	avatars := []gerbera.ComponentFunc{
+		LetterAvatar("Alice", AvatarOpts{}),
+		LetterAvatar("Bob", AvatarOpts{}),
+		LetterAvatar("Charlie", AvatarOpts{}),
+	}
+	out := render(t, AvatarGroup(avatars, AvatarGroupOpts{
+		Max:        2,
+		ClickEvent: "moreClick",
+	}))
+	if !strings.Contains(out, "g-avatar-group-more") {
+		t.Error("AvatarGroup with overflow should show +N more")
+	}
+	if !strings.Contains(out, `gerbera-click="moreClick"`) {
+		t.Error("AvatarGroup +N should have click event")
+	}
+}
+
+func TestAvatarNoEvent(t *testing.T) {
+	out := render(t, ImageAvatar("photo.jpg", AvatarOpts{}))
+	if strings.Contains(out, "gerbera-click") {
+		t.Error("ImageAvatar without event should not have click binding")
+	}
+}
+
+func TestLineChartWithEvents(t *testing.T) {
+	series := []Series{
+		{Name: "Revenue", Points: []DataPoint{
+			{Label: "Jan", Value: 100},
+			{Label: "Feb", Value: 200},
+		}},
+	}
+	out := render(t, LineChart(series, ChartOpts{
+		ShowTooltip:     true,
+		ClickEvent:      "chartClick",
+		MouseEnterEvent: "chartHover",
+		MouseLeaveEvent: "chartLeave",
+	}))
+	if !strings.Contains(out, `gerbera-click="chartClick"`) {
+		t.Error("LineChart should have click event")
+	}
+	if !strings.Contains(out, `gerbera-mouseenter="chartHover"`) {
+		t.Error("LineChart should have mouseenter event")
+	}
+	if !strings.Contains(out, `gerbera-mouseleave="chartLeave"`) {
+		t.Error("LineChart should have mouseleave event")
+	}
+}
+
+func TestColumnChartWithEvents(t *testing.T) {
+	series := []Series{
+		{Name: "Sales", Points: []DataPoint{{Label: "Q1", Value: 300}}},
+	}
+	out := render(t, ColumnChart(series, ChartOpts{ClickEvent: "colClick"}))
+	if !strings.Contains(out, `gerbera-click="colClick"`) {
+		t.Error("ColumnChart should have click event")
+	}
+}
+
+func TestBarChartWithEvents(t *testing.T) {
+	series := []Series{
+		{Name: "Score", Points: []DataPoint{{Label: "A", Value: 85}}},
+	}
+	out := render(t, BarChart(series, ChartOpts{ClickEvent: "barClick"}))
+	if !strings.Contains(out, `gerbera-click="barClick"`) {
+		t.Error("BarChart should have click event")
+	}
+}
+
+func TestPieChartWithEvents(t *testing.T) {
+	data := []DataPoint{
+		{Label: "A", Value: 50},
+		{Label: "B", Value: 50},
+	}
+	out := render(t, PieChart(data, ChartOpts{ClickEvent: "pieClick"}))
+	if !strings.Contains(out, `gerbera-click="pieClick"`) {
+		t.Error("PieChart should have click event")
+	}
+}
+
+func TestScatterPlotWithEvents(t *testing.T) {
+	series := []Series{
+		{Name: "Pts", Points: []DataPoint{{Label: "X1", Value: 10}}},
+	}
+	out := render(t, ScatterPlot(series, ChartOpts{ClickEvent: "scatterClick"}))
+	if !strings.Contains(out, `gerbera-click="scatterClick"`) {
+		t.Error("ScatterPlot should have click event")
+	}
+}
+
+func TestHistogramWithEvents(t *testing.T) {
+	values := []float64{1, 2, 3, 4, 5}
+	out := render(t, Histogram(values, HistogramOpts{
+		ChartOpts: ChartOpts{ClickEvent: "histClick"},
+		BinCount:  3,
+	}))
+	if !strings.Contains(out, `gerbera-click="histClick"`) {
+		t.Error("Histogram should have click event")
+	}
+}
+
+func TestStackedBarChartWithEvents(t *testing.T) {
+	series := []Series{
+		{Name: "A", Points: []DataPoint{{Label: "R1", Value: 30}}},
+		{Name: "B", Points: []DataPoint{{Label: "R1", Value: 50}}},
+	}
+	out := render(t, StackedBarChart(series, ChartOpts{ClickEvent: "stackClick"}))
+	if !strings.Contains(out, `gerbera-click="stackClick"`) {
+		t.Error("StackedBarChart should have click event")
 	}
 }
 

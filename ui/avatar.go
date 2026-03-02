@@ -10,15 +10,17 @@ import (
 
 // AvatarOpts configures an Avatar.
 type AvatarOpts struct {
-	Size  string // "xs"(24px), "sm"(32px), "md"(40px default), "lg"(48px), "xl"(64px)
-	Shape string // "circle"(default), "rounded"
-	Alt   string // ImageAvatar alt text
+	Size       string // "xs"(24px), "sm"(32px), "md"(40px default), "lg"(48px), "xl"(64px)
+	Shape      string // "circle"(default), "rounded"
+	Alt        string // ImageAvatar alt text
+	ClickEvent string // gerbera-click; value=src or name
 }
 
 // AvatarGroupOpts configures an AvatarGroup.
 type AvatarGroupOpts struct {
-	Size string
-	Max  int // max displayed avatars, 0 = show all
+	Size       string
+	Max        int    // max displayed avatars, 0 = show all
+	ClickEvent string // gerbera-click on "+N more"
 }
 
 var avatarColors = []string{
@@ -68,6 +70,13 @@ func ImageAvatar(src string, opts AvatarOpts, extra ...gerbera.ComponentFunc) ge
 	attrs := []gerbera.ComponentFunc{
 		property.Class("g-avatar", "g-avatar-"+shape, "g-avatar-"+size),
 	}
+	if opts.ClickEvent != "" {
+		attrs = append(attrs,
+			property.Attr("gerbera-click", opts.ClickEvent),
+			property.Attr("gerbera-value", src),
+			property.Attr("style", "cursor:pointer"),
+		)
+	}
 	attrs = append(attrs, extra...)
 	var imgOpts []gerbera.ComponentFunc
 	if opts.Alt != "" {
@@ -86,6 +95,14 @@ func LetterAvatar(name string, opts AvatarOpts, extra ...gerbera.ComponentFunc) 
 		property.Class("g-avatar", "g-avatar-"+shape, "g-avatar-"+size),
 		property.Attr("style", fmt.Sprintf("background-color:%s", color)),
 		property.Value(avatarInitial(name)),
+	}
+	if opts.ClickEvent != "" {
+		// Override style to include cursor
+		attrs[1] = property.Attr("style", fmt.Sprintf("background-color:%s;cursor:pointer", color))
+		attrs = append(attrs,
+			property.Attr("gerbera-click", opts.ClickEvent),
+			property.Attr("gerbera-value", name),
+		)
 	}
 	attrs = append(attrs, extra...)
 	return dom.Div(attrs...)
@@ -109,10 +126,18 @@ func AvatarGroup(avatars []gerbera.ComponentFunc, opts AvatarGroupOpts, extra ..
 
 	if overflow > 0 {
 		size := avatarSize(opts.Size)
-		attrs = append(attrs, dom.Div(
+		moreAttrs := []gerbera.ComponentFunc{
 			property.Class("g-avatar", "g-avatar-circle", "g-avatar-"+size, "g-avatar-group-more"),
 			property.Value(fmt.Sprintf("+%d", overflow)),
-		))
+		}
+		if opts.ClickEvent != "" {
+			moreAttrs = append(moreAttrs,
+				property.Attr("gerbera-click", opts.ClickEvent),
+				property.Attr("gerbera-value", "more"),
+				property.Attr("style", "cursor:pointer"),
+			)
+		}
+		attrs = append(attrs, dom.Div(moreAttrs...))
 	}
 
 	return dom.Div(attrs...)

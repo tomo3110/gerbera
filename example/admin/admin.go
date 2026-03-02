@@ -169,7 +169,7 @@ func (v *AdminView) pageDashboard() g.ComponentFunc {
 					gu.Card(
 						gu.CardHeader("Calendar"),
 						gd.Div(gp.Class("g-page-body"),
-							gul.Calendar(gul.CalendarOpts{
+							gu.Calendar(gu.CalendarOpts{
 								Year:             v.CalYear,
 								Month:            v.CalMonth,
 								Selected:         v.CalSelected,
@@ -287,9 +287,7 @@ func (v *AdminView) pageMessages() g.ComponentFunc {
 					gd.Div(gp.Attr("style", "flex:1;overflow-y:auto"),
 						gu.ChatContainer(msgViews...),
 					),
-					gul.ChatInput(gul.ChatInputOpts{
-						Name:         "chatMsg",
-						Value:        v.ChatDraft,
+					gu.ChatInput("chatMsg", v.ChatDraft, gu.ChatInputOpts{
 						Placeholder:  "Send a message to the team...",
 						SendEvent:    "chatSend",
 						InputEvent:   "chatInput",
@@ -336,9 +334,7 @@ func (v *AdminView) pageSettings() g.ComponentFunc {
 					gd.Div(gp.Class("g-page-body"),
 						gu.FormGroup(
 							gu.FormLabel("Items per page", "items-per-page"),
-							gul.NumberInput(gul.NumberInputOpts{
-								Name:           "items-per-page",
-								Value:          v.ItemsPerPage,
+							gu.NumberInput("items-per-page", v.ItemsPerPage, gu.NumberInputOpts{
 								Min:            &min5,
 								Max:            &max50,
 								Step:           5,
@@ -348,9 +344,7 @@ func (v *AdminView) pageSettings() g.ComponentFunc {
 						),
 						gu.FormGroup(
 							gu.FormLabel("Notification frequency (minutes)", "notify-freq"),
-							gul.Slider(gul.SliderOpts{
-								Name:       "notify-freq",
-								Value:      v.NotifyFreq,
+							gu.Slider("notify-freq", v.NotifyFreq, gu.SliderOpts{
 								Min:        min0,
 								Max:        max100,
 								Step:       5,

@@ -10,9 +10,10 @@ import (
 
 // TimePickerOpts configures a TimePicker.
 type TimePickerOpts struct {
-	Use24H   bool // true=24-hour format (default), false=12-hour format with AM/PM
-	ShowSec  bool // show seconds field
-	Disabled bool
+	Use24H      bool   // true=24-hour format (default), false=12-hour format with AM/PM
+	ShowSec     bool   // show seconds field
+	Disabled    bool
+	ChangeEvent string // gerbera-click on buttons, gerbera-change on inputs
 }
 
 // TimePicker renders a time picker with hour, minute, and optional second fields.
@@ -35,15 +36,21 @@ func TimePicker(name string, hour, minute, second int, opts TimePickerOpts, extr
 		hourMin = 1
 	}
 
+	// Format the current value for the payload
+	timeValue := FormatTime(hour, minute, second, opts.ShowSec)
+
 	wrapAttrs := []gerbera.ComponentFunc{
 		property.Class("g-timepicker"),
 		property.Role("group"),
 		property.AriaLabel(name),
 	}
+	if opts.ChangeEvent != "" {
+		wrapAttrs = append(wrapAttrs, property.Attr("data-value", timeValue))
+	}
 	wrapAttrs = append(wrapAttrs, extra...)
 
 	// Hour unit
-	wrapAttrs = append(wrapAttrs, timeUnit("Hour", displayHour, hourMin, hourMax, opts.Disabled))
+	wrapAttrs = append(wrapAttrs, timeUnit("Hour", displayHour, hourMin, hourMax, opts.Disabled, opts.ChangeEvent, "hour-up", "hour-down"))
 
 	// Separator
 	wrapAttrs = append(wrapAttrs, dom.Span(
@@ -52,41 +59,95 @@ func TimePicker(name string, hour, minute, second int, opts TimePickerOpts, extr
 	))
 
 	// Minute unit
-	wrapAttrs = append(wrapAttrs, timeUnit("Minute", minute, 0, 59, opts.Disabled))
+	wrapAttrs = append(wrapAttrs, timeUnit("Minute", minute, 0, 59, opts.Disabled, opts.ChangeEvent, "minute-up", "minute-down"))
 
 	if opts.ShowSec {
 		wrapAttrs = append(wrapAttrs, dom.Span(
 			property.Class("g-timepicker-sep"),
 			property.Value(":"),
 		))
-		wrapAttrs = append(wrapAttrs, timeUnit("Second", second, 0, 59, opts.Disabled))
+		wrapAttrs = append(wrapAttrs, timeUnit("Second", second, 0, 59, opts.Disabled, opts.ChangeEvent, "second-up", "second-down"))
 	}
 
 	// AM/PM toggle for 12-hour format
 	if !opts.Use24H {
+		amBtnAttrs := []gerbera.ComponentFunc{
+			property.Class("g-timepicker-ampm-btn"),
+			property.Attr("type", "button"),
+			property.Attr("aria-pressed", boolStr(ampm == "AM")),
+			property.Disabled(opts.Disabled),
+			property.Value("AM"),
+		}
+		pmBtnAttrs := []gerbera.ComponentFunc{
+			property.Class("g-timepicker-ampm-btn"),
+			property.Attr("type", "button"),
+			property.Attr("aria-pressed", boolStr(ampm == "PM")),
+			property.Disabled(opts.Disabled),
+			property.Value("PM"),
+		}
+		if opts.ChangeEvent != "" {
+			amBtnAttrs = append(amBtnAttrs,
+				property.Attr("gerbera-click", opts.ChangeEvent),
+				property.Attr("gerbera-value", "am"),
+			)
+			pmBtnAttrs = append(pmBtnAttrs,
+				property.Attr("gerbera-click", opts.ChangeEvent),
+				property.Attr("gerbera-value", "pm"),
+			)
+		}
 		wrapAttrs = append(wrapAttrs, dom.Div(
 			property.Class("g-timepicker-ampm"),
-			dom.Button(
-				property.Class("g-timepicker-ampm-btn"),
-				property.Attr("type", "button"),
-				property.Attr("aria-pressed", boolStr(ampm == "AM")),
-				property.Disabled(opts.Disabled),
-				property.Value("AM"),
-			),
-			dom.Button(
-				property.Class("g-timepicker-ampm-btn"),
-				property.Attr("type", "button"),
-				property.Attr("aria-pressed", boolStr(ampm == "PM")),
-				property.Disabled(opts.Disabled),
-				property.Value("PM"),
-			),
+			dom.Button(amBtnAttrs...),
+			dom.Button(pmBtnAttrs...),
 		))
 	}
 
 	return dom.Div(wrapAttrs...)
 }
 
-func timeUnit(label string, value, min, max int, disabled bool) gerbera.ComponentFunc {
+func timeUnit(label string, value, min, max int, disabled bool, changeEvent, upValue, downValue string) gerbera.ComponentFunc {
+	upBtnAttrs := []gerbera.ComponentFunc{
+		property.Class("g-timepicker-btn", "g-timepicker-up"),
+		property.Attr("type", "button"),
+		property.Attr("tabindex", "-1"),
+		property.AriaLabel(fmt.Sprintf("Increase %s", label)),
+		property.Disabled(disabled),
+		property.Value("\u25B2"),
+	}
+	if changeEvent != "" {
+		upBtnAttrs = append(upBtnAttrs,
+			property.Attr("gerbera-click", changeEvent),
+			property.Attr("gerbera-value", upValue),
+		)
+	}
+
+	downBtnAttrs := []gerbera.ComponentFunc{
+		property.Class("g-timepicker-btn", "g-timepicker-down"),
+		property.Attr("type", "button"),
+		property.Attr("tabindex", "-1"),
+		property.AriaLabel(fmt.Sprintf("Decrease %s", label)),
+		property.Disabled(disabled),
+		property.Value("\u25BC"),
+	}
+	if changeEvent != "" {
+		downBtnAttrs = append(downBtnAttrs,
+			property.Attr("gerbera-click", changeEvent),
+			property.Attr("gerbera-value", downValue),
+		)
+	}
+
+	inputAttrs := []gerbera.ComponentFunc{
+		property.Class("g-timepicker-field"),
+		property.Attr("type", "text"),
+		property.Attr("inputmode", "numeric"),
+		property.Attr("size", "2"),
+		property.Attr("value", fmt.Sprintf("%02d", value)),
+		property.Disabled(disabled),
+	}
+	if changeEvent != "" {
+		inputAttrs = append(inputAttrs, property.Attr("gerbera-change", changeEvent))
+	}
+
 	return dom.Div(
 		property.Class("g-timepicker-unit"),
 		property.Role("spinbutton"),
@@ -94,30 +155,9 @@ func timeUnit(label string, value, min, max int, disabled bool) gerbera.Componen
 		property.AriaValueNow(value),
 		property.AriaValueMin(min),
 		property.AriaValueMax(max),
-		dom.Button(
-			property.Class("g-timepicker-btn", "g-timepicker-up"),
-			property.Attr("type", "button"),
-			property.Attr("tabindex", "-1"),
-			property.AriaLabel(fmt.Sprintf("Increase %s", label)),
-			property.Disabled(disabled),
-			property.Value("\u25B2"),
-		),
-		dom.Input(
-			property.Class("g-timepicker-field"),
-			property.Attr("type", "text"),
-			property.Attr("inputmode", "numeric"),
-			property.Attr("size", "2"),
-			property.Attr("value", fmt.Sprintf("%02d", value)),
-			property.Disabled(disabled),
-		),
-		dom.Button(
-			property.Class("g-timepicker-btn", "g-timepicker-down"),
-			property.Attr("type", "button"),
-			property.Attr("tabindex", "-1"),
-			property.AriaLabel(fmt.Sprintf("Decrease %s", label)),
-			property.Disabled(disabled),
-			property.Value("\u25BC"),
-		),
+		dom.Button(upBtnAttrs...),
+		dom.Input(inputAttrs...),
+		dom.Button(downBtnAttrs...),
 	)
 }
 

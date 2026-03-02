@@ -15,6 +15,14 @@ type ChatMessage struct {
 	Avatar    string // optional avatar text/emoji
 }
 
+// ChatInputOpts configures a ChatInput component.
+type ChatInputOpts struct {
+	Placeholder  string
+	SendEvent    string // gerbera-click on send button
+	InputEvent   string // gerbera-input on text field
+	KeydownEvent string // gerbera-keydown on text field
+}
+
 // ChatContainer renders a scrollable chat message list.
 func ChatContainer(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
 	attrs := []gerbera.ComponentFunc{
@@ -84,24 +92,44 @@ func ChatMessageView(msg ChatMessage) gerbera.ComponentFunc {
 }
 
 // ChatInput renders a chat input area with a text input and send button.
-func ChatInput(name, value string, opts ...gerbera.ComponentFunc) gerbera.ComponentFunc {
+func ChatInput(name, value string, opts ChatInputOpts, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
+	ph := opts.Placeholder
+	if ph == "" {
+		ph = "Type a message..."
+	}
+
 	inputAttrs := []gerbera.ComponentFunc{
 		property.Class("g-chat-input-field"),
 		property.Name(name),
 		property.Attr("value", value),
-		property.Placeholder("Type a message..."),
+		property.Placeholder(ph),
 		property.Attr("autocomplete", "off"),
 	}
-	inputAttrs = append(inputAttrs, opts...)
+	inputAttrs = append(inputAttrs, extra...)
+	if opts.InputEvent != "" {
+		inputAttrs = append(inputAttrs, property.Attr("gerbera-input", opts.InputEvent))
+	}
+	if opts.KeydownEvent != "" {
+		inputAttrs = append(inputAttrs, property.Attr("gerbera-keydown", opts.KeydownEvent))
+	}
+
+	btnType := "submit"
+	if opts.SendEvent != "" {
+		btnType = "button"
+	}
+	sendBtn := []gerbera.ComponentFunc{
+		property.Class("g-btn", "g-btn-primary", "g-chat-send"),
+		property.Attr("type", btnType),
+		property.AriaLabel("Send"),
+		property.Value("Send"),
+	}
+	if opts.SendEvent != "" {
+		sendBtn = append(sendBtn, property.Attr("gerbera-click", opts.SendEvent))
+	}
 
 	return dom.Div(
 		property.Class("g-chat-inputbar"),
 		dom.Input(inputAttrs...),
-		dom.Button(
-			property.Class("g-btn", "g-btn-primary", "g-chat-send"),
-			property.Attr("type", "submit"),
-			property.AriaLabel("Send"),
-			property.Value("Send"),
-		),
+		dom.Button(sendBtn...),
 	)
 }

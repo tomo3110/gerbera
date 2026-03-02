@@ -24,15 +24,18 @@ type Series struct {
 
 // ChartOpts holds common chart options.
 type ChartOpts struct {
-	Width       int    // SVG width (default 600)
-	Height      int    // SVG height (default 400)
-	Title       string
-	ShowGrid    bool
-	ShowLegend  bool
-	ShowTooltip bool // <title> native tooltip
-	XLabel      string
-	YLabel      string
-	Colors      []string // color palette override
+	Width           int    // SVG width (default 600)
+	Height          int    // SVG height (default 400)
+	Title           string
+	ShowGrid        bool
+	ShowLegend      bool
+	ShowTooltip     bool // <title> native tooltip
+	XLabel          string
+	YLabel          string
+	Colors          []string // color palette override
+	ClickEvent      string   // gerbera-click on SVG root
+	MouseEnterEvent string   // gerbera-mouseenter on SVG root
+	MouseLeaveEvent string   // gerbera-mouseleave on SVG root
 }
 
 // HistogramOpts holds histogram-specific settings.
@@ -141,11 +144,20 @@ func chartPad(opts ChartOpts) chartPadding {
 
 // ---------- SVG element builders ----------
 
-func svgRoot(w, h int, children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
+func svgRoot(w, h int, opts ChartOpts, children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
 	attrs := []gerbera.ComponentFunc{
 		property.Class("g-chart"),
 		property.Attr("viewBox", fmt.Sprintf("0 0 %d %d", w, h)),
 		property.Attr("xmlns", "http://www.w3.org/2000/svg"),
+	}
+	if opts.ClickEvent != "" {
+		attrs = append(attrs, property.Attr("gerbera-click", opts.ClickEvent))
+	}
+	if opts.MouseEnterEvent != "" {
+		attrs = append(attrs, property.Attr("gerbera-mouseenter", opts.MouseEnterEvent))
+	}
+	if opts.MouseLeaveEvent != "" {
+		attrs = append(attrs, property.Attr("gerbera-mouseleave", opts.MouseLeaveEvent))
 	}
 	attrs = append(attrs, children...)
 	return gerbera.Tag("svg", attrs...)
@@ -326,7 +338,7 @@ func renderEmpty(opts ChartOpts, extra []gerbera.ComponentFunc) gerbera.Componen
 		),
 	}
 	children = append(children, extra...)
-	return svgRoot(opts.Width, opts.Height, children...)
+	return svgRoot(opts.Width, opts.Height, opts, children...)
 }
 
 // ---------- unique X labels from series ----------
@@ -432,7 +444,7 @@ func LineChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc) 
 		children = append(children, t)
 	}
 	children = append(children, extra...)
-	return svgRoot(opts.Width, opts.Height, children...)
+	return svgRoot(opts.Width, opts.Height, opts, children...)
 }
 
 // ColumnChart renders a vertical bar chart.
@@ -498,7 +510,7 @@ func ColumnChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc
 		children = append(children, t)
 	}
 	children = append(children, extra...)
-	return svgRoot(opts.Width, opts.Height, children...)
+	return svgRoot(opts.Width, opts.Height, opts, children...)
 }
 
 // BarChart renders a horizontal bar chart (X/Y swapped from ColumnChart).
@@ -598,7 +610,7 @@ func BarChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc) g
 		children = append(children, t)
 	}
 	children = append(children, extra...)
-	return svgRoot(opts.Width, opts.Height, children...)
+	return svgRoot(opts.Width, opts.Height, opts, children...)
 }
 
 // PieChart renders a pie chart.
@@ -676,7 +688,7 @@ func PieChart(data []DataPoint, opts ChartOpts, extra ...gerbera.ComponentFunc) 
 		children = append(children, t)
 	}
 	children = append(children, extra...)
-	return svgRoot(opts.Width, opts.Height, children...)
+	return svgRoot(opts.Width, opts.Height, opts, children...)
 }
 
 // ScatterPlot renders a scatter chart.
@@ -734,7 +746,7 @@ func ScatterPlot(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc
 		children = append(children, t)
 	}
 	children = append(children, extra...)
-	return svgRoot(opts.Width, opts.Height, children...)
+	return svgRoot(opts.Width, opts.Height, opts, children...)
 }
 
 // Histogram renders a histogram from raw values.
@@ -887,6 +899,6 @@ func StackedBarChart(series []Series, opts ChartOpts, extra ...gerbera.Component
 		children = append(children, t)
 	}
 	children = append(children, extra...)
-	return svgRoot(opts.Width, opts.Height, children...)
+	return svgRoot(opts.Width, opts.Height, opts, children...)
 }
 
