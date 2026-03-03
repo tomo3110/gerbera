@@ -57,6 +57,13 @@ func (v *loopSessionExpiredView) OnSessionExpired() error {
 	return nil
 }
 
+type loopUnmountView struct {
+	loopTestView
+	Unmounted bool
+}
+
+func (v *loopUnmountView) Unmount() { v.Unmounted = true }
+
 // --- tests ---
 
 func TestViewLoopBasicEvent(t *testing.T) {
@@ -244,5 +251,29 @@ func TestViewLoopCloseReturnsNil(t *testing.T) {
 
 	if loopErr != nil {
 		t.Errorf("expected nil on clean close, got %v", loopErr)
+	}
+}
+
+func TestViewLoopUnmount(t *testing.T) {
+	view := &loopUnmountView{}
+	view.Mount(Params{})
+
+	tr := NewTestTransport()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ViewLoop(view, tr, ViewLoopConfig{
+			SessionID: "test-sess",
+			Lang:      "en",
+		})
+	}()
+
+	tr.Close()
+	wg.Wait()
+
+	if !view.Unmounted {
+		t.Error("expected Unmount() to be called on ViewLoop exit")
 	}
 }

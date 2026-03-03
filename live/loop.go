@@ -25,6 +25,13 @@ type ViewLoopConfig struct {
 // It blocks until the Transport is closed, the session is invalidated,
 // or an unrecoverable send error occurs.
 func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
+	// --- unmount cleanup ---
+	defer func() {
+		if u, ok := view.(Unmounter); ok {
+			u.Unmount()
+		}
+	}()
+
 	// --- event receive goroutine ---
 	type eventMsg struct {
 		name    string
