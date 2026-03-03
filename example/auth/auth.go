@@ -31,7 +31,9 @@ func dashboardPage(r *http.Request) []g.ComponentFunc {
 					gd.H1(gp.Value("Auth Demo")),
 					gu.Card(
 						gu.CardHeader(fmt.Sprintf("Welcome, %s!", username)),
-						gd.P(gp.Value("You are logged in. This page is protected by session middleware.")),
+						gu.CardBody(
+							gd.P(gp.Value("You are logged in. This page is protected by session middleware.")),
+						),
 						gu.CardFooter(
 							gd.A(gp.Attr("href", "/logout"),
 								gu.Button("Logout", gu.ButtonDanger),
@@ -70,46 +72,49 @@ func renderLoginComponents(csrfToken string, errMsg string) []g.ComponentFunc {
 						gd.H1(gp.Value("Login")),
 						expr.If(errMsg != "",
 							gu.Card(
-								gp.Attr("style", "border-color: var(--g-danger-border); background: var(--g-danger-bg); padding: var(--g-space-md) var(--g-space-lg)"),
-								gd.P(
-									gp.Attr("style", "color: var(--g-danger); margin: 0"),
-									gp.Value(errMsg),
+								gu.CardBody(
+									gp.Attr("style", "border-color: var(--g-danger-border); background: var(--g-danger-bg)"),
+									gd.P(
+										gp.Attr("style", "color: var(--g-danger); margin: 0"),
+										gp.Value(errMsg),
+									),
 								),
 							),
 						),
 						gu.Card(
 							gu.CardHeader("Sign In"),
-							gd.Form(
-								gp.Attr("method", "POST"),
-								gp.Attr("action", "/login"),
-								gp.Attr("style", "padding: var(--g-space-md) var(--g-space-lg)"),
-								expr.If(csrfToken != "",
-									gd.Input(
-										gp.Attr("type", "hidden"),
-										gp.Name("csrf_token"),
-										gp.Attr("value", csrfToken),
-									),
-								),
-								gu.Stack(
-									gu.FormGroup(
-										gu.FormLabel("Username", "username"),
-										gu.FormInput("username",
-											gp.ID("username"),
-											gp.Attr("type", "text"),
-											gp.Attr("required", "required"),
+							gu.CardBody(
+								gd.Form(
+									gp.Attr("method", "POST"),
+									gp.Attr("action", "/login"),
+									expr.If(csrfToken != "",
+										gd.Input(
+											gp.Attr("type", "hidden"),
+											gp.Name("csrf_token"),
+											gp.Attr("value", csrfToken),
 										),
 									),
-									gu.FormGroup(
-										gu.FormLabel("Password", "password"),
-										gu.FormInput("password",
-											gp.ID("password"),
-											gp.Attr("type", "password"),
-											gp.Attr("required", "required"),
+									gu.Stack(
+										gu.FormGroup(
+											gu.FormLabel("Username", "username"),
+											gu.FormInput("username",
+												gp.ID("username"),
+												gp.Attr("type", "text"),
+												gp.Attr("required", "required"),
+											),
 										),
-									),
-									gu.Button("Sign In", gu.ButtonPrimary,
-										gp.Attr("type", "submit"),
-										gp.Attr("style", "width: 100%"),
+										gu.FormGroup(
+											gu.FormLabel("Password", "password"),
+											gu.FormInput("password",
+												gp.ID("password"),
+												gp.Attr("type", "password"),
+												gp.Attr("required", "required"),
+											),
+										),
+										gu.Button("Sign In", gu.ButtonPrimary,
+											gp.Attr("type", "submit"),
+											gp.Attr("style", "width: 100%"),
+										),
 									),
 								),
 							),
