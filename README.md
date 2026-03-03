@@ -130,9 +130,10 @@ gerbera/
 ├── property/          # Attribute setters (Class, Attr, ID, ARIA helpers, etc.)
 ├── expr/              # Control flow: If(), Unless(), Each()
 ├── styles/            # Style(), CSS(), ScopedCSS() for CSS handling
-├── components/        # Pre-built components (Bootstrap CDN, Tabs, etc.)
+├── components/        # Pre-built components (Bootstrap CDN, TailwindCSS, Tabs, etc.)
 ├── diff/              # Element tree diffing and fragment rendering
 ├── live/              # LiveView: View interface, WebSocket handler, client JS
+├── session/           # HTTP session management (MemoryStore, CSRF, middleware)
 ├── ui/               # Pre-built UI component library with theme system
 │   └── live/         # LiveView-only components (Modal, Toast, DataTable, etc.)
 │
@@ -151,7 +152,9 @@ gerbera/
     ├── wiki_live/     # LiveView Wiki (SPA-style)
     ├── mdviewer/      # LiveView Markdown viewer/editor
     ├── admin/         # LiveView admin dashboard
-    └── catalog/       # Interactive UI component catalog
+    ├── catalog/       # Interactive UI component catalog
+    ├── auth/          # Session-based authentication with CSRF
+    └── chat/          # Multi-user real-time chat (InfoReceiver)
 ```
 
 ### Core Concepts
@@ -166,6 +169,23 @@ type ComponentFunc func(*Element) error
 
 ```go
 gd.Div(children...)  // equivalent to g.Tag("div", children...)
+```
+
+**Skip()** — Returns a no-op `ComponentFunc` that renders nothing. Useful as a placeholder or default:
+
+```go
+g.Skip()  // renders nothing
+```
+
+**HandlerFunc()** — Creates an `http.HandlerFunc` that generates pages dynamically based on the request:
+
+```go
+http.HandleFunc("/", g.HandlerFunc(func(r *http.Request) []g.ComponentFunc {
+    return []g.ComponentFunc{
+        gd.Head(gd.Title("Dynamic Page")),
+        gd.Body(gd.H1(gp.Value("Hello, " + r.URL.Query().Get("name")))),
+    }
+}))
 ```
 
 **Functional composition** — Components compose via variadic `children ...ComponentFunc` parameters:
@@ -245,7 +265,7 @@ func (v *MyView) HandleEvent(event string, payload gl.Payload) error {
 }
 ```
 
-Available commands: `ScrollTo`, `ScrollIntoPct`, `Focus`, `Blur`, `SetAttribute`, `RemoveAttribute`, `AddClass`, `RemoveClass`, `ToggleClass`, `SetProperty`, `Dispatch`, `Show`, `Hide`, `Toggle`.
+Available commands: `ScrollTo`, `ScrollIntoPct`, `Focus`, `Blur`, `SetAttribute`, `RemoveAttribute`, `AddClass`, `RemoveClass`, `ToggleClass`, `SetProperty`, `Dispatch`, `Show`, `Hide`, `Toggle`, `Navigate`.
 
 ### Upload Support
 
@@ -280,6 +300,120 @@ gl.SelectField("role", []gl.SelectOption{
     {Value: "admin", Label: "Admin"},
     {Value: "user", Label: "User"},
 }, gl.FieldOpts{Label: "Role"})
+```
+
+### Session Management (`session/` package)
+
+The `session/` package provides HTTP session management with HMAC-SHA256 signed cookies:
+
+```go
+import "github.com/tomo3110/gerbera/session"
+
+// Create a store with a signing key
+store := session.NewMemoryStore([]byte("secret-key"),
+    session.WithMaxAge(30 * time.Minute),
+)
+defer store.Close()
+
+// Apply session middleware to load/save sessions automatically
+handler := session.Middleware(store)(mux)
+```
+
+**CSRF Protection:**
+
+```go
+sess := session.FromContext(r.Context())
+token := session.GenerateCSRFToken(sess)  // generate and store in session
+// ... include token in form as hidden field ...
+valid := session.ValidCSRFToken(sess, submittedToken)  // constant-time comparison
+```
+
+**Auth Guard Middleware:**
+
+```go
+// Redirect to /login if session has no "username" key
+authGuard := session.RequireKey("username", "/login")
+mux.Handle("/dashboard", authGuard(dashboardHandler))
+```
+
+**Push-based Session Invalidation:**
+
+When `MemoryStore` is used with `gl.WithSessionStore(store)`, LiveView connections automatically subscribe to session invalidation events. Destroying a session (e.g., on logout) closes all associated WebSocket connections. Views implementing `SessionExpiredHandler` receive a callback before disconnection.
+
+### LiveView Advanced Interfaces
+
+Beyond the core `View` interface, Gerbera provides optional interfaces for advanced scenarios:
+
+**InfoReceiver** — Receive server-side messages pushed via `Session.SendInfo()`. Useful for broadcasting updates between users:
+
+```go
+type InfoReceiver interface {
+    View
+    HandleInfo(msg any) error
+}
+```
+
+```go
+func (v *ChatView) HandleInfo(msg any) error {
+    if cm, ok := msg.(ChatMessage); ok {
+        v.Messages = append(v.Messages, cm)
+    }
+    return nil
+}
+
+// Send from another goroutine or another user's session:
+session.SendInfo(chatMessage)
+```
+
+**Unmounter** — Called when the WebSocket connection closes. Use for cleanup like leaving a chat room:
+
+```go
+type Unmounter interface {
+    Unmount()
+}
+```
+
+**SessionExpiredHandler** — Called when the HTTP session is invalidated (e.g., logout from another tab). The view can render a final state before disconnection:
+
+```go
+type SessionExpiredHandler interface {
+    OnSessionExpired() error
+}
+```
+
+```go
+func (v *DashboardView) OnSessionExpired() error {
+    v.SessionExpired = true
+    v.Navigate("/login")  // redirect the client
+    return nil
+}
+```
+
+### Transport Interface
+
+The `Transport` interface decouples the View lifecycle from the WebSocket connection, enabling custom transports and easier testing:
+
+```go
+type Transport interface {
+    Send(msg Message) error
+    Receive() (event string, payload Payload, err error)
+    Close() error
+}
+```
+
+`ViewLoop()` drives a View over any `Transport` implementation:
+
+```go
+gl.ViewLoop(view, transport, gl.ViewLoopConfig{...})
+```
+
+**TestTransport** — An in-memory transport for testing LiveViews without a WebSocket:
+
+```go
+transport := gl.NewTestTransport()
+go gl.ViewLoop(view, transport, cfg)
+transport.PushEvent("inc", gl.Payload{})
+msg := transport.LastMessage()
 ```
 
 ### Testing LiveViews
@@ -337,6 +471,8 @@ The `styles/` package provides additional CSS utilities:
 | `gs.CSS(cssText)` | `<style>` element with raw CSS |
 | `gs.ScopedCSS(scope, rules)` | CSS rules scoped to a selector |
 | `gs.StyleIf(cond, styleMap)` | Conditional inline styles |
+| `gs.MediaQuery(query, css)` | Wraps CSS in a `@media` rule |
+| `gs.Keyframes(name, frames)` | Generates a `@keyframes` rule |
 
 ### Additional DOM Elements
 
@@ -352,6 +488,8 @@ Handler options:
 | `gl.WithSessionTTL(d)` | Sets session timeout (default 5 minutes) |
 | `gl.WithDebug()` | Enables browser DevPanel and server-side structured logging |
 | `gl.WithMiddleware(mw)` | Adds HTTP middleware to the handler |
+| `gl.WithCheckOrigin(fn)` | Sets a custom Origin header check for WebSocket upgrades |
+| `gl.WithSessionStore(store)` | Enables push-based session invalidation via `session.Store` |
 
 ### Debug Mode
 
@@ -439,6 +577,8 @@ Each example includes bilingual tutorials (`TUTORIAL.md` / `TUTORIAL.ja.md`).
 | [mdviewer](example/mdviewer/) | LiveView Markdown Viewer | :8860 | `cd example/mdviewer && go run .` |
 | [admin](example/admin/) | LiveView admin dashboard | :8910 | `go run example/admin/admin.go` |
 | [catalog](example/catalog/) | Interactive UI component catalog | :8900 | `go run example/catalog/catalog.go` |
+| [auth](example/auth/) | Session auth with CSRF | :8895 | `go run example/auth/auth.go` |
+| [chat](example/chat/) | Multi-user real-time chat | :8920 | `go run example/chat/chat.go` |
 
 ## Development
 
