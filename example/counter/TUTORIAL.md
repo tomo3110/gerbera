@@ -110,14 +110,14 @@ func main() {
 		opts = append(opts, gl.WithDebug())
 	}
 
-	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }, opts...))
+	http.Handle("/", gl.Handler(func(_ *http.Request) gl.View { return &CounterView{} }, opts...))
 	log.Printf("counter running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 ```
 
 - `gl.Handler(factory)` returns an `http.Handler` that handles both initial HTTP rendering and WebSocket connections
-- The factory function `func() gl.View` is called once per session to create a fresh `View` instance
+- The factory function `func(*http.Request) gl.View` is called once per session to create a fresh `View` instance — the request is available for accessing context values (e.g. authenticated user)
 - Options: `gl.WithLang("en")` sets the HTML lang attribute, `gl.WithSessionTTL(10*time.Minute)` adjusts the session timeout
 - `gl.WithDebug()` enables the browser DevPanel and server-side structured logging (see below)
 

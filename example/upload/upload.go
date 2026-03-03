@@ -162,7 +162,7 @@ func main() {
 		opts = append(opts, gl.WithDebug())
 	}
 
-	http.Handle("/", gl.Handler(func() gl.View { return &UploadView{} }, opts...))
+	http.Handle("/", gl.Handler(func(_ *http.Request) gl.View { return &UploadView{} }, opts...))
 	log.Printf("upload running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

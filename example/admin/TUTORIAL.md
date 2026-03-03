@@ -589,7 +589,7 @@ func main() {
         opts = append(opts, gl.WithDebug())
     }
 
-    http.Handle("/", gl.Handler(func() gl.View { return &AdminView{} }, opts...))
+    http.Handle("/", gl.Handler(func(_ *http.Request) gl.View { return &AdminView{} }, opts...))
     log.Printf("admin running on %s", *addr)
     log.Fatal(http.ListenAndServe(*addr, nil))
 }
@@ -597,7 +597,7 @@ func main() {
 
 The server setup is minimal:
 
-- **`gl.Handler(factory, opts...)`** creates an HTTP handler that serves the initial HTML and upgrades to WebSocket for live updates. The factory function `func() gl.View { return &AdminView{} }` creates a fresh `AdminView` for each session.
+- **`gl.Handler(factory, opts...)`** creates an HTTP handler that serves the initial HTML and upgrades to WebSocket for live updates. The factory function `func(_ *http.Request) gl.View { return &AdminView{} }` creates a fresh `AdminView` for each session. The `*http.Request` parameter allows the factory to access request context (e.g. authenticated user set by middleware).
 - **`gl.WithDebug()`** enables the debug panel, which shows WebSocket messages, event payloads, and render timing in the browser.
 
 ## How It Works

@@ -78,7 +78,9 @@ func defaultCheckOrigin(r *http.Request) bool {
 
 // Handler returns an http.Handler for a LiveView.
 // viewFactory is called once per session to create a new View instance.
-func Handler(viewFactory func() View, opts ...Option) http.Handler {
+// The *http.Request is passed so the factory can access request context
+// (e.g. authenticated user set by middleware).
+func Handler(viewFactory func(*http.Request) View, opts ...Option) http.Handler {
 	cfg := &handlerConfig{
 		lang:       "ja",
 		sessionTTL: 5 * time.Minute,
@@ -120,8 +122,8 @@ func Handler(viewFactory func() View, opts ...Option) http.Handler {
 	return handler
 }
 
-func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
-	view := viewFactory()
+func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func(*http.Request) View, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
+	view := viewFactory(r)
 
 	params := make(Params)
 	for k, v := range r.URL.Query() {

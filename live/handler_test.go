@@ -40,7 +40,7 @@ func (v *testView) HandleEvent(event string, payload Payload) error {
 }
 
 func TestHandlerHTTPRender(t *testing.T) {
-	h := Handler(func() View { return &testView{} })
+	h := Handler(func(_ *http.Request) View { return &testView{} })
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -71,7 +71,7 @@ func TestHandlerHTTPRender(t *testing.T) {
 }
 
 func TestHandlerHTTPContentType(t *testing.T) {
-	h := Handler(func() View { return &testView{} })
+	h := Handler(func(_ *http.Request) View { return &testView{} })
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -84,7 +84,7 @@ func TestHandlerHTTPContentType(t *testing.T) {
 }
 
 func TestHandlerWSWithoutSession(t *testing.T) {
-	h := Handler(func() View { return &testView{} })
+	h := Handler(func(_ *http.Request) View { return &testView{} })
 
 	req := httptest.NewRequest("GET", "/?gerbera-ws=1&session=invalid", nil)
 	w := httptest.NewRecorder()
@@ -96,7 +96,7 @@ func TestHandlerWSWithoutSession(t *testing.T) {
 }
 
 func TestHandlerWithLang(t *testing.T) {
-	h := Handler(func() View { return &testView{} }, WithLang("en"))
+	h := Handler(func(_ *http.Request) View { return &testView{} }, WithLang("en"))
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -226,7 +226,7 @@ func TestBuildTreeWithCSRFToken(t *testing.T) {
 }
 
 func TestCSRFTokenInResponse(t *testing.T) {
-	h := Handler(func() View { return &testView{} })
+	h := Handler(func(_ *http.Request) View { return &testView{} })
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -255,7 +255,7 @@ func TestCSRFTokenDiffersFromSession(t *testing.T) {
 }
 
 func TestWSRejectsWithoutCSRF(t *testing.T) {
-	h := Handler(func() View { return &testView{} })
+	h := Handler(func(_ *http.Request) View { return &testView{} })
 
 	// First, create a session via HTTP
 	req := httptest.NewRequest("GET", "/", nil)
@@ -283,7 +283,7 @@ func TestWSRejectsWithoutCSRF(t *testing.T) {
 }
 
 func TestWSRejectsWithWrongCSRF(t *testing.T) {
-	h := Handler(func() View { return &testView{} })
+	h := Handler(func(_ *http.Request) View { return &testView{} })
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -309,7 +309,7 @@ func TestWSRejectsWithWrongCSRF(t *testing.T) {
 }
 
 func TestUploadRejectsWithoutCSRF(t *testing.T) {
-	h := Handler(func() View { return &testView{} })
+	h := Handler(func(_ *http.Request) View { return &testView{} })
 
 	// Create a session
 	req := httptest.NewRequest("GET", "/", nil)
@@ -382,5 +382,29 @@ func TestWithCheckOriginOption(t *testing.T) {
 	cfg.checkOrigin(r)
 	if !called {
 		t.Error("expected custom checkOrigin to be called")
+	}
+}
+
+func TestHandlerPassesRequestToFactory(t *testing.T) {
+	var receivedReq *http.Request
+
+	h := Handler(func(r *http.Request) View {
+		receivedReq = r
+		return &testView{}
+	})
+
+	req := httptest.NewRequest("GET", "/?user=alice", nil)
+	req.Header.Set("X-Custom-Header", "test-value")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if receivedReq == nil {
+		t.Fatal("expected factory to receive *http.Request, got nil")
+	}
+	if receivedReq.URL.Query().Get("user") != "alice" {
+		t.Errorf("expected query param user=alice, got %s", receivedReq.URL.Query().Get("user"))
+	}
+	if receivedReq.Header.Get("X-Custom-Header") != "test-value" {
+		t.Errorf("expected header X-Custom-Header=test-value, got %s", receivedReq.Header.Get("X-Custom-Header"))
 	}
 }

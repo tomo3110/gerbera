@@ -522,7 +522,7 @@ func main() {
 		opts = append(opts, gl.WithDebug())
 	}
 
-	http.Handle("/", gl.Handler(func() gl.View { return &AdminView{} }, opts...))
+	http.Handle("/", gl.Handler(func(_ *http.Request) gl.View { return &AdminView{} }, opts...))
 	log.Printf("admin running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

@@ -211,7 +211,7 @@ func main() {
 		opts = append(opts, gl.WithDebug())
 	}
 
-	http.Handle("/", gl.Handler(func() gl.View { return &JSCommandView{} }, opts...))
+	http.Handle("/", gl.Handler(func(_ *http.Request) gl.View { return &JSCommandView{} }, opts...))
 	log.Printf("jscommand running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

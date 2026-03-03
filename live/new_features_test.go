@@ -399,7 +399,7 @@ func TestWithMiddleware(t *testing.T) {
 		})
 	}
 
-	h := Handler(func() View { return &testView{} }, WithMiddleware(mw))
+	h := Handler(func(_ *http.Request) View { return &testView{} }, WithMiddleware(mw))
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()

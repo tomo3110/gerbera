@@ -42,7 +42,7 @@ func main() {
 		opts = append(opts, gl.WithDebug())
 	}
 
-	factory := func() gl.View {
+	factory := func(_ *http.Request) gl.View {
 		return &MarkdownView{
 			FilePath: filePath,
 			Preview:  *preview,
