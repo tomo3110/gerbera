@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -9,17 +10,29 @@ import (
 	g "github.com/tomo3110/gerbera"
 	gd "github.com/tomo3110/gerbera/dom"
 	"github.com/tomo3110/gerbera/expr"
+	gl "github.com/tomo3110/gerbera/live"
 	gp "github.com/tomo3110/gerbera/property"
 	"github.com/tomo3110/gerbera/session"
 	gu "github.com/tomo3110/gerbera/ui"
 )
 
-func dashboardPage(r *http.Request) []g.ComponentFunc {
-	sess := session.FromContext(r.Context())
-	username := ""
-	if sess != nil {
-		username = sess.GetString("username")
+// DashboardView is a LiveView that shows the authenticated user's dashboard.
+// It implements SessionExpiredHandler to gracefully handle session invalidation
+// (e.g. logout from another tab) by redirecting to the login page.
+type DashboardView struct {
+	gl.CommandQueue
+	Username       string
+	SessionExpired bool
+}
+
+func (v *DashboardView) Mount(params gl.Params) error {
+	if params.Conn.Session != nil {
+		v.Username = params.Conn.Session.GetString("username")
 	}
+	return nil
+}
+
+func (v *DashboardView) Render() []g.ComponentFunc {
 	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title("Auth Demo"),
@@ -29,10 +42,25 @@ func dashboardPage(r *http.Request) []g.ComponentFunc {
 			gu.ContainerNarrow(
 				gu.Stack(
 					gd.H1(gp.Value("Auth Demo")),
+					expr.If(v.SessionExpired,
+						gu.Card(
+							gu.CardBody(
+								gp.Attr("style", "border-color: var(--g-warning-border); background: var(--g-warning-bg)"),
+								gd.P(
+									gp.Attr("style", "color: var(--g-warning); margin: 0"),
+									gp.Value("Session expired. Redirecting to login..."),
+								),
+							),
+						),
+					),
 					gu.Card(
-						gu.CardHeader(fmt.Sprintf("Welcome, %s!", username)),
+						gu.CardHeader(fmt.Sprintf("Welcome, %s!", v.Username)),
 						gu.CardBody(
-							gd.P(gp.Value("You are logged in. This page is protected by session middleware.")),
+							gd.P(gp.Value("You are logged in. This page is a LiveView protected by session middleware.")),
+							gd.P(
+								gp.Attr("style", "color: var(--g-text-secondary); font-size: 0.9em"),
+								gp.Value("Try logging out from another tab to see push-based session invalidation."),
+							),
 						),
 						gu.CardFooter(
 							gd.A(gp.Attr("href", "/logout"),
@@ -44,6 +72,18 @@ func dashboardPage(r *http.Request) []g.ComponentFunc {
 			),
 		),
 	}
+}
+
+func (v *DashboardView) HandleEvent(event string, payload gl.Payload) error {
+	return nil
+}
+
+// OnSessionExpired is called by the Broker when the session is invalidated.
+// It shows a notification and navigates the client to the login page.
+func (v *DashboardView) OnSessionExpired() error {
+	v.SessionExpired = true
+	v.Navigate("/login")
+	return nil
 }
 
 func loginFormPage(r *http.Request) []g.ComponentFunc {
@@ -174,6 +214,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request, store session.Store) 
 
 func main() {
 	addr := flag.String("addr", ":8895", "listen address")
+	debug := flag.Bool("debug", false, "enable debug panel")
 	flag.Parse()
 
 	key := []byte("example-secret-key-change-in-prod")
@@ -198,8 +239,16 @@ func main() {
 		logoutHandler(w, r, store)
 	})
 
-	// GET / — protected dashboard page using g.HandlerFunc
-	mux.Handle("/", authGuard(g.HandlerFunc(dashboardPage)))
+	// GET / — protected LiveView dashboard with session invalidation support
+	liveOpts := []gl.Option{
+		gl.WithSessionStore(store),
+	}
+	if *debug {
+		liveOpts = append(liveOpts, gl.WithDebug())
+	}
+	mux.Handle("/", authGuard(gl.Handler(func(ctx context.Context) gl.View {
+		return &DashboardView{}
+	}, liveOpts...)))
 
 	handler := sessionMW(mux)
 

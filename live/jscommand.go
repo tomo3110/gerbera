@@ -104,6 +104,11 @@ func (q *CommandQueue) Toggle(selector string) {
 	q.PushCommand("toggle", selector, nil)
 }
 
+// Navigate queues a client-side navigation to the given URL.
+func (q *CommandQueue) Navigate(url string) {
+	q.PushCommand("navigate", "", map[string]string{"url": url})
+}
+
 // DrainCommands returns all queued commands and clears the queue.
 func (q *CommandQueue) DrainCommands() []jsCommand {
 	q.mu.Lock()

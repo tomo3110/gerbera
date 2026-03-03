@@ -140,3 +140,68 @@ func TestMemoryStore_GC(t *testing.T) {
 		t.Errorf("expected 0 sessions after GC, got %d", count)
 	}
 }
+
+func TestMemoryStore_ImplementsBrokerStore(t *testing.T) {
+	store := NewMemoryStore([]byte("secret"))
+	defer store.Close()
+
+	var _ BrokerStore = store
+}
+
+func TestMemoryStore_Broker(t *testing.T) {
+	store := NewMemoryStore([]byte("secret"))
+	defer store.Close()
+
+	if store.Broker() == nil {
+		t.Fatal("Broker() should not return nil")
+	}
+}
+
+func TestMemoryStore_DestroyNotifiesBroker(t *testing.T) {
+	store := NewMemoryStore([]byte("secret"))
+	defer store.Close()
+
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	sess, _ := store.Get(r)
+	store.Save(w, r, sess)
+
+	// Subscribe before destroy
+	ch, unsub := store.Broker().Subscribe(sess.ID)
+	defer unsub()
+
+	// Destroy should trigger notification
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest("GET", "/", nil)
+	store.Destroy(w2, r2, sess)
+
+	select {
+	case <-ch:
+		// success
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for broker notification on Destroy")
+	}
+}
+
+func TestMemoryStore_GCNotifiesBroker(t *testing.T) {
+	store := NewMemoryStore([]byte("secret"),
+		WithMaxAge(50*time.Millisecond),
+		WithGCInterval(50*time.Millisecond),
+	)
+	defer store.Close()
+
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	sess, _ := store.Get(r)
+	store.Save(w, r, sess)
+
+	ch, unsub := store.Broker().Subscribe(sess.ID)
+	defer unsub()
+
+	select {
+	case <-ch:
+		// success: GC triggered broker notification
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for broker notification on GC expiry")
+	}
+}

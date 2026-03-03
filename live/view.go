@@ -43,6 +43,19 @@ type InfoReceiver interface {
 	HandleInfo(msg any) error
 }
 
+// SessionExpiredHandler is an optional interface that Views can implement
+// to perform cleanup before the connection is closed due to session invalidation.
+// If not implemented, the connection is closed immediately.
+//
+// Typical uses include showing a toast notification, auto-saving drafts,
+// or dispatching a client-side redirect.
+type SessionExpiredHandler interface {
+	// OnSessionExpired is called when the session is invalidated
+	// (e.g. by logout or expiry). The view's state changes are rendered
+	// and sent to the client before the connection is closed.
+	OnSessionExpired() error
+}
+
 // ConnInfo holds connection-level information available at Mount time.
 type ConnInfo struct {
 	Session    *session.Session

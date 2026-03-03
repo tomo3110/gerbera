@@ -366,6 +366,9 @@
         case "toggle":
           if (el) el.style.display = el.style.display === "none" ? "" : "none";
           break;
+        case "navigate":
+          if (cmd.args && cmd.args.url) location.href = cmd.args.url;
+          break;
       }
     });
   }

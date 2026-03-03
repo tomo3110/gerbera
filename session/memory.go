@@ -9,6 +9,7 @@ import (
 )
 
 // MemoryStore is an in-memory session store.
+// It implements both Store and BrokerStore interfaces.
 type MemoryStore struct {
 	mu         sync.RWMutex
 	sessions   map[string]*Session
@@ -17,6 +18,7 @@ type MemoryStore struct {
 	cookie     CookieConfig
 	gcInterval time.Duration
 	stopGC     chan struct{}
+	broker     *Broker
 }
 
 // MemoryOption configures a MemoryStore.
@@ -54,6 +56,7 @@ func NewMemoryStore(key []byte, opts ...MemoryOption) *MemoryStore {
 		cookie:     defaultCookieConfig(),
 		gcInterval: 10 * time.Minute,
 		stopGC:     make(chan struct{}),
+		broker:     NewBroker(),
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -107,12 +110,20 @@ func (s *MemoryStore) Save(w http.ResponseWriter, r *http.Request, sess *Session
 }
 
 // Destroy removes the session from the store and clears the cookie.
+// It also notifies all Broker subscribers for this session.
 func (s *MemoryStore) Destroy(w http.ResponseWriter, r *http.Request, sess *Session) error {
 	s.mu.Lock()
 	delete(s.sessions, sess.ID)
 	s.mu.Unlock()
+	s.broker.Invalidate(sess.ID)
 	clearCookie(w, s.cookie)
 	return nil
+}
+
+// Broker returns the session invalidation broker.
+// This satisfies the BrokerStore interface.
+func (s *MemoryStore) Broker() *Broker {
+	return s.broker
 }
 
 // Close stops the background GC goroutine.
@@ -129,16 +140,21 @@ func (s *MemoryStore) gc() {
 			return
 		case <-ticker.C:
 			now := time.Now()
+			var expired []string
 			s.mu.Lock()
 			for id, sess := range s.sessions {
 				sess.mu.RLock()
-				expired := now.After(sess.expiresAt)
+				isExpired := now.After(sess.expiresAt)
 				sess.mu.RUnlock()
-				if expired {
+				if isExpired {
 					delete(s.sessions, id)
+					expired = append(expired, id)
 				}
 			}
 			s.mu.Unlock()
+			for _, id := range expired {
+				s.broker.Invalidate(id)
+			}
 		}
 	}
 }

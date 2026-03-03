@@ -80,3 +80,11 @@ type Store interface {
 	// Destroy removes the session from the store and clears the cookie.
 	Destroy(w http.ResponseWriter, r *http.Request, sess *Session) error
 }
+
+// BrokerStore is an optional interface that Store implementations can satisfy
+// to support push-based session invalidation. The live/ package detects this
+// via type assertion and automatically subscribes WebSocket connections.
+type BrokerStore interface {
+	Store
+	Broker() *Broker
+}
