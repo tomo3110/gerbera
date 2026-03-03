@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -207,189 +206,43 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 	if err != nil {
 		return
 	}
-	defer conn.Close()
 	defer store.remove(sessionID)
 
 	dlog.sessionConnected(sessionID)
 	defer dlog.sessionDisconnected(sessionID)
 
-	// Channel for client WebSocket messages
-	msgCh := make(chan []byte, 32)
-	doneCh := make(chan struct{})
-	go func() {
-		defer close(doneCh)
-		for {
-			_, msg, err := conn.ReadMessage()
-			if err != nil {
-				return
-			}
-			msgCh <- msg
-		}
-	}()
+	// Create WSTransport
+	var wsOpts []WSTransportOption
+	if cfg.debug {
+		wsOpts = append(wsOpts, WithWSDebug(sessionID, cfg.sessionTTL))
+	}
+	transport := NewWSTransport(conn, wsOpts...)
+	defer transport.Close()
 
-	// Start ticker if view implements TickerView
-	var tickCh <-chan time.Time
-	if tv, ok := sess.View.(TickerView); ok {
-		if interval := tv.TickInterval(); interval > 0 {
-			ticker := time.NewTicker(interval)
-			defer ticker.Stop()
-			tickCh = ticker.C
-		}
+	// Build ViewLoopConfig
+	loopCfg := ViewLoopConfig{
+		SessionID:  sessionID,
+		CSRFToken:  sess.CSRFToken,
+		Lang:       cfg.lang,
+		Debug:      cfg.debug,
+		SessionTTL: cfg.sessionTTL,
+		InfoCh:     sess.infoCh,
+		StopTick:   sess.stopTick,
+		DLog:       dlog,
 	}
 
-	// Subscribe to session invalidation if BrokerStore is available
-	var invalidatedCh <-chan struct{}
+	// Broker subscription setup
 	if httpSess := session.FromContext(r.Context()); httpSess != nil {
 		if bs, ok := cfg.sessionStore.(session.BrokerStore); ok {
-			ch, unsub := bs.Broker().Subscribe(httpSess.ID)
-			defer unsub()
-			invalidatedCh = ch
+			loopCfg.Broker = bs.Broker()
+			loopCfg.HTTPSessionID = httpSess.ID
 		}
 	}
 
-	var wsMu sync.Mutex // protects conn.WriteJSON
-
-	for {
-		select {
-		case <-doneCh:
-			close(sess.stopTick)
-			return
-
-		case msg := <-msgCh:
-			var ev wsEvent
-			if err := json.Unmarshal(msg, &ev); err != nil {
-				dlog.handleError(sessionID, "unmarshal event", err)
-				continue
-			}
-
-			dlog.eventReceived(sessionID, ev.Name, ev.Payload)
-
-			if err := processEvent(sess, conn, cfg, dlog, sessionID, ev.Name, ev.Payload, &wsMu); err != nil {
-				return
-			}
-
-		case <-tickCh:
-			tv := sess.View.(TickerView)
-
-			var diffStart time.Time
-			if cfg.debug {
-				diffStart = time.Now()
-			}
-
-			sess.mu.Lock()
-			if err := tv.HandleTick(); err != nil {
-				dlog.handleError(sessionID, "HandleTick", err)
-				sess.mu.Unlock()
-				continue
-			}
-			patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
-			sess.mu.Unlock()
-			if err != nil {
-				dlog.handleError(sessionID, "renderAndDiff", err)
-				continue
-			}
-
-			var duration time.Duration
-			if cfg.debug {
-				duration = time.Since(diffStart)
-			}
-			dlog.patchesGenerated(sessionID, len(patches), duration)
-
-			wsMu.Lock()
-			err = sendPatches(conn, patches, jsCommands, viewState, cfg, dlog, sessionID, "tick", nil, duration)
-			wsMu.Unlock()
-			if err != nil {
-				return
-			}
-
-		case info := <-sess.infoCh:
-			ir, ok := sess.View.(InfoReceiver)
-			if !ok {
-				continue
-			}
-
-			var diffStart time.Time
-			if cfg.debug {
-				diffStart = time.Now()
-			}
-
-			sess.mu.Lock()
-			if err := ir.HandleInfo(info); err != nil {
-				dlog.handleError(sessionID, "HandleInfo", err)
-				sess.mu.Unlock()
-				continue
-			}
-			patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
-			sess.mu.Unlock()
-			if err != nil {
-				dlog.handleError(sessionID, "renderAndDiff", err)
-				continue
-			}
-
-			var duration time.Duration
-			if cfg.debug {
-				duration = time.Since(diffStart)
-			}
-			dlog.patchesGenerated(sessionID, len(patches), duration)
-
-			wsMu.Lock()
-			err = sendPatches(conn, patches, jsCommands, viewState, cfg, dlog, sessionID, "info", nil, duration)
-			wsMu.Unlock()
-			if err != nil {
-				return
-			}
-
-		case <-invalidatedCh:
-			// Session was invalidated (logout or expiry)
-			if h, ok := sess.View.(SessionExpiredHandler); ok {
-				sess.mu.Lock()
-				h.OnSessionExpired()
-				patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
-				sess.mu.Unlock()
-				if err == nil {
-					wsMu.Lock()
-					sendPatches(conn, patches, jsCommands, viewState, cfg, dlog, sessionID, "session_expired", nil, 0)
-					wsMu.Unlock()
-					// Brief pause to let the client receive the final patches
-					time.Sleep(100 * time.Millisecond)
-				}
-			}
-			return
-		}
+	// Run the view lifecycle loop
+	if err := ViewLoop(sess.View, transport, loopCfg); err != nil && err != ErrSessionExpired {
+		dlog.handleError(sessionID, "ViewLoop", err)
 	}
-}
-
-// processEvent handles a client WebSocket event: HandleEvent + render + diff + send.
-func processEvent(sess *Session, conn *websocket.Conn, cfg *handlerConfig, dlog *debugLogger, sessionID, eventName string, payload Payload, wsMu *sync.Mutex) error {
-	var diffStart time.Time
-	if cfg.debug {
-		diffStart = time.Now()
-	}
-
-	sess.mu.Lock()
-
-	if err := sess.View.HandleEvent(eventName, payload); err != nil {
-		dlog.handleError(sessionID, "HandleEvent", err)
-		sess.mu.Unlock()
-		return nil
-	}
-
-	patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
-	sess.mu.Unlock()
-	if err != nil {
-		dlog.handleError(sessionID, "renderAndDiff", err)
-		return nil
-	}
-
-	var duration time.Duration
-	if cfg.debug {
-		duration = time.Since(diffStart)
-	}
-	dlog.patchesGenerated(sessionID, len(patches), duration)
-
-	wsMu.Lock()
-	defer wsMu.Unlock()
-	return sendPatches(conn, patches, jsCommands, viewState, cfg, dlog, sessionID, eventName, payload, duration)
 }
 
 // renderAndDiff renders the view and computes patches against the stored tree.
@@ -422,52 +275,6 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand
 	}
 
 	return patches, cmds, viewState, nil
-}
-
-// sendPatches sends patches (and optionally JS commands) to the client.
-// Returns non-nil error if the connection should be closed.
-func sendPatches(conn *websocket.Conn, patches []diff.Patch, jsCommands []jsCommand, viewState json.RawMessage, cfg *handlerConfig, dlog *debugLogger, sessionID, eventName string, payload Payload, duration time.Duration) error {
-	if len(patches) == 0 && len(jsCommands) == 0 && !cfg.debug {
-		return nil
-	}
-
-	if cfg.debug {
-		patchJSON, _ := json.Marshal(patches)
-		envelope := debugMessage{
-			Patches:    patchJSON,
-			JSCommands: jsCommands,
-			Debug: &debugMeta{
-				Event:      eventName,
-				Payload:    payload,
-				PatchCount: len(patches),
-				DurationMS: duration.Milliseconds(),
-				ViewState:  viewState,
-				SessionID:  sessionID,
-				SessionTTL: cfg.sessionTTL.String(),
-				Timestamp:  time.Now().UnixMilli(),
-			},
-		}
-		if err := conn.WriteJSON(envelope); err != nil {
-			return err
-		}
-	} else {
-		msg := wsMessage{
-			Patches:    patches,
-			JSCommands: jsCommands,
-		}
-		if len(jsCommands) == 0 {
-			// Backward compatible: send patches directly as array
-			if err := conn.WriteJSON(patches); err != nil {
-				return err
-			}
-		} else {
-			if err := conn.WriteJSON(msg); err != nil {
-				return err
-			}
-		}
-		_ = msg // suppress unused
-	}
-	return nil
 }
 
 // buildTree creates the full <html> Element tree from view components.
