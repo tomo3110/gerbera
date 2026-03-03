@@ -18,7 +18,7 @@ type testView struct {
 	Count int
 }
 
-func (v *testView) Mount(params Params) error {
+func (v *testView) Mount(_ Params) error {
 	v.Count = 0
 	return nil
 }

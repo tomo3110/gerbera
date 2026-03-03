@@ -253,7 +253,7 @@ type tickerTestView struct {
 	Count int
 }
 
-func (v *tickerTestView) Mount(params Params) error { return nil }
+func (v *tickerTestView) Mount(_ Params) error { return nil }
 func (v *tickerTestView) Render() []g.ComponentFunc {
 	return []g.ComponentFunc{
 		gd.Body(gd.H1(gp.Value(fmt.Sprintf("Count: %d", v.Count)))),
@@ -274,7 +274,7 @@ func TestTickerViewInterface(t *testing.T) {
 
 func TestTestView(t *testing.T) {
 	tv := NewTestView(&testView{})
-	if err := tv.Mount(nil); err != nil {
+	if err := tv.Mount(Params{}); err != nil {
 		t.Fatal(err)
 	}
 	if !tv.Rendered {
@@ -300,7 +300,7 @@ func TestTestView(t *testing.T) {
 
 func TestTestViewTick(t *testing.T) {
 	tv := NewTestView(&tickerTestView{})
-	if err := tv.Mount(nil); err != nil {
+	if err := tv.Mount(Params{}); err != nil {
 		t.Fatal(err)
 	}
 

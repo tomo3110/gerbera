@@ -135,7 +135,7 @@ func (v *CatalogView) Mount(params gl.Params) error {
 		{Content: "Thanks! This looks great.", Timestamp: "10:01", Sent: true},
 		{Author: "Alice", Content: "Try sending a message below.", Timestamp: "10:02", Sent: false, Avatar: "A"},
 	}
-	if p := params["page"]; p != "" {
+	if p := params.Get("page"); p != "" {
 		v.Page = p
 	}
 	return nil

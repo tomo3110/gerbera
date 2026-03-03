@@ -1,9 +1,11 @@
 package live
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/tomo3110/gerbera"
+	"github.com/tomo3110/gerbera/session"
 )
 
 // View represents a LiveView component.
@@ -41,8 +43,23 @@ type InfoReceiver interface {
 	HandleInfo(msg any) error
 }
 
-// Params holds URL query parameters passed to Mount.
-type Params map[string]string
+// ConnInfo holds connection-level information available at Mount time.
+type ConnInfo struct {
+	Session    *session.Session
+	RemoteAddr string
+	UserAgent  string
+}
+
+// Params holds URL query parameters and connection info passed to Mount.
+type Params struct {
+	Query url.Values
+	Conn  ConnInfo
+}
+
+// Get returns the first value for the given query parameter key.
+func (p Params) Get(key string) string {
+	return p.Query.Get(key)
+}
 
 // Payload holds the event data sent from the browser.
 type Payload map[string]string
