@@ -1,6 +1,7 @@
 package live
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
@@ -78,7 +79,9 @@ func defaultCheckOrigin(r *http.Request) bool {
 
 // Handler returns an http.Handler for a LiveView.
 // viewFactory is called once per session to create a new View instance.
-func Handler(viewFactory func() View, opts ...Option) http.Handler {
+// The context.Context carries request-scoped values (e.g. authenticated user
+// set by middleware via r.Context()).
+func Handler(viewFactory func(context.Context) View, opts ...Option) http.Handler {
 	cfg := &handlerConfig{
 		lang:       "ja",
 		sessionTTL: 5 * time.Minute,
@@ -120,8 +123,8 @@ func Handler(viewFactory func() View, opts ...Option) http.Handler {
 	return handler
 }
 
-func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
-	view := viewFactory()
+func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func(context.Context) View, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
+	view := viewFactory(r.Context())
 
 	params := make(Params)
 	for k, v := range r.URL.Query() {

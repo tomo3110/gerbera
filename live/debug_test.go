@@ -1,6 +1,7 @@
 package live
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -21,7 +22,7 @@ func TestWithDebugOption(t *testing.T) {
 }
 
 func TestDebugHTTPInjectsDebugScript(t *testing.T) {
-	h := Handler(func() View { return &testView{} }, WithDebug())
+	h := Handler(func(_ context.Context) View { return &testView{} }, WithDebug())
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
@@ -34,7 +35,7 @@ func TestDebugHTTPInjectsDebugScript(t *testing.T) {
 }
 
 func TestNonDebugHTTPDoesNotInjectDebugScript(t *testing.T) {
-	h := Handler(func() View { return &testView{} })
+	h := Handler(func(_ context.Context) View { return &testView{} })
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)

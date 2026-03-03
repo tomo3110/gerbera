@@ -110,14 +110,14 @@ func main() {
 		opts = append(opts, gl.WithDebug())
 	}
 
-	http.Handle("/", gl.Handler(func() gl.View { return &CounterView{} }, opts...))
+	http.Handle("/", gl.Handler(func(_ context.Context) gl.View { return &CounterView{} }, opts...))
 	log.Printf("counter running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 ```
 
 - `gl.Handler(factory)` は初期 HTML レンダリングと WebSocket 接続の両方を処理する `http.Handler` を返します
-- ファクトリ関数 `func() gl.View` はセッションごとに呼ばれ、新しい `View` インスタンスを生成します
+- ファクトリ関数 `func(context.Context) gl.View` はセッションごとに呼ばれ、新しい `View` インスタンスを生成します — コンテキストにはミドルウェアで設定したリクエストスコープの値（認証済みユーザーなど）が含まれます
 - オプション: `gl.WithLang("en")` で HTML の lang 属性を設定、`gl.WithSessionTTL(10*time.Minute)` でセッションタイムアウトを調整
 - `gl.WithDebug()` でブラウザ DevPanel とサーバーサイド構造化ログを有効化（後述）
 

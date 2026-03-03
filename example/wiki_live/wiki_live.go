@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -241,7 +242,7 @@ func (v *WikiView) renderEdit() g.ComponentFunc {
 func main() {
 	addr := flag.String("addr", ":8850", "listen address")
 	flag.Parse()
-	http.Handle("/", gl.Handler(func() gl.View { return &WikiView{} }))
+	http.Handle("/", gl.Handler(func(_ context.Context) gl.View { return &WikiView{} }))
 	log.Printf("wiki_live running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
