@@ -28,7 +28,7 @@ func (tv *TestView) Mount(params Params) error {
 		return err
 	}
 	components := tv.View.Render()
-	tree, err := buildTree("en", "test-session", components)
+	tree, err := buildTree("en", "test-session", "", components)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (tv *TestView) SimulateEvent(event string, payload Payload) ([]diff.Patch, 
 	}
 
 	components := tv.View.Render()
-	newTree, err := buildTree("en", "test-session", components)
+	newTree, err := buildTree("en", "test-session", "", components)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (tv *TestView) SimulateTick() ([]diff.Patch, error) {
 	}
 
 	components := tv.View.Render()
-	newTree, err := buildTree("en", "test-session", components)
+	newTree, err := buildTree("en", "test-session", "", components)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (tv *TestView) SimulateInfo(msg any) ([]diff.Patch, error) {
 	}
 
 	components := tv.View.Render()
-	newTree, err := buildTree("en", "test-session", components)
+	newTree, err := buildTree("en", "test-session", "", components)
 	if err != nil {
 		return nil, err
 	}

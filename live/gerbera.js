@@ -1,7 +1,9 @@
 (function() {
   var sid = document.documentElement.getAttribute("gerbera-session");
+  var csrfMeta = document.querySelector('meta[name="gerbera-csrf"]');
+  var csrf = csrfMeta ? csrfMeta.getAttribute("content") : "";
   var proto = location.protocol === "https:" ? "wss:" : "ws:";
-  var wsUrl = proto + "//" + location.host + location.pathname + "?gerbera-ws=1&session=" + sid;
+  var wsUrl = proto + "//" + location.host + location.pathname + "?gerbera-ws=1&session=" + sid + "&csrf=" + csrf;
   var ws;
   var reconnectAttempts = 0;
   var maxReconnectDelay = 30000;
@@ -268,7 +270,7 @@
           }
           fd.append("files", el.files[i]);
         }
-        var url = location.pathname + "?gerbera-upload=1&session=" + sid + "&event=" + encodeURIComponent(event);
+        var url = location.pathname + "?gerbera-upload=1&session=" + sid + "&csrf=" + csrf + "&event=" + encodeURIComponent(event);
         fetch(url, {method: "POST", body: fd}).then(function(res) {
           if (res.ok) send("gerbera:upload_complete", {event: event});
         });
@@ -495,9 +497,11 @@
           el.innerHTML = body.innerHTML;
           // Get session from the component's HTML
           var compSid = doc.documentElement.getAttribute("gerbera-session");
+          var compCsrfMeta = doc.querySelector('meta[name="gerbera-csrf"]');
+          var compCsrf = compCsrfMeta ? compCsrfMeta.getAttribute("content") : "";
           if (compSid) {
             var compWs = new WebSocket(
-              proto + "//" + location.host + path + "?gerbera-ws=1&session=" + compSid
+              proto + "//" + location.host + path + "?gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
             );
             compWs.onmessage = function(ev) {
               // Apply patches scoped to the component container

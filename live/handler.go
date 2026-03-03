@@ -1,9 +1,11 @@
 package live
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +21,7 @@ type handlerConfig struct {
 	sessionTTL  time.Duration
 	debug       bool
 	middlewares []func(http.Handler) http.Handler
+	checkOrigin func(r *http.Request) bool
 }
 
 // Option configures the live handler.
@@ -48,13 +51,29 @@ func WithMiddleware(mw func(http.Handler) http.Handler) Option {
 	}
 }
 
+// WithCheckOrigin sets a custom Origin header check function for WebSocket upgrades.
+// By default, the Origin header is validated against the request Host.
+func WithCheckOrigin(fn func(r *http.Request) bool) Option {
+	return func(c *handlerConfig) { c.checkOrigin = fn }
+}
+
 type wsEvent struct {
 	Name    string  `json:"e"`
 	Payload Payload `json:"p"`
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+// defaultCheckOrigin validates that the Origin header matches the request Host.
+// Non-browser clients (no Origin header) are allowed.
+func defaultCheckOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true // non-browser clients
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return u.Host == r.Host
 }
 
 // Handler returns an http.Handler for a LiveView.
@@ -68,6 +87,14 @@ func Handler(viewFactory func() View, opts ...Option) http.Handler {
 		o(cfg)
 	}
 
+	checkOrigin := cfg.checkOrigin
+	if checkOrigin == nil {
+		checkOrigin = defaultCheckOrigin
+	}
+	upgrader := &websocket.Upgrader{
+		CheckOrigin: checkOrigin,
+	}
+
 	dlog := newDebugLogger(cfg.debug)
 	store := newSessionStore(cfg.sessionTTL, func(id string) {
 		dlog.sessionExpired(id)
@@ -75,7 +102,7 @@ func Handler(viewFactory func() View, opts ...Option) http.Handler {
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("gerbera-ws") == "1" {
-			handleWS(w, r, store, cfg, dlog)
+			handleWS(w, r, store, cfg, dlog, upgrader)
 			return
 		}
 		if r.URL.Query().Get("gerbera-upload") == "1" && r.Method == http.MethodPost {
@@ -127,7 +154,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View,
 		))
 	}
 
-	tree, err := buildTree(cfg.lang, sess.ID, components)
+	tree, err := buildTree(cfg.lang, sess.ID, sess.CSRFToken, components)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -143,12 +170,19 @@ func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func() View,
 	}
 }
 
-func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
+func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *handlerConfig, dlog *debugLogger, upgrader *websocket.Upgrader) {
 	sessionID := r.URL.Query().Get("session")
 	sess := store.get(sessionID)
 	if sess == nil {
 		// Session expired or not found - signal client to reload for session recovery
 		http.Error(w, "session_expired", http.StatusGone)
+		return
+	}
+
+	// Validate CSRF token
+	csrfToken := r.URL.Query().Get("csrf")
+	if subtle.ConstantTimeCompare([]byte(csrfToken), []byte(sess.CSRFToken)) != 1 {
+		http.Error(w, "invalid CSRF token", http.StatusForbidden)
 		return
 	}
 
@@ -323,7 +357,7 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand
 	if sess.tree != nil && sess.tree.Attr != nil {
 		lang = sess.tree.Attr["lang"]
 	}
-	newTree, err := buildTree(lang, sess.ID, components)
+	newTree, err := buildTree(lang, sess.ID, sess.CSRFToken, components)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -393,7 +427,7 @@ func sendPatches(conn *websocket.Conn, patches []diff.Patch, jsCommands []jsComm
 }
 
 // buildTree creates the full <html> Element tree from view components.
-func buildTree(lang, sessionID string, components []gerbera.ComponentFunc) (*gerbera.Element, error) {
+func buildTree(lang, sessionID, csrfToken string, components []gerbera.ComponentFunc) (*gerbera.Element, error) {
 	root := &gerbera.Element{
 		TagName:    "html",
 		Attr:       gerbera.AttrMap{"lang": lang, "gerbera-session": sessionID},
@@ -405,5 +439,22 @@ func buildTree(lang, sessionID string, components []gerbera.ComponentFunc) (*ger
 	if err != nil {
 		return nil, err
 	}
+
+	// Inject CSRF meta tag into <head> if a token is provided
+	if csrfToken != "" {
+		for _, child := range root.Children {
+			if child.TagName == "head" {
+				meta := &gerbera.Element{
+					TagName:    "meta",
+					Attr:       gerbera.AttrMap{"name": "gerbera-csrf", "content": csrfToken},
+					ClassNames: make(gerbera.ClassMap),
+					Children:   make([]*gerbera.Element, 0),
+				}
+				child.Children = append([]*gerbera.Element{meta}, child.Children...)
+				break
+			}
+		}
+	}
+
 	return root, nil
 }
