@@ -9,9 +9,11 @@ import (
 
 	g "github.com/tomo3110/gerbera"
 	gd "github.com/tomo3110/gerbera/dom"
+	"github.com/tomo3110/gerbera/expr"
 	gl "github.com/tomo3110/gerbera/live"
 	gp "github.com/tomo3110/gerbera/property"
 	"github.com/tomo3110/gerbera/session"
+	gu "github.com/tomo3110/gerbera/ui"
 )
 
 // AuthView is a LiveView that shows different content based on session state.
@@ -30,20 +32,22 @@ func (v *AuthView) Render() []g.ComponentFunc {
 	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title("Auth Demo"),
-			gd.Style(gp.Value(`
-				body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
-				.card { border: 1px solid #ddd; border-radius: 8px; padding: 24px; margin-top: 20px; }
-				.btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-				.btn-danger { background: #dc3545; color: white; }
-			`)),
+			gu.Theme(),
 		),
 		gd.Body(
-			gd.H1(gp.Value("Auth Demo")),
-			gd.Div(
-				gp.Class("card"),
-				gd.H2(gp.Value(fmt.Sprintf("Welcome, %s!", v.Username))),
-				gd.P(gp.Value("You are logged in. This page is protected by session middleware.")),
-				gd.A(gp.Attr("href", "/logout"), gp.Class("btn btn-danger"), gp.Value("Logout")),
+			gu.ContainerNarrow(
+				gu.Stack(
+					gd.H1(gp.Value("Auth Demo")),
+					gu.Card(
+						gu.CardHeader(fmt.Sprintf("Welcome, %s!", v.Username)),
+						gd.P(gp.Value("You are logged in. This page is protected by session middleware.")),
+						gu.CardFooter(
+							gd.A(gp.Attr("href", "/logout"),
+								gu.Button("Logout", gu.ButtonDanger),
+							),
+						),
+					),
+				),
 			),
 		),
 	}
@@ -74,55 +78,86 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusUnauthorized)
-		renderLoginHTML(w, sess, "Invalid username or password")
+		renderLoginPage(w, sess, "Invalid username or password")
 		return
 	}
 
-	renderLoginHTML(w, sess, "")
+	renderLoginPage(w, sess, "")
 }
 
-func renderLoginHTML(w http.ResponseWriter, sess *session.Session, errMsg string) {
-	var csrfField string
+func renderLoginPage(w http.ResponseWriter, sess *session.Session, errMsg string) {
+	var csrfToken string
 	if sess != nil {
-		token := session.GenerateCSRFToken(sess)
-		csrfField = fmt.Sprintf(`<input type="hidden" name="csrf_token" value="%s">`, token)
-	}
-
-	var errHTML string
-	if errMsg != "" {
-		errHTML = fmt.Sprintf(`<p style="color:red;">%s</p>`, errMsg)
+		csrfToken = session.GenerateCSRFToken(sess)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="en">
-<head>
-	<title>Login - Auth Demo</title>
-	<style>
-		body { font-family: sans-serif; max-width: 400px; margin: 80px auto; padding: 0 20px; }
-		.card { border: 1px solid #ddd; border-radius: 8px; padding: 24px; }
-		input[type="text"], input[type="password"] { width: 100%%; padding: 8px; margin: 4px 0 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-		label { font-weight: bold; }
-		.btn { padding: 10px 20px; background: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%%; }
-		.hint { color: #666; font-size: 0.9em; margin-top: 12px; }
-	</style>
-</head>
-<body>
-	<h1>Login</h1>
-	%s
-	<div class="card">
-		<form method="POST" action="/login">
-			%s
-			<label>Username</label>
-			<input type="text" name="username" required>
-			<label>Password</label>
-			<input type="password" name="password" required>
-			<button type="submit" class="btn">Sign In</button>
-		</form>
-		<p class="hint">Hint: any username, password is "password"</p>
-	</div>
-</body>
-</html>`, errHTML, csrfField)
+	g.ExecuteTemplate(w, "en",
+		gd.Head(
+			gd.Title("Login - Auth Demo"),
+			gu.Theme(),
+		),
+		gd.Body(
+			gu.Center(
+				gp.Attr("style", "min-height: 100vh"),
+				gu.ContainerNarrow(
+					gu.Stack(
+						gd.H1(gp.Value("Login")),
+						expr.If(errMsg != "",
+							gu.Card(
+								gp.Attr("style", "border-color: var(--g-danger-border); background: var(--g-danger-bg)"),
+								gd.P(
+									gp.Attr("style", "color: var(--g-danger); margin: 0"),
+									gp.Value(errMsg),
+								),
+							),
+						),
+						gu.Card(
+							gd.Form(
+								gp.Attr("method", "POST"),
+								gp.Attr("action", "/login"),
+								expr.If(csrfToken != "",
+									gd.Input(
+										gp.Attr("type", "hidden"),
+										gp.Name("csrf_token"),
+										gp.Attr("value", csrfToken),
+									),
+								),
+								gu.Stack(
+									gu.FormGroup(
+										gu.FormLabel("Username", "username"),
+										gu.FormInput("username",
+											gp.ID("username"),
+											gp.Attr("type", "text"),
+											gp.Attr("required", "required"),
+										),
+									),
+									gu.FormGroup(
+										gu.FormLabel("Password", "password"),
+										gu.FormInput("password",
+											gp.ID("password"),
+											gp.Attr("type", "password"),
+											gp.Attr("required", "required"),
+										),
+									),
+									gu.Button("Sign In", gu.ButtonPrimary,
+										gp.Attr("type", "submit"),
+										gp.Attr("style", "width: 100%"),
+									),
+								),
+							),
+							gu.CardFooter(
+								gd.P(
+									gp.Attr("style", "color: var(--g-text-secondary); font-size: 0.9em; margin: 0"),
+									gp.Value(`Hint: any username, password is "password"`),
+								),
+							),
+						),
+					),
+				),
+			),
+		),
+	)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request, store session.Store) {
