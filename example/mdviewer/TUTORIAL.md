@@ -10,6 +10,8 @@ Build a real-time Markdown viewer/editor that demonstrates practical Gerbera Liv
 - `gl.Input` — Real-time text input binding
 - `g.Literal()` — Injecting raw HTML (rendered Markdown)
 - `OpSetHTML` — WebSocket diff patches that use `innerHTML` for HTML content
+- `gu.Theme()` — UI component library theme system with CSS custom properties
+- `gu.Button()` / `gu.Badge()` / `gu.Row()` — Pre-built UI components replacing inline styles
 - `gs.CSS()` — Embedding component-scoped CSS via `<style>` elements
 - Independent module — Using `go.mod` with `replace` directive and external dependencies
 - `gl.Scroll` / `gl.Throttle` — Server-routed scroll sync via `CommandQueue`
@@ -238,16 +240,61 @@ Browser                                    Go Server
 
 Key advantage: No `MutationObserver`, no `data-scroll-pct` attribute, no custom JavaScript — the framework handles everything.
 
-## Step 9: CSS with `gs.CSS()`
+## Step 9: Theme and CSS
+
+The viewer uses `gu.Theme()` from the UI component library for base styling (fonts, colors, spacing) and `gs.CSS(mdCSS)` for Markdown-specific styles:
 
 ```go
 gd.Head(
     gd.Title(title),
-    gs.CSS(cssStyles),  // Embed CSS via <style> element
+    gd.Meta(gp.Attr("charset", "utf-8")),
+    gd.Meta(gp.Attr("name", "viewport"), ...),
+    gu.Theme(),       // Base theme with CSS custom properties
+    gs.CSS(mdCSS),    // Markdown-specific styles only
 ),
 ```
 
-`gs.CSS()` generates a `<style>` element with raw CSS content. Previously this was done with `g.Tag("style", gp.Value(css))` — the dedicated helper is more concise and semantically clear.
+`gu.Theme()` injects a `<style>` element that defines CSS custom properties (`--g-bg`, `--g-text`, `--g-accent`, `--g-border`, etc.). The Markdown CSS references these variables instead of hardcoding colors:
+
+```css
+.md-textarea {
+  background: var(--g-bg-inset);    /* instead of #fafbfc */
+  color: var(--g-text);             /* instead of #24292e */
+  font-family: var(--g-font-mono);  /* instead of hardcoded font stack */
+}
+.md-preview a { color: var(--g-accent); }           /* instead of #0366d6 */
+.md-preview blockquote { color: var(--g-text-secondary); } /* instead of #6a737d */
+```
+
+This means the viewer automatically adapts to any theme. Switching to `gu.ThemeWith(gu.DarkTheme())` gives a dark-mode viewer with no CSS changes.
+
+### Header with UI Components
+
+The header uses `gu.Row()`, `gu.Button()`, and `gu.Badge()` instead of inline styles:
+
+```go
+func (v *MarkdownView) renderHeader() g.ComponentFunc {
+    return gd.Header(
+        gp.Class("g-mdviewer-header"),
+        gu.Row(gu.AlignCenter, gu.GapSm,
+            gd.Span(gp.Class("g-mdviewer-title"), ...),
+            ge.If(v.FilePath != "" && !v.Preview,
+                gu.Button("Save", gu.ButtonPrimary, gu.ButtonSmall, gl.Click("save")),
+                g.Skip(),
+            ),
+            ge.If(v.SaveStatus == "saved",
+                gu.Badge("Saved", "dark"),
+                g.Skip(),
+            ),
+        ),
+    )
+}
+```
+
+Benefits:
+- `gu.Button("Save", gu.ButtonPrimary, gu.ButtonSmall)` replaces 7 lines of inline style
+- `gu.Badge("Saved", "dark")` replaces a manually styled `<span>`
+- `gu.Row(gu.AlignCenter, gu.GapSm)` replaces inline flex CSS
 
 ## Step 10: CLI and Server
 
@@ -323,3 +370,4 @@ Open http://localhost:8860 and start typing Markdown to see it rendered in real 
 2. Add keyboard shortcut (Ctrl+S) to save using `gl.Keydown` and `gl.Key`
 3. Add syntax highlighting for code blocks using a client-side library
 4. Implement a "split view" toggle button to switch between editor-only, preview-only, and split modes
+5. Switch to dark theme with `gu.ThemeWith(gu.DarkTheme())` and observe how all CSS-variable-based styles adapt automatically

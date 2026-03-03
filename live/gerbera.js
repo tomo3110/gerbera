@@ -7,6 +7,66 @@
   var maxReconnectDelay = 30000;
   var reconnectOverlay = null;
 
+  // Decode HTML entities produced by Go's html.EscapeString.
+  // Uses a textarea element so that the browser's HTML parser decodes entities
+  // without executing any embedded scripts (textarea content model is text).
+  var _decEl;
+  function decodeAttr(s) {
+    if (s.indexOf("&") === -1) return s;
+    if (!_decEl) _decEl = document.createElement("textarea");
+    _decEl.innerHTML = s;
+    return _decEl.value;
+  }
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
+  // Check if a node is in the SVG namespace.
+  function isSVG(n) {
+    return n && n.namespaceURI === SVG_NS;
+  }
+
+  // Parse an HTML fragment into a DocumentFragment.
+  // When the context node is inside an SVG, parse as SVG XML so that
+  // child elements are created in the SVG namespace (not XHTML).
+  function parseFragment(html, ctx) {
+    if (isSVG(ctx)) {
+      var wrap = '<svg xmlns="' + SVG_NS + '">' + html + '</svg>';
+      var doc = new DOMParser().parseFromString(wrap, "image/svg+xml");
+      if (!doc.querySelector("parsererror")) {
+        var frag = document.createDocumentFragment();
+        var root = doc.documentElement;
+        for (var i = 0; i < root.childNodes.length; i++) {
+          frag.appendChild(document.importNode(root.childNodes[i], true));
+        }
+        return frag;
+      }
+      // Fallback to HTML parsing on XML parse error
+    }
+    var t = document.createElement("template");
+    t.innerHTML = html;
+    return t.content;
+  }
+
+  // Track IME composition state to avoid disrupting input during composition.
+  var _composing = false;
+  document.addEventListener("compositionstart", function() { _composing = true; });
+  document.addEventListener("compositionend", function(e) {
+    _composing = false;
+    // In Safari, the final input event fires before compositionend and gets
+    // suppressed by the _composing guard. Manually send the composed value
+    // so the server state stays in sync.
+    var el = e.target;
+    if (el && el.getAttribute) {
+      var inputEvt = el.getAttribute("gerbera-input");
+      if (inputEvt) {
+        var p = {value: el.value};
+        var gv = el.getAttribute("gerbera-value");
+        if (gv) p.value = gv;
+        send(inputEvt, p);
+      }
+    }
+  });
+
   var EVENTS = ["click","input","change","submit","focus","blur","keydown","dblclick","mouseenter","mouseleave"];
   var TOUCH_EVENTS = ["touchstart","touchend","touchmove"];
 
@@ -93,6 +153,11 @@
         el._gb[type] = true;
         var handler = function(e) {
           if (type === "submit") e.preventDefault();
+          if (type === "keydown" && (e.isComposing || e.keyCode === 229)) return;
+          if (type === "input" && _composing) return;
+          if (type === "keydown" && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === "Escape")) {
+            if (el.getAttribute("role") === "combobox") e.preventDefault();
+          }
           var name = el.getAttribute("gerbera-" + type);
           var kf = el.getAttribute("gerbera-key");
           if (kf && e.key !== kf) return;
@@ -322,28 +387,52 @@
     patches.forEach(function(p) {
       var n = resolve(p.path);
       if (!n) return;
+      var v = p.val != null ? p.val : "";
       switch (p.op) {
         case "text":
-          n.textContent = p.val;
+          // If the element has child elements, update only the text node
+          // to avoid destroying child elements with textContent.
+          if (n.children.length > 0) {
+            var tn = null;
+            for (var i = 0; i < n.childNodes.length; i++) {
+              if (n.childNodes[i].nodeType === 3) { tn = n.childNodes[i]; break; }
+            }
+            if (tn) { tn.textContent = v; }
+            else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
+          } else {
+            n.textContent = v;
+          }
           break;
         case "html":
-          n.innerHTML = p.val;
-          bind();
+          if (isSVG(n)) {
+            while (n.firstChild) n.removeChild(n.firstChild);
+            if (v) n.appendChild(parseFragment(v, n));
+          } else {
+            n.innerHTML = v;
+          }
           break;
         case "attr":
-          n.setAttribute(p.key, p.val);
+          var dv = decodeAttr(v);
+          n.setAttribute(p.key, dv);
+          if (p.key === "value" && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.tagName === "SELECT")) {
+            if (!(_composing && n === document.activeElement)) {
+              n.value = dv;
+            }
+          }
           break;
         case "rattr":
           n.removeAttribute(p.key);
           break;
         case "class":
-          n.className = p.val;
+          if (isSVG(n)) {
+            n.setAttribute("class", v);
+          } else {
+            n.className = v;
+          }
           break;
         case "insert": {
-          var t = document.createElement("template");
-          t.innerHTML = p.html;
-          n.insertBefore(t.content, n.children[p.idx] || null);
-          bind();
+          var frag = parseFragment(p.html, n);
+          n.insertBefore(frag, n.children[p.idx] || null);
           break;
         }
         case "remove":
@@ -357,18 +446,20 @@
           }
           break;
         case "replace": {
-          var t = document.createElement("template");
-          t.innerHTML = p.html;
+          var frag = parseFragment(p.html, n.parentNode);
           // Fire destroyed hook on old element
           if (n._gbHookInstance && n._gbHookInstance.destroyed) {
             n._gbHookInstance.destroyed.call(n._gbHookInstance, n);
           }
-          n.replaceWith(t.content);
-          bind();
+          n.replaceWith(frag);
           break;
         }
       }
     });
+
+    // Always rebind after applying patches — new gerbera-* attributes may
+    // have been added via attr/class patches without any insert/replace.
+    if (patches.length > 0) bind();
 
     // Execute JS commands
     executeJSCommands(jsCommands);
@@ -420,31 +511,59 @@
                   n = n.children[p.path[i]];
                 }
                 // Apply patch (reuse same logic)
+                var v = p.val != null ? p.val : "";
                 switch (p.op) {
-                  case "text": n.textContent = p.val; break;
-                  case "html": n.innerHTML = p.val; bind(); break;
-                  case "attr": n.setAttribute(p.key, p.val); break;
+                  case "text":
+                    if (n.children.length > 0) {
+                      var tn = null;
+                      for (var j = 0; j < n.childNodes.length; j++) {
+                        if (n.childNodes[j].nodeType === 3) { tn = n.childNodes[j]; break; }
+                      }
+                      if (tn) { tn.textContent = v; }
+                      else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
+                    } else { n.textContent = v; }
+                    break;
+                  case "html":
+                    if (isSVG(n)) {
+                      while (n.firstChild) n.removeChild(n.firstChild);
+                      if (v) n.appendChild(parseFragment(v, n));
+                    } else {
+                      n.innerHTML = v;
+                    }
+                    break;
+                  case "attr":
+                    var dv = decodeAttr(v);
+                    n.setAttribute(p.key, dv);
+                    if (p.key === "value" && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.tagName === "SELECT")) {
+                      if (!(_composing && n === document.activeElement)) {
+                        n.value = dv;
+                      }
+                    }
+                    break;
                   case "rattr": n.removeAttribute(p.key); break;
-                  case "class": n.className = p.val; break;
+                  case "class":
+                    if (isSVG(n)) {
+                      n.setAttribute("class", v);
+                    } else {
+                      n.className = v;
+                    }
+                    break;
                   case "insert": {
-                    var t = document.createElement("template");
-                    t.innerHTML = p.html;
-                    n.insertBefore(t.content, n.children[p.idx] || null);
-                    bind();
+                    var frag = parseFragment(p.html, n);
+                    n.insertBefore(frag, n.children[p.idx] || null);
                     break;
                   }
                   case "remove":
                     if (n.children[p.idx]) n.removeChild(n.children[p.idx]);
                     break;
                   case "replace": {
-                    var t = document.createElement("template");
-                    t.innerHTML = p.html;
-                    n.replaceWith(t.content);
-                    bind();
+                    var frag = parseFragment(p.html, n.parentNode);
+                    n.replaceWith(frag);
                     break;
                   }
                 }
               });
+              if (patches.length > 0) bind();
             };
           }
           bind();

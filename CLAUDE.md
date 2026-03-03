@@ -29,6 +29,10 @@ go run example/tabview/tabview.go           # Run tabview LiveView example on :8
 go run example/wiki_live/wiki_live.go       # Run wiki_live LiveView example on :8850
 cd example/mdviewer && go run .             # Run mdviewer LiveView example on :8860
 cd example/mdviewer && go run . -preview README.md  # Run mdviewer in preview-only mode
+go run example/admin/admin.go               # Run admin LiveView example on :8910
+go run example/admin/admin.go -debug        # Run admin with debug panel enabled
+go run example/catalog/catalog.go           # Run catalog LiveView example on :8900
+go run example/catalog/catalog.go -debug    # Run catalog with debug panel enabled
 ```
 
 External dependencies: `github.com/gorilla/websocket` (only used by `live/` package), `github.com/yuin/goldmark` (only used by `example/mdviewer`).
@@ -56,6 +60,8 @@ External dependencies: `github.com/gorilla/websocket` (only used by `live/` pack
 - **`components/`** — Pre-built components (Bootstrap CDN, Materialize CSS CDN, `Tabs()` accessible tab component)
 - **`diff/`** — Element tree diffing: `Diff()` compares two `*Element` trees and returns `[]Patch`; `RenderFragment()` for HTML fragments without DOCTYPE
 - **`live/`** — Phoenix LiveView-style real-time updates: `View` interface, `Handler()`, WebSocket event loop, session management, client JS (`gerbera.js` via `go:embed`), debug panel (`WithDebug()`, `gerbera_debug.js`), form utilities (`Field()`, `SelectField()`), upload support (`UploadHandler`), JS commands (`CommandQueue`), testing (`TestView`)
+- **`ui/`** — Pre-built UI component library with CSS theme system: layout (`AdminShell`, `Grid`, `Stack`), data display (`Card`, `Badge`, `StatCard`, `StyledTable`), forms (`FormGroup`, `FormInput`, `FormSelect`), interactive widgets (`Calendar`, `NumberInput`, `Slider`, `Accordion`, `Pagination`, etc.) with optional event fields in Opts structs for LiveView integration
+- **`ui/live/`** — LiveView-only UI components requiring WebSocket: `Modal`, `Toast`, `DataTable`, `Dropdown`, `Confirm`, `Tabs`, `Drawer`, `SearchSelect`
 
 ### Key patterns
 

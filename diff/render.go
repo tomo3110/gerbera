@@ -73,6 +73,12 @@ func renderNode(out *bufio.Writer, el *gerbera.Element, indent int) error {
 		return out.WriteByte('>')
 	}
 
+	if el.Value == "" && len(el.Children) == 0 {
+		out.WriteString("></")
+		out.WriteString(el.TagName)
+		return out.WriteByte('>')
+	}
+
 	out.WriteString(">\n")
 	if el.Value != "" {
 		out.WriteString(el.Value)

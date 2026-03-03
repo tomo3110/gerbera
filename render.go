@@ -53,6 +53,12 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 		return out.WriteByte('>')
 	}
 
+	if el.Value == "" && len(el.Children) == 0 {
+		out.WriteString("></")
+		out.WriteString(el.TagName)
+		return out.WriteByte('>')
+	}
+
 	out.WriteString(">\n")
 	if el.Value != "" {
 		if err := renderValue(out, el); err != nil {
