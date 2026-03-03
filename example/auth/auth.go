@@ -226,8 +226,16 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// GET /login — render login form using g.HandlerFunc
-	mux.Handle("GET /login", g.HandlerFunc(loginFormPage))
+	// GET /login — render login form (redirect to / if already logged in)
+	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
+		if sess := session.FromContext(r.Context()); sess != nil && sess.GetString("username") != "" {
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		components := loginFormPage(r)
+		g.ExecuteTemplate(w, "en", components...)
+	})
 
 	// POST /login — handle login form submission
 	mux.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
