@@ -88,7 +88,10 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 func renderLoginPage(w http.ResponseWriter, sess *session.Session, errMsg string) {
 	var csrfToken string
 	if sess != nil {
-		csrfToken = session.GenerateCSRFToken(sess)
+		csrfToken = session.CSRFToken(sess)
+		if csrfToken == "" {
+			csrfToken = session.GenerateCSRFToken(sess)
+		}
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
