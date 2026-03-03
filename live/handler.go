@@ -19,11 +19,12 @@ import (
 )
 
 type handlerConfig struct {
-	lang        string
-	sessionTTL  time.Duration
-	debug       bool
-	middlewares []func(http.Handler) http.Handler
-	checkOrigin func(r *http.Request) bool
+	lang         string
+	sessionTTL   time.Duration
+	debug        bool
+	middlewares  []func(http.Handler) http.Handler
+	checkOrigin  func(r *http.Request) bool
+	sessionStore session.Store
 }
 
 // Option configures the live handler.
@@ -57,6 +58,14 @@ func WithMiddleware(mw func(http.Handler) http.Handler) Option {
 // By default, the Origin header is validated against the request Host.
 func WithCheckOrigin(fn func(r *http.Request) bool) Option {
 	return func(c *handlerConfig) { c.checkOrigin = fn }
+}
+
+// WithSessionStore sets the session store for push-based session invalidation.
+// If the store implements session.BrokerStore, WebSocket connections will
+// automatically subscribe to session invalidation events and close when
+// the session is destroyed or expires.
+func WithSessionStore(store session.Store) Option {
+	return func(c *handlerConfig) { c.sessionStore = store }
 }
 
 type wsEvent struct {
@@ -228,6 +237,16 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 		}
 	}
 
+	// Subscribe to session invalidation if BrokerStore is available
+	var invalidatedCh <-chan struct{}
+	if httpSess := session.FromContext(r.Context()); httpSess != nil {
+		if bs, ok := cfg.sessionStore.(session.BrokerStore); ok {
+			ch, unsub := bs.Broker().Subscribe(httpSess.ID)
+			defer unsub()
+			invalidatedCh = ch
+		}
+	}
+
 	var wsMu sync.Mutex // protects conn.WriteJSON
 
 	for {
@@ -319,6 +338,23 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 			if err != nil {
 				return
 			}
+
+		case <-invalidatedCh:
+			// Session was invalidated (logout or expiry)
+			if h, ok := sess.View.(SessionExpiredHandler); ok {
+				sess.mu.Lock()
+				h.OnSessionExpired()
+				patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
+				sess.mu.Unlock()
+				if err == nil {
+					wsMu.Lock()
+					sendPatches(conn, patches, jsCommands, viewState, cfg, dlog, sessionID, "session_expired", nil, 0)
+					wsMu.Unlock()
+					// Brief pause to let the client receive the final patches
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+			return
 		}
 	}
 }
