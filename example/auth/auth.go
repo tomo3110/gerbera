@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -10,25 +9,17 @@ import (
 	g "github.com/tomo3110/gerbera"
 	gd "github.com/tomo3110/gerbera/dom"
 	"github.com/tomo3110/gerbera/expr"
-	gl "github.com/tomo3110/gerbera/live"
 	gp "github.com/tomo3110/gerbera/property"
 	"github.com/tomo3110/gerbera/session"
 	gu "github.com/tomo3110/gerbera/ui"
 )
 
-// AuthView is a LiveView that shows different content based on session state.
-type AuthView struct {
-	Username string
-}
-
-func (v *AuthView) Mount(params gl.Params) error {
-	if sess := params.Conn.Session; sess != nil {
-		v.Username = sess.GetString("username")
+func dashboardPage(r *http.Request) []g.ComponentFunc {
+	sess := session.FromContext(r.Context())
+	username := ""
+	if sess != nil {
+		username = sess.GetString("username")
 	}
-	return nil
-}
-
-func (v *AuthView) Render() []g.ComponentFunc {
 	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title("Auth Demo"),
@@ -39,8 +30,10 @@ func (v *AuthView) Render() []g.ComponentFunc {
 				gu.Stack(
 					gd.H1(gp.Value("Auth Demo")),
 					gu.Card(
-						gu.CardHeader(fmt.Sprintf("Welcome, %s!", v.Username)),
-						gd.P(gp.Value("You are logged in. This page is protected by session middleware.")),
+						gu.CardHeader(fmt.Sprintf("Welcome, %s!", username)),
+						gu.CardBody(
+							gd.P(gp.Value("You are logged in. This page is protected by session middleware.")),
+						),
 						gu.CardFooter(
 							gd.A(gp.Attr("href", "/logout"),
 								gu.Button("Logout", gu.ButtonDanger),
@@ -53,39 +46,8 @@ func (v *AuthView) Render() []g.ComponentFunc {
 	}
 }
 
-func (v *AuthView) HandleEvent(_ string, _ gl.Payload) error {
-	return nil
-}
-
-func loginPage(w http.ResponseWriter, r *http.Request) {
+func loginFormPage(r *http.Request) []g.ComponentFunc {
 	sess := session.FromContext(r.Context())
-
-	if r.Method == http.MethodPost {
-		r.ParseForm()
-		username := r.FormValue("username")
-		password := r.FormValue("password")
-		csrfToken := r.FormValue("csrf_token")
-
-		if sess != nil && !session.ValidCSRFToken(sess, csrfToken) {
-			http.Error(w, "invalid CSRF token", http.StatusForbidden)
-			return
-		}
-
-		// Simple demo authentication: any username with password "password"
-		if username != "" && password == "password" {
-			sess.Set("username", username)
-			http.Redirect(w, r, "/", http.StatusFound)
-			return
-		}
-		w.WriteHeader(http.StatusUnauthorized)
-		renderLoginPage(w, sess, "Invalid username or password")
-		return
-	}
-
-	renderLoginPage(w, sess, "")
-}
-
-func renderLoginPage(w http.ResponseWriter, sess *session.Session, errMsg string) {
 	var csrfToken string
 	if sess != nil {
 		csrfToken = session.CSRFToken(sess)
@@ -93,9 +55,11 @@ func renderLoginPage(w http.ResponseWriter, sess *session.Session, errMsg string
 			csrfToken = session.GenerateCSRFToken(sess)
 		}
 	}
+	return renderLoginComponents(csrfToken, "")
+}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	g.ExecuteTemplate(w, "en",
+func renderLoginComponents(csrfToken string, errMsg string) []g.ComponentFunc {
+	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title("Login - Auth Demo"),
 			gu.Theme(),
@@ -108,44 +72,49 @@ func renderLoginPage(w http.ResponseWriter, sess *session.Session, errMsg string
 						gd.H1(gp.Value("Login")),
 						expr.If(errMsg != "",
 							gu.Card(
-								gp.Attr("style", "border-color: var(--g-danger-border); background: var(--g-danger-bg)"),
-								gd.P(
-									gp.Attr("style", "color: var(--g-danger); margin: 0"),
-									gp.Value(errMsg),
+								gu.CardBody(
+									gp.Attr("style", "border-color: var(--g-danger-border); background: var(--g-danger-bg)"),
+									gd.P(
+										gp.Attr("style", "color: var(--g-danger); margin: 0"),
+										gp.Value(errMsg),
+									),
 								),
 							),
 						),
 						gu.Card(
-							gd.Form(
-								gp.Attr("method", "POST"),
-								gp.Attr("action", "/login"),
-								expr.If(csrfToken != "",
-									gd.Input(
-										gp.Attr("type", "hidden"),
-										gp.Name("csrf_token"),
-										gp.Attr("value", csrfToken),
-									),
-								),
-								gu.Stack(
-									gu.FormGroup(
-										gu.FormLabel("Username", "username"),
-										gu.FormInput("username",
-											gp.ID("username"),
-											gp.Attr("type", "text"),
-											gp.Attr("required", "required"),
+							gu.CardHeader("Sign In"),
+							gu.CardBody(
+								gd.Form(
+									gp.Attr("method", "POST"),
+									gp.Attr("action", "/login"),
+									expr.If(csrfToken != "",
+										gd.Input(
+											gp.Attr("type", "hidden"),
+											gp.Name("csrf_token"),
+											gp.Attr("value", csrfToken),
 										),
 									),
-									gu.FormGroup(
-										gu.FormLabel("Password", "password"),
-										gu.FormInput("password",
-											gp.ID("password"),
-											gp.Attr("type", "password"),
-											gp.Attr("required", "required"),
+									gu.Stack(
+										gu.FormGroup(
+											gu.FormLabel("Username", "username"),
+											gu.FormInput("username",
+												gp.ID("username"),
+												gp.Attr("type", "text"),
+												gp.Attr("required", "required"),
+											),
 										),
-									),
-									gu.Button("Sign In", gu.ButtonPrimary,
-										gp.Attr("type", "submit"),
-										gp.Attr("style", "width: 100%"),
+										gu.FormGroup(
+											gu.FormLabel("Password", "password"),
+											gu.FormInput("password",
+												gp.ID("password"),
+												gp.Attr("type", "password"),
+												gp.Attr("required", "required"),
+											),
+										),
+										gu.Button("Sign In", gu.ButtonPrimary,
+											gp.Attr("type", "submit"),
+											gp.Attr("style", "width: 100%"),
+										),
 									),
 								),
 							),
@@ -160,7 +129,39 @@ func renderLoginPage(w http.ResponseWriter, sess *session.Session, errMsg string
 				),
 			),
 		),
-	)
+	}
+}
+
+func loginPostHandler(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+
+	r.ParseForm()
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+	csrfToken := r.FormValue("csrf_token")
+
+	if sess != nil && !session.ValidCSRFToken(sess, csrfToken) {
+		http.Error(w, "invalid CSRF token", http.StatusForbidden)
+		return
+	}
+
+	// Simple demo authentication: any username with password "password"
+	if username != "" && password == "password" {
+		sess.Set("username", username)
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	var newCSRFToken string
+	if sess != nil {
+		newCSRFToken = session.CSRFToken(sess)
+		if newCSRFToken == "" {
+			newCSRFToken = session.GenerateCSRFToken(sess)
+		}
+	}
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	g.ExecuteTemplate(w, "en", renderLoginComponents(newCSRFToken, "Invalid username or password")...)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request, store session.Store) {
@@ -173,7 +174,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request, store session.Store) 
 
 func main() {
 	addr := flag.String("addr", ":8895", "listen address")
-	debug := flag.Bool("debug", false, "enable debug panel")
 	flag.Parse()
 
 	key := []byte("example-secret-key-change-in-prod")
@@ -183,21 +183,23 @@ func main() {
 	sessionMW := session.Middleware(store)
 	authGuard := session.RequireKey("username", "/login")
 
-	var opts []gl.Option
-	if *debug {
-		opts = append(opts, gl.WithDebug())
-	}
-
 	mux := http.NewServeMux()
-	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		loginPage(w, r)
+
+	// GET /login — render login form using g.HandlerFunc
+	mux.Handle("GET /login", g.HandlerFunc(loginFormPage))
+
+	// POST /login — handle login form submission
+	mux.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
+		loginPostHandler(w, r)
 	})
+
+	// GET /logout — destroy session and redirect
 	mux.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 		logoutHandler(w, r, store)
 	})
-	mux.Handle("/", authGuard(gl.Handler(func(_ context.Context) gl.View {
-		return &AuthView{}
-	}, opts...)))
+
+	// GET / — protected dashboard page using g.HandlerFunc
+	mux.Handle("/", authGuard(g.HandlerFunc(dashboardPage)))
 
 	handler := sessionMW(mux)
 

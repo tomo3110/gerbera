@@ -419,6 +419,10 @@ body {
   align-items: center;
 }
 
+.g-card-body {
+  padding: var(--g-space-md) var(--g-space-lg);
+}
+
 .g-card-footer {
   padding: var(--g-space-sm) var(--g-space-lg);
   background: var(--g-bg);

@@ -23,6 +23,11 @@ func CardHeader(title string, actions ...gerbera.ComponentFunc) gerbera.Componen
 	return dom.Div(header...)
 }
 
+// CardBody renders a card body section with standard padding.
+func CardBody(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
+	return dom.Div(append([]gerbera.ComponentFunc{property.Class("g-card-body")}, children...)...)
+}
+
 // CardFooter renders a card footer.
 func CardFooter(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
 	return dom.Div(append([]gerbera.ComponentFunc{property.Class("g-card-footer")}, children...)...)
