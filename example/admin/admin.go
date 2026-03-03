@@ -86,7 +86,7 @@ func (v *AdminView) Mount(params gl.Params) error {
 		{Author: "Alice Johnson", Content: "The new user report is ready for review.", Timestamp: "09:15", Sent: false, Avatar: "A"},
 		{Content: "Thanks, I'll take a look now.", Timestamp: "09:16", Sent: true},
 	}
-	if p := params["page"]; p != "" {
+	if p := params.Get("page"); p != "" {
 		v.Page = p
 	}
 	return nil

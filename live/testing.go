@@ -1,6 +1,8 @@
 package live
 
 import (
+	"net/url"
+
 	"github.com/tomo3110/gerbera"
 	"github.com/tomo3110/gerbera/diff"
 )
@@ -21,8 +23,8 @@ func NewTestView(view View) *TestView {
 
 // Mount calls View.Mount with the given params and renders the initial tree.
 func (tv *TestView) Mount(params Params) error {
-	if params == nil {
-		params = Params{}
+	if params.Query == nil {
+		params.Query = make(url.Values)
 	}
 	if err := tv.View.Mount(params); err != nil {
 		return err

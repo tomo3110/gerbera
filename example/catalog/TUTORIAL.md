@@ -608,7 +608,7 @@ When debug mode is enabled, a floating "G" button appears in the bottom-right co
 
 1. **Add a custom component page** — Create a new `pageMyWidget()` method, add a `navLink` entry, and add a case to the `switch` in `renderContent()`. Try composing existing `gu.*` widgets into a new pattern.
 2. **Add a new theme** — Extend `currentTheme()` with a fifth mode (e.g., `"ocean"`) using a custom `gu.ThemeConfig` with blue/teal accent colors. Add a button for it on the Theme page.
-3. **Add URL-based navigation** — Use `params["page"]` in `Mount()` (already partially implemented) to support deep linking to specific pages via `/?page=modal`.
+3. **Add URL-based navigation** — Use `params.Get("page")` in `Mount()` (already partially implemented) to support deep linking to specific pages via `/?page=modal`.
 4. **Add a search/filter** — Add a text input above the sidebar nav links that filters the visible links by label. Use `gl.Input("filterNav")` and `expr.If` to show/hide links.
 5. **Add a new chart type** — Extend the Charts page with a new `ChartType` case and a corresponding `gu.ButtonGroupItem` entry.
 

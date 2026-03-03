@@ -33,6 +33,8 @@ go run example/admin/admin.go               # Run admin LiveView example on :891
 go run example/admin/admin.go -debug        # Run admin with debug panel enabled
 go run example/catalog/catalog.go           # Run catalog LiveView example on :8900
 go run example/catalog/catalog.go -debug    # Run catalog with debug panel enabled
+go run example/auth/auth.go                # Run auth session example on :8895
+go run example/auth/auth.go -debug         # Run auth with debug panel enabled
 ```
 
 External dependencies: `github.com/gorilla/websocket` (only used by `live/` package), `github.com/yuin/goldmark` (only used by `example/mdviewer`).
@@ -61,6 +63,7 @@ External dependencies: `github.com/gorilla/websocket` (only used by `live/` pack
 - **`diff/`** — Element tree diffing: `Diff()` compares two `*Element` trees and returns `[]Patch`; `RenderFragment()` for HTML fragments without DOCTYPE
 - **`live/`** — Phoenix LiveView-style real-time updates: `View` interface, `Handler()`, WebSocket event loop, session management, client JS (`gerbera.js` via `go:embed`), debug panel (`WithDebug()`, `gerbera_debug.js`), form utilities (`Field()`, `SelectField()`), upload support (`UploadHandler`), JS commands (`CommandQueue`), testing (`TestView`)
 - **`ui/`** — Pre-built UI component library with CSS theme system: layout (`AdminShell`, `Grid`, `Stack`), data display (`Card`, `Badge`, `StatCard`, `StyledTable`), forms (`FormGroup`, `FormInput`, `FormSelect`), interactive widgets (`Calendar`, `NumberInput`, `Slider`, `Accordion`, `Pagination`, etc.) with optional event fields in Opts structs for LiveView integration
+- **`session/`** — HTTP session management: `Session` struct, `Store` interface, `MemoryStore` (in-memory with HMAC-SHA256 cookie signing and background GC), CSRF token helpers, `Middleware()` for automatic session loading/saving, `RequireKey()` auth guard
 - **`ui/live/`** — LiveView-only UI components requiring WebSocket: `Modal`, `Toast`, `DataTable`, `Dropdown`, `Confirm`, `Tabs`, `Drawer`, `SearchSelect`
 
 ### Key patterns

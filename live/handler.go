@@ -15,6 +15,7 @@ import (
 	"github.com/tomo3110/gerbera"
 	"github.com/tomo3110/gerbera/diff"
 	"github.com/tomo3110/gerbera/dom"
+	"github.com/tomo3110/gerbera/session"
 )
 
 type handlerConfig struct {
@@ -126,11 +127,15 @@ func Handler(viewFactory func(context.Context) View, opts ...Option) http.Handle
 func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func(context.Context) View, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
 	view := viewFactory(r.Context())
 
-	params := make(Params)
-	for k, v := range r.URL.Query() {
-		if len(v) > 0 {
-			params[k] = v[0]
-		}
+	params := Params{
+		Query: r.URL.Query(),
+		Conn: ConnInfo{
+			RemoteAddr: r.RemoteAddr,
+			UserAgent:  r.Header.Get("User-Agent"),
+		},
+	}
+	if sess := session.FromContext(r.Context()); sess != nil {
+		params.Conn.Session = sess
 	}
 	if err := view.Mount(params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

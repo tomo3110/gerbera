@@ -119,7 +119,7 @@ func (v *AdminView) Mount(params gl.Params) error {
         {Author: "Alice Johnson", Content: "The new user report is ready for review.", Timestamp: "09:15", Sent: false, Avatar: "A"},
         {Content: "Thanks, I'll take a look now.", Timestamp: "09:16", Sent: true},
     }
-    if p := params["page"]; p != "" {
+    if p := params.Get("page"); p != "" {
         v.Page = p
     }
     return nil
@@ -131,7 +131,7 @@ func (v *AdminView) Mount(params gl.Params) error {
 - `SelectedUser` と `DeleteTarget` は `-1`（未選択）で開始
 - カレンダーは現在の年月をデフォルトに設定
 - チャットメッセージはチャット UI のデモ用にサンプルデータで事前設定
-- `params` マップにより URL クエリパラメータ経由で特定ページへのディープリンクが可能（例: `?page=users`）
+- `params.Get("page")` により URL クエリパラメータ経由で特定ページへのディープリンクが可能（例: `?page=users`）
 
 ## Step 4: テーマとレイアウト
 

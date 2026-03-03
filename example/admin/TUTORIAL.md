@@ -119,7 +119,7 @@ func (v *AdminView) Mount(params gl.Params) error {
         {Author: "Alice Johnson", Content: "The new user report is ready for review.", Timestamp: "09:15", Sent: false, Avatar: "A"},
         {Content: "Thanks, I'll take a look now.", Timestamp: "09:16", Sent: true},
     }
-    if p := params["page"]; p != "" {
+    if p := params.Get("page"); p != "" {
         v.Page = p
     }
     return nil
@@ -131,7 +131,7 @@ func (v *AdminView) Mount(params gl.Params) error {
 - `SelectedUser` and `DeleteTarget` start at `-1` (no selection)
 - The calendar defaults to the current year and month
 - Chat messages are pre-populated with sample data to demonstrate the chat UI
-- The `params` map allows deep-linking to a specific page via URL query parameters (e.g., `?page=users`)
+- `params.Get("page")` allows deep-linking to a specific page via URL query parameters (e.g., `?page=users`)
 
 ## Step 4: Theme and Layout
 
