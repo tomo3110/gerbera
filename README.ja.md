@@ -130,9 +130,10 @@ gerbera/
 ├── property/          # 属性セッター (Class, Attr, ID, ARIA ヘルパーなど)
 ├── expr/              # 制御フロー: If()、Unless()、Each()
 ├── styles/            # Style(), CSS(), ScopedCSS() による CSS 処理
-├── components/        # ビルド済みコンポーネント (Bootstrap CDN, Tabs など)
+├── components/        # ビルド済みコンポーネント (Bootstrap CDN, TailwindCSS, Tabs など)
 ├── diff/              # 要素ツリー差分比較とフラグメントレンダリング
 ├── live/              # LiveView: View インターフェース、WebSocket ハンドラ、クライアント JS
+├── session/           # HTTP セッション管理 (MemoryStore, CSRF, ミドルウェア)
 ├── ui/               # テーマシステム付きビルド済み UI コンポーネントライブラリ
 │   └── live/         # LiveView 専用コンポーネント (Modal, Toast, DataTable 等)
 │
@@ -151,7 +152,9 @@ gerbera/
     ├── wiki_live/     # LiveView Wiki (SPA 風)
     ├── mdviewer/      # LiveView Markdown ビューアー/エディタ
     ├── admin/         # LiveView 管理画面ダッシュボード
-    └── catalog/       # インタラクティブ UI コンポーネントカタログ
+    ├── catalog/       # インタラクティブ UI コンポーネントカタログ
+    ├── auth/          # CSRF 付きセッション認証
+    └── chat/          # マルチユーザーリアルタイムチャット (InfoReceiver)
 ```
 
 ### コアコンセプト
@@ -166,6 +169,23 @@ type ComponentFunc func(*Element) error
 
 ```go
 gd.Div(children...)  // g.Tag("div", children...) と同等
+```
+
+**Skip()** — 何もレンダリングしない no-op の `ComponentFunc` を返します。プレースホルダーやデフォルト値として便利です:
+
+```go
+g.Skip()  // 何もレンダリングしない
+```
+
+**HandlerFunc()** — リクエストに基づいて動的にページを生成する `http.HandlerFunc` を作成します:
+
+```go
+http.HandleFunc("/", g.HandlerFunc(func(r *http.Request) []g.ComponentFunc {
+    return []g.ComponentFunc{
+        gd.Head(gd.Title("動的ページ")),
+        gd.Body(gd.H1(gp.Value("こんにちは、" + r.URL.Query().Get("name")))),
+    }
+}))
 ```
 
 **関数合成** — コンポーネントは可変長引数 `children ...ComponentFunc` で合成します:
@@ -245,7 +265,7 @@ func (v *MyView) HandleEvent(event string, payload gl.Payload) error {
 }
 ```
 
-利用可能なコマンド: `ScrollTo`, `ScrollIntoPct`, `Focus`, `Blur`, `SetAttribute`, `RemoveAttribute`, `AddClass`, `RemoveClass`, `ToggleClass`, `SetProperty`, `Dispatch`, `Show`, `Hide`, `Toggle`
+利用可能なコマンド: `ScrollTo`, `ScrollIntoPct`, `Focus`, `Blur`, `SetAttribute`, `RemoveAttribute`, `AddClass`, `RemoveClass`, `ToggleClass`, `SetProperty`, `Dispatch`, `Show`, `Hide`, `Toggle`, `Navigate`
 
 ### アップロードサポート
 
@@ -280,6 +300,120 @@ gl.SelectField("role", []gl.SelectOption{
     {Value: "admin", Label: "管理者"},
     {Value: "user", Label: "ユーザー"},
 }, gl.FieldOpts{Label: "役割"})
+```
+
+### セッション管理（`session/` パッケージ）
+
+`session/` パッケージは HMAC-SHA256 署名付きクッキーによる HTTP セッション管理を提供します:
+
+```go
+import "github.com/tomo3110/gerbera/session"
+
+// 署名キーを指定してストアを作成
+store := session.NewMemoryStore([]byte("secret-key"),
+    session.WithMaxAge(30 * time.Minute),
+)
+defer store.Close()
+
+// セッションミドルウェアを適用してセッションを自動的に読み込み/保存
+handler := session.Middleware(store)(mux)
+```
+
+**CSRF 保護:**
+
+```go
+sess := session.FromContext(r.Context())
+token := session.GenerateCSRFToken(sess)  // トークンを生成しセッションに保存
+// ... フォームの hidden フィールドにトークンを含める ...
+valid := session.ValidCSRFToken(sess, submittedToken)  // 定数時間比較
+```
+
+**認証ガードミドルウェア:**
+
+```go
+// セッションに "username" キーがない場合は /login にリダイレクト
+authGuard := session.RequireKey("username", "/login")
+mux.Handle("/dashboard", authGuard(dashboardHandler))
+```
+
+**プッシュベースのセッション無効化:**
+
+`MemoryStore` を `gl.WithSessionStore(store)` と組み合わせると、LiveView 接続はセッション無効化イベントを自動購読します。セッション破棄（例: ログアウト時）により、関連するすべての WebSocket 接続が閉じられます。`SessionExpiredHandler` を実装した View は切断前にコールバックを受け取ります。
+
+### LiveView 上級インターフェース
+
+コアの `View` インターフェースに加えて、高度なシナリオ用のオプショナルインターフェースを提供します:
+
+**InfoReceiver** — `Session.SendInfo()` 経由でプッシュされたサーバーサイドメッセージを受信します。ユーザー間の更新ブロードキャストに便利です:
+
+```go
+type InfoReceiver interface {
+    View
+    HandleInfo(msg any) error
+}
+```
+
+```go
+func (v *ChatView) HandleInfo(msg any) error {
+    if cm, ok := msg.(ChatMessage); ok {
+        v.Messages = append(v.Messages, cm)
+    }
+    return nil
+}
+
+// 別のゴルーチンや別ユーザーのセッションから送信:
+session.SendInfo(chatMessage)
+```
+
+**Unmounter** — WebSocket 接続が閉じられた時に呼ばれます。チャットルームからの退出などのクリーンアップに使用します:
+
+```go
+type Unmounter interface {
+    Unmount()
+}
+```
+
+**SessionExpiredHandler** — HTTP セッションが無効化された時（例: 別タブからのログアウト）に呼ばれます。切断前に最終状態をレンダリングできます:
+
+```go
+type SessionExpiredHandler interface {
+    OnSessionExpired() error
+}
+```
+
+```go
+func (v *DashboardView) OnSessionExpired() error {
+    v.SessionExpired = true
+    v.Navigate("/login")  // クライアントをリダイレクト
+    return nil
+}
+```
+
+### Transport インターフェース
+
+`Transport` インターフェースは View のライフサイクルを WebSocket 接続から分離し、カスタムトランスポートやテストを容易にします:
+
+```go
+type Transport interface {
+    Send(msg Message) error
+    Receive() (event string, payload Payload, err error)
+    Close() error
+}
+```
+
+`ViewLoop()` は任意の `Transport` 実装上で View を駆動します:
+
+```go
+gl.ViewLoop(view, transport, gl.ViewLoopConfig{...})
+```
+
+**TestTransport** — WebSocket なしで LiveView をテストするためのインメモリトランスポート:
+
+```go
+transport := gl.NewTestTransport()
+go gl.ViewLoop(view, transport, cfg)
+transport.PushEvent("inc", gl.Payload{})
+msg := transport.LastMessage()
 ```
 
 ### LiveView のテスト
@@ -337,6 +471,8 @@ ARIA アクセシビリティヘルパー:
 | `gs.CSS(cssText)` | 生 CSS を含む `<style>` 要素 |
 | `gs.ScopedCSS(scope, rules)` | セレクタにスコープされた CSS ルール |
 | `gs.StyleIf(cond, styleMap)` | 条件付きインラインスタイル |
+| `gs.MediaQuery(query, css)` | CSS を `@media` ルールでラップ |
+| `gs.Keyframes(name, frames)` | `@keyframes` ルールを生成 |
 
 ### 追加 DOM 要素
 
@@ -352,6 +488,8 @@ ARIA アクセシビリティヘルパー:
 | `gl.WithSessionTTL(d)` | セッションタイムアウトを設定（デフォルト 5 分） |
 | `gl.WithDebug()` | ブラウザ DevPanel とサーバーサイド構造化ログを有効化 |
 | `gl.WithMiddleware(mw)` | HTTP ミドルウェアをハンドラに追加 |
+| `gl.WithCheckOrigin(fn)` | WebSocket アップグレード用のカスタム Origin ヘッダーチェックを設定 |
+| `gl.WithSessionStore(store)` | `session.Store` によるプッシュベースのセッション無効化を有効化 |
 
 ### デバッグモード
 
@@ -439,6 +577,8 @@ gu.Calendar(gu.CalendarOpts{Year: v.CalYear, Month: v.CalMonth, SelectEvent: "ca
 | [mdviewer](example/mdviewer/) | LiveView Markdown ビューアー | :8860 | `cd example/mdviewer && go run .` |
 | [admin](example/admin/) | LiveView 管理画面ダッシュボード | :8910 | `go run example/admin/admin.go` |
 | [catalog](example/catalog/) | インタラクティブ UI コンポーネントカタログ | :8900 | `go run example/catalog/catalog.go` |
+| [auth](example/auth/) | CSRF 付きセッション認証 | :8895 | `go run example/auth/auth.go` |
+| [chat](example/chat/) | マルチユーザーリアルタイムチャット | :8920 | `go run example/chat/chat.go` |
 
 ## 開発
 
