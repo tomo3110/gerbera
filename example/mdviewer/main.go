@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -42,7 +43,7 @@ func main() {
 		opts = append(opts, gl.WithDebug())
 	}
 
-	factory := func(_ *http.Request) gl.View {
+	factory := func(_ context.Context) gl.View {
 		return &MarkdownView{
 			FilePath: filePath,
 			Preview:  *preview,

@@ -1,6 +1,7 @@
 package live
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -399,7 +400,7 @@ func TestWithMiddleware(t *testing.T) {
 		})
 	}
 
-	h := Handler(func(_ *http.Request) View { return &testView{} }, WithMiddleware(mw))
+	h := Handler(func(_ context.Context) View { return &testView{} }, WithMiddleware(mw))
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()

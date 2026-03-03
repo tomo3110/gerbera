@@ -305,7 +305,7 @@ func main() {
     debug := flag.Bool("debug", false, "enable debug panel")
     flag.Parse()
 
-    factory := func(_ *http.Request) gl.View {
+    factory := func(_ context.Context) gl.View {
         return &MarkdownView{
             FilePath: filePath,
             Preview:  *preview,

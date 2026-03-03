@@ -94,7 +94,7 @@ func (v *CounterView) HandleEvent(event string, _ gl.Payload) error {
 }
 
 func main() {
-	http.Handle("/", gl.Handler(func(_ *http.Request) gl.View { return &CounterView{} }))
+	http.Handle("/", gl.Handler(func(_ context.Context) gl.View { return &CounterView{} }))
 	log.Fatal(http.ListenAndServe(":8840", nil))
 }
 ```

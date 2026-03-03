@@ -589,7 +589,7 @@ func main() {
         opts = append(opts, gl.WithDebug())
     }
 
-    http.Handle("/", gl.Handler(func(_ *http.Request) gl.View { return &AdminView{} }, opts...))
+    http.Handle("/", gl.Handler(func(_ context.Context) gl.View { return &AdminView{} }, opts...))
     log.Printf("admin running on %s", *addr)
     log.Fatal(http.ListenAndServe(*addr, nil))
 }
@@ -597,7 +597,7 @@ func main() {
 
 サーバーのセットアップは最小限です:
 
-- **`gl.Handler(factory, opts...)`** は初期 HTML を配信し、ライブ更新のために WebSocket にアップグレードする HTTP ハンドラを作成。ファクトリ関数 `func(_ *http.Request) gl.View { return &AdminView{} }` は各セッションに新しい `AdminView` を生成。`*http.Request` パラメータにより、ミドルウェアで設定した認証ユーザーなどのリクエストコンテキストにアクセス可能
+- **`gl.Handler(factory, opts...)`** は初期 HTML を配信し、ライブ更新のために WebSocket にアップグレードする HTTP ハンドラを作成。ファクトリ関数 `func(_ context.Context) gl.View { return &AdminView{} }` は各セッションに新しい `AdminView` を生成。`context.Context` パラメータにより、ミドルウェアで設定した認証ユーザーなどのリクエストスコープの値にアクセス可能
 - **`gl.WithDebug()`** はデバッグパネルを有効化し、ブラウザで WebSocket メッセージ、イベントペイロード、レンダリングタイミングを確認可能
 
 ## 動作の仕組み
