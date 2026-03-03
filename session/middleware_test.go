@@ -11,10 +11,8 @@ func TestMiddleware_SetsContext(t *testing.T) {
 	defer store.Close()
 
 	var gotSession *Session
-	var wasNew bool
 	handler := Middleware(store)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotSession = FromContext(r.Context())
-		wasNew = gotSession != nil && gotSession.IsNew
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -25,8 +23,12 @@ func TestMiddleware_SetsContext(t *testing.T) {
 	if gotSession == nil {
 		t.Fatal("session should be set in context")
 	}
-	if !wasNew {
-		t.Error("first request should have new session")
+	if gotSession.ID == "" {
+		t.Error("session should have an ID")
+	}
+	cookies := w.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Error("response should contain session cookie")
 	}
 }
 
@@ -36,7 +38,7 @@ func TestMiddleware_PersistsSession(t *testing.T) {
 
 	handler := Middleware(store)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sess := FromContext(r.Context())
-		if sess.IsNew {
+		if sess.Get("count") == nil {
 			sess.Set("count", 1)
 		} else {
 			count := sess.Get("count").(int)

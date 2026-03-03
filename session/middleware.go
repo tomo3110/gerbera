@@ -8,7 +8,7 @@ import (
 type contextKey struct{}
 
 // Middleware loads the session from the store, sets it in the request context,
-// and automatically saves it before the response is written.
+// and automatically saves it after the handler returns.
 func Middleware(store Store) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -19,14 +19,14 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 			}
 			ctx := context.WithValue(r.Context(), contextKey{}, sess)
 			r = r.WithContext(ctx)
-			sw := &saveWriter{
-				ResponseWriter: w,
-				r:              r,
-				store:          store,
-				sess:           sess,
+			// Save session before handler to set cookie in response
+			// headers before they are committed by the handler.
+			store.Save(w, r, sess)
+			next.ServeHTTP(w, r)
+			// Save again if handler modified the session to persist changes.
+			if sess.Modified() {
+				store.Save(w, r, sess)
 			}
-			next.ServeHTTP(sw, r)
-			sw.save()
 		})
 	}
 }
@@ -50,31 +50,4 @@ func RequireKey(key string, redirectTo string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-// saveWriter wraps ResponseWriter to auto-save the session before writing.
-type saveWriter struct {
-	http.ResponseWriter
-	r     *http.Request
-	store Store
-	sess  *Session
-	saved bool
-}
-
-func (sw *saveWriter) save() {
-	if sw.saved {
-		return
-	}
-	sw.saved = true
-	sw.store.Save(sw.ResponseWriter, sw.r, sw.sess)
-}
-
-func (sw *saveWriter) WriteHeader(code int) {
-	sw.save()
-	sw.ResponseWriter.WriteHeader(code)
-}
-
-func (sw *saveWriter) Write(b []byte) (int, error) {
-	sw.save()
-	return sw.ResponseWriter.Write(b)
 }
