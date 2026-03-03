@@ -70,7 +70,7 @@ func renderLoginComponents(csrfToken string, errMsg string) []g.ComponentFunc {
 						gd.H1(gp.Value("Login")),
 						expr.If(errMsg != "",
 							gu.Card(
-								gp.Attr("style", "border-color: var(--g-danger-border); background: var(--g-danger-bg)"),
+								gp.Attr("style", "border-color: var(--g-danger-border); background: var(--g-danger-bg); padding: var(--g-space-md) var(--g-space-lg)"),
 								gd.P(
 									gp.Attr("style", "color: var(--g-danger); margin: 0"),
 									gp.Value(errMsg),
@@ -78,9 +78,11 @@ func renderLoginComponents(csrfToken string, errMsg string) []g.ComponentFunc {
 							),
 						),
 						gu.Card(
+							gu.CardHeader("Sign In"),
 							gd.Form(
 								gp.Attr("method", "POST"),
 								gp.Attr("action", "/login"),
+								gp.Attr("style", "padding: var(--g-space-md) var(--g-space-lg)"),
 								expr.If(csrfToken != "",
 									gd.Input(
 										gp.Attr("type", "hidden"),
