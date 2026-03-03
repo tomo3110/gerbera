@@ -11,13 +11,14 @@ import (
 
 // Session holds a single LiveView connection's state.
 type Session struct {
-	ID       string
-	View     View
-	tree     *gerbera.Element
-	lastSeen time.Time
-	mu       sync.Mutex
-	infoCh   chan any // channel for HandleInfo messages
-	stopTick chan struct{}
+	ID        string
+	CSRFToken string
+	View      View
+	tree      *gerbera.Element
+	lastSeen  time.Time
+	mu        sync.Mutex
+	infoCh    chan any // channel for HandleInfo messages
+	stopTick  chan struct{}
 }
 
 type sessionStore struct {
@@ -40,11 +41,12 @@ func newSessionStore(ttl time.Duration, onExpired func(string)) *sessionStore {
 func (s *sessionStore) create(view View) *Session {
 	id := generateID()
 	sess := &Session{
-		ID:       id,
-		View:     view,
-		lastSeen: time.Now(),
-		infoCh:   make(chan any, 32),
-		stopTick: make(chan struct{}),
+		ID:        id,
+		CSRFToken: generateID(),
+		View:      view,
+		lastSeen:  time.Now(),
+		infoCh:    make(chan any, 32),
+		stopTick:  make(chan struct{}),
 	}
 	s.mu.Lock()
 	s.sessions[id] = sess

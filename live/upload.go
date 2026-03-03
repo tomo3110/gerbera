@@ -1,6 +1,7 @@
 package live
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"io"
 	"net/http"
@@ -61,6 +62,13 @@ func handleUpload(w http.ResponseWriter, r *http.Request, store *sessionStore, d
 	sess := store.get(sessionID)
 	if sess == nil {
 		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+
+	// Validate CSRF token
+	csrfToken := r.URL.Query().Get("csrf")
+	if subtle.ConstantTimeCompare([]byte(csrfToken), []byte(sess.CSRFToken)) != 1 {
+		http.Error(w, "invalid CSRF token", http.StatusForbidden)
 		return
 	}
 
