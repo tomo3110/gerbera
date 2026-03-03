@@ -35,6 +35,8 @@ go run example/catalog/catalog.go           # Run catalog LiveView example on :8
 go run example/catalog/catalog.go -debug    # Run catalog with debug panel enabled
 go run example/auth/auth.go                # Run auth session example on :8895
 go run example/auth/auth.go -debug         # Run auth with debug panel enabled
+go run example/chat/chat.go               # Run chat LiveView example on :8920
+go run example/chat/chat.go -debug        # Run chat with debug panel enabled
 ```
 
 External dependencies: `github.com/gorilla/websocket` (only used by `live/` package), `github.com/yuin/goldmark` (only used by `example/mdviewer`).

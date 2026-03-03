@@ -135,23 +135,25 @@ func Handler(viewFactory func(context.Context) View, opts ...Option) http.Handle
 func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func(context.Context) View, store *sessionStore, cfg *handlerConfig, dlog *debugLogger) {
 	view := viewFactory(r.Context())
 
+	sess := store.create(view)
+	dlog.sessionCreated(sess.ID)
+
 	params := Params{
 		Query: r.URL.Query(),
 		Conn: ConnInfo{
-			RemoteAddr: r.RemoteAddr,
-			UserAgent:  r.Header.Get("User-Agent"),
+			LiveSession: sess,
+			RemoteAddr:  r.RemoteAddr,
+			UserAgent:   r.Header.Get("User-Agent"),
 		},
 	}
-	if sess := session.FromContext(r.Context()); sess != nil {
-		params.Conn.Session = sess
+	if httpSess := session.FromContext(r.Context()); httpSess != nil {
+		params.Conn.Session = httpSess
 	}
 	if err := view.Mount(params); err != nil {
+		store.remove(sess.ID)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	sess := store.create(view)
-	dlog.sessionCreated(sess.ID)
 
 	components := view.Render()
 	if cfg.debug {

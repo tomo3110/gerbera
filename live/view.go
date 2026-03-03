@@ -56,11 +56,19 @@ type SessionExpiredHandler interface {
 	OnSessionExpired() error
 }
 
+// Unmounter is an optional interface that Views can implement
+// to perform cleanup when the WebSocket connection is closed.
+// Unmount is called automatically at the end of ViewLoop.
+type Unmounter interface {
+	Unmount()
+}
+
 // ConnInfo holds connection-level information available at Mount time.
 type ConnInfo struct {
-	Session    *session.Session
-	RemoteAddr string
-	UserAgent  string
+	Session     *session.Session
+	LiveSession *Session // LiveView session (for SendInfo)
+	RemoteAddr  string
+	UserAgent   string
 }
 
 // Params holds URL query parameters and connection info passed to Mount.
