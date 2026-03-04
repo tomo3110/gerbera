@@ -21,8 +21,8 @@ func render(t *testing.T, c gerbera.ComponentFunc) string {
 
 func TestModalClosed(t *testing.T) {
 	out := render(t, Modal(false, "close"))
-	if strings.Contains(out, "g-modal-overlay") {
-		t.Error("Closed modal should not render overlay")
+	if !strings.Contains(out, `hidden=""`) {
+		t.Error("Closed modal should have hidden attribute")
 	}
 }
 
@@ -49,7 +49,7 @@ func TestModalOpen(t *testing.T) {
 func TestToast(t *testing.T) {
 	for _, v := range []string{"info", "success", "warning", "danger"} {
 		t.Run(v, func(t *testing.T) {
-			out := render(t, Toast("Hello", v, "dismiss"))
+			out := render(t, Toast(true, "Hello", v, "dismiss"))
 			if !strings.Contains(out, "g-toast-"+v) {
 				t.Errorf("Toast(%q) should contain class g-toast-%s", v, v)
 			}
@@ -202,8 +202,8 @@ func TestTabsAriaLinkage(t *testing.T) {
 
 func TestDrawerClosed(t *testing.T) {
 	out := render(t, Drawer(false, "close", "left"))
-	if strings.Contains(out, "g-drawer") {
-		t.Error("Closed drawer should not render")
+	if !strings.Contains(out, `hidden=""`) {
+		t.Error("Closed drawer should have hidden attribute")
 	}
 }
 

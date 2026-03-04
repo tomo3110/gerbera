@@ -2,6 +2,7 @@ package gerbera
 
 type Element struct {
 	TagName    string
+	Key        string
 	ClassNames ClassMap
 	Attr       AttrMap
 	Children   []*Element

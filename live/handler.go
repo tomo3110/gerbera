@@ -156,21 +156,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func(context
 	}
 
 	components := view.Render()
-	if cfg.debug {
-		debugHTML := renderDebugPanelHTML()
-		escaped := escapeForJSString(debugHTML)
-		debugJS := strings.Replace(gerberaDebugJS,
-			`/*__GERBERA_DEBUG_HTML__*/""`,
-			`"`+escaped+`"`, 1)
-		components = append(components, dom.Body(
-			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
-			gerbera.Literal(fmt.Sprintf("<script>%s</script>", debugJS)),
-		))
-	} else {
-		components = append(components, dom.Body(
-			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
-		))
-	}
+	components = appendScriptComponents(components, cfg.debug)
 
 	tree, err := buildTree(cfg.lang, sess.ID, sess.CSRFToken, components)
 	if err != nil {
@@ -252,6 +238,7 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 // When debug is true, it also marshals the View state for the debug panel.
 func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand, json.RawMessage, error) {
 	components := sess.View.Render()
+	components = appendScriptComponents(components, cfg.debug)
 	lang := ""
 	if sess.tree != nil && sess.tree.Attr != nil {
 		lang = sess.tree.Attr["lang"]
@@ -277,6 +264,27 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand
 	}
 
 	return patches, cmds, viewState, nil
+}
+
+// appendScriptComponents appends gerbera JS (and debug JS when enabled)
+// as a second <body> component. Both handleHTTP and renderAndDiff call this
+// so that old and new trees always share the same structure, preventing
+// spurious diff patches for the script body.
+func appendScriptComponents(components []gerbera.ComponentFunc, debug bool) []gerbera.ComponentFunc {
+	if debug {
+		debugHTML := renderDebugPanelHTML()
+		escaped := escapeForJSString(debugHTML)
+		debugJS := strings.Replace(gerberaDebugJS,
+			`/*__GERBERA_DEBUG_HTML__*/""`,
+			`"`+escaped+`"`, 1)
+		return append(components, dom.Body(
+			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
+			gerbera.Literal(fmt.Sprintf("<script>%s</script>", debugJS)),
+		))
+	}
+	return append(components, dom.Body(
+		gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
+	))
 }
 
 // buildTree creates the full <html> Element tree from view components.

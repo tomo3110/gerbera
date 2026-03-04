@@ -3,16 +3,16 @@ package live
 import (
 	"github.com/tomo3110/gerbera"
 	"github.com/tomo3110/gerbera/dom"
-	"github.com/tomo3110/gerbera/expr"
 	gl "github.com/tomo3110/gerbera/live"
 	"github.com/tomo3110/gerbera/property"
 )
 
 // Modal renders a dialog overlay panel.
-// When open is true, the overlay and panel are shown.
+// The wrapper element is always present in the DOM; when open is false
+// it carries the hidden attribute so the positional diff stays stable.
 // Clicking the backdrop or the close button fires closeEvent.
 func Modal(open bool, closeEvent string, children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	return expr.If(open,
+	wrapper := []gerbera.ComponentFunc{
 		dom.Div(
 			property.Class("g-modal-overlay"),
 			property.Role("dialog"),
@@ -27,7 +27,11 @@ func Modal(open bool, closeEvent string, children ...gerbera.ComponentFunc) gerb
 				}, children...)...,
 			),
 		),
-	)
+	}
+	if !open {
+		wrapper = append([]gerbera.ComponentFunc{property.Attr("hidden", "")}, wrapper...)
+	}
+	return dom.Div(wrapper...)
 }
 
 // ModalHeader renders a modal header with a title and close button.
