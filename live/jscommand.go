@@ -109,6 +109,27 @@ func (q *CommandQueue) Navigate(url string) {
 	q.PushCommand("navigate", "", map[string]string{"url": url})
 }
 
+// PushPatch pushes a new browser history entry without a full page reload.
+// The URL changes and the state is preserved. Use this for in-page navigation
+// where the View handles the state change (e.g. tab switches, filters).
+func (q *CommandQueue) PushPatch(path string) {
+	q.PushCommand("push_patch", "", map[string]string{"path": path})
+}
+
+// ReplacePatch replaces the current browser history entry without adding a new one.
+// Use this when the URL should reflect state but the user shouldn't be able
+// to "go back" to the previous URL (e.g. sort order changes).
+func (q *CommandQueue) ReplacePatch(path string) {
+	q.PushCommand("replace_patch", "", map[string]string{"path": path})
+}
+
+// PushNavigate performs a full navigation to a new URL, closing the WebSocket
+// connection and loading the new page. Use this for cross-page navigation
+// where a different View handles the destination.
+func (q *CommandQueue) PushNavigate(path string) {
+	q.PushCommand("push_navigate", "", map[string]string{"path": path})
+}
+
 // DrainCommands returns all queued commands and clears the queue.
 func (q *CommandQueue) DrainCommands() []jsCommand {
 	q.mu.Lock()

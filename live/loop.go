@@ -1,6 +1,7 @@
 package live
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/tomo3110/gerbera/session"
@@ -216,8 +217,66 @@ func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
 	}
 }
 
+// payloadToURLValues converts a Payload to url.Values, skipping the internal "_path" key.
+func payloadToURLValues(p Payload) url.Values {
+	vals := make(url.Values)
+	for k, v := range p {
+		if k != "_path" {
+			vals.Set(k, v)
+		}
+	}
+	return vals
+}
+
 // loopProcessEvent handles a single client event inside ViewLoop.
 func loopProcessEvent(sess *Session, transport Transport, cfg *handlerConfig, dlog *debugLogger, sessionID, eventName string, payload Payload) error {
+	// Handle params_change for Patcher views (browser back/forward)
+	if eventName == "gerbera:params_change" {
+		patcher, ok := sess.View.(Patcher)
+		if !ok {
+			return nil
+		}
+		vals := payloadToURLValues(payload)
+
+		var diffStart time.Time
+		if cfg.debug {
+			diffStart = time.Now()
+		}
+
+		sess.mu.Lock()
+		if err := patcher.HandleParams(vals); err != nil {
+			if dlog != nil {
+				dlog.handleError(sessionID, "HandleParams", err)
+			}
+			sess.mu.Unlock()
+			return nil
+		}
+		patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
+		sess.mu.Unlock()
+		if err != nil {
+			if dlog != nil {
+				dlog.handleError(sessionID, "renderAndDiff", err)
+			}
+			return nil
+		}
+
+		var duration time.Duration
+		if cfg.debug {
+			duration = time.Since(diffStart)
+		}
+		if dlog != nil {
+			dlog.patchesGenerated(sessionID, len(patches), duration)
+		}
+
+		return transport.Send(Message{
+			Patches:    patches,
+			JSCommands: jsCommands,
+			ViewState:  viewState,
+			EventName:  eventName,
+			Duration:   duration,
+		})
+	}
+
 	var diffStart time.Time
 	if cfg.debug {
 		diffStart = time.Now()

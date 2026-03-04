@@ -56,6 +56,14 @@ type SessionExpiredHandler interface {
 	OnSessionExpired() error
 }
 
+// Patcher is an optional interface for Views that synchronize state with URL parameters.
+// HandleParams is called when the browser's back/forward buttons change the URL
+// (popstate event). Views that use PushPatch should implement this interface
+// to restore state when the user navigates through browser history.
+type Patcher interface {
+	HandleParams(params url.Values) error
+}
+
 // Unmounter is an optional interface that Views can implement
 // to perform cleanup when the WebSocket connection is closed.
 // Unmount is called automatically at the end of ViewLoop.

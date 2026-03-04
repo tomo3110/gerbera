@@ -106,6 +106,29 @@ func (tv *TestView) SimulateInfo(msg any) ([]diff.Patch, error) {
 	return patches, nil
 }
 
+// SimulateParams simulates a browser back/forward navigation for Patcher implementations.
+func (tv *TestView) SimulateParams(params url.Values) ([]diff.Patch, error) {
+	patcher, ok := tv.View.(Patcher)
+	if !ok {
+		return nil, nil
+	}
+
+	if err := patcher.HandleParams(params); err != nil {
+		return nil, err
+	}
+
+	components := tv.View.Render()
+	newTree, err := buildTree("en", "test-session", "", components)
+	if err != nil {
+		return nil, err
+	}
+
+	patches := diff.Diff(tv.tree, newTree)
+	tv.tree = newTree
+	tv.Patches = patches
+	return patches, nil
+}
+
 // RenderHTML returns the current rendered HTML as a string.
 func (tv *TestView) RenderHTML() (string, error) {
 	if tv.tree == nil {
