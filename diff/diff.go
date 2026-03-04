@@ -51,6 +51,17 @@ func diffRecursive(oldEl, newEl *gerbera.Element, path []int, patches *[]Patch) 
 		return
 	}
 
+	// Same tag but different keys → replace entire subtree
+	if (oldEl.Key != "" || newEl.Key != "") && oldEl.Key != newEl.Key {
+		html, _ := RenderFragment(newEl)
+		*patches = append(*patches, Patch{
+			Op:   OpReplace,
+			Path: copyPath(path),
+			HTML: html,
+		})
+		return
+	}
+
 	// Compare Value (text content)
 	if oldEl.Value != newEl.Value {
 		op := OpSetText

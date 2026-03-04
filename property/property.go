@@ -7,6 +7,16 @@ import (
 	"github.com/tomo3110/gerbera"
 )
 
+// Key sets the reconciliation key on an element.
+// Elements with the same tag but different keys produce an OpReplace patch,
+// forcing a full subtree replacement instead of a recursive diff.
+func Key(key string) gerbera.ComponentFunc {
+	return func(el *gerbera.Element) error {
+		el.Key = key
+		return nil
+	}
+}
+
 func Class(c ...string) gerbera.ComponentFunc {
 	return func(el *gerbera.Element) error {
 		el.ClassNames = make(gerbera.ClassMap, len(c))

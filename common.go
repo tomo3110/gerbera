@@ -44,6 +44,7 @@ func Tag(tagName string, fus ...ComponentFunc) ComponentFunc {
 		el.ClassNames = nil
 		el.Attr = nil
 		el.Value = ""
+		el.Key = ""
 		for _, ef := range fus {
 			if err := ef(el); err != nil {
 				return err

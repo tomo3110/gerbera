@@ -1,0 +1,37 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: sns-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: sns
+      MYSQL_USER: sns
+      MYSQL_PASSWORD: snspass
+    ports:
+      - "3306:3306"
+    volumes:
+      - sns-data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-usns", "-psnspass"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build:
+      context: ../..
+      dockerfile: example/sns/Dockerfile
+    container_name: sns-app
+    ports:
+      - "8930:8930"
+    environment:
+      DATABASE_DSN: "sns:snspass@tcp(mysql:3306)/sns?parseTime=true"
+      LISTEN_ADDR: ":8930"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  sns-data:

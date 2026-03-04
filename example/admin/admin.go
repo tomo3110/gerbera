@@ -103,9 +103,7 @@ func (v *AdminView) Render() []g.ComponentFunc {
 				v.renderSidebar(),
 				v.renderContent(),
 			),
-			expr.If(v.ToastVisible,
-				gul.Toast(v.ToastMessage, v.ToastVariant, "dismissToast"),
-			),
+			gul.Toast(v.ToastVisible, v.ToastMessage, v.ToastVariant, "dismissToast"),
 		),
 	}
 }

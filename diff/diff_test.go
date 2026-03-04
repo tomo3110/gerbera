@@ -249,6 +249,59 @@ func TestRenderFragment(t *testing.T) {
 	}
 }
 
+func elWithKey(tag, key, value string, children ...*gerbera.Element) *gerbera.Element {
+	return &gerbera.Element{
+		TagName:    tag,
+		Key:        key,
+		Value:      value,
+		Children:   children,
+		ClassNames: make(gerbera.ClassMap),
+		Attr:       make(gerbera.AttrMap),
+	}
+}
+
+func TestDiffKeyReplace(t *testing.T) {
+	oldEl := elWithKey("div", "list", "content A")
+	newEl := elWithKey("div", "chat", "content B")
+	patches := Diff(oldEl, newEl)
+	if len(patches) != 1 {
+		t.Fatalf("expected 1 patch, got %d", len(patches))
+	}
+	if patches[0].Op != OpReplace {
+		t.Errorf("expected OpReplace, got %s", patches[0].Op)
+	}
+}
+
+func TestDiffKeySame(t *testing.T) {
+	oldEl := elWithKey("div", "same", "old text")
+	newEl := elWithKey("div", "same", "new text")
+	patches := Diff(oldEl, newEl)
+	// Should do a recursive diff, not a replace
+	for _, p := range patches {
+		if p.Op == OpReplace {
+			t.Error("expected no OpReplace for same key, but got one")
+		}
+	}
+	if len(patches) != 1 {
+		t.Fatalf("expected 1 patch (text change), got %d", len(patches))
+	}
+	if patches[0].Op != OpSetText {
+		t.Errorf("expected OpSetText, got %s", patches[0].Op)
+	}
+}
+
+func TestDiffKeyOneEmpty(t *testing.T) {
+	oldEl := elWithKey("div", "list", "content")
+	newEl := el("div", "content") // no key
+	patches := Diff(oldEl, newEl)
+	if len(patches) != 1 {
+		t.Fatalf("expected 1 patch, got %d", len(patches))
+	}
+	if patches[0].Op != OpReplace {
+		t.Errorf("expected OpReplace when one side has key and other doesn't, got %s", patches[0].Op)
+	}
+}
+
 func TestRenderFragmentVoidElement(t *testing.T) {
 	e := &gerbera.Element{
 		TagName:    "input",

@@ -37,9 +37,12 @@ go run example/auth/auth.go                # Run auth session example on :8895
 go run example/auth/auth.go -debug         # Run auth with debug panel enabled
 go run example/chat/chat.go               # Run chat LiveView example on :8920
 go run example/chat/chat.go -debug        # Run chat with debug panel enabled
+cd example/sns && docker compose up      # Run SNS (Twitter clone) with MySQL on :8930
+cd example/sns && docker compose up -d mysql && go run .  # Run SNS locally on :8930
+cd example/sns && go run . -debug        # Run SNS with debug panel enabled
 ```
 
-External dependencies: `github.com/gorilla/websocket` (only used by `live/` package), `github.com/yuin/goldmark` (only used by `example/mdviewer`).
+External dependencies: `github.com/gorilla/websocket` (only used by `live/` package), `github.com/yuin/goldmark` (only used by `example/mdviewer`), `github.com/go-sql-driver/mysql` (only used by `example/sns`).
 
 ## Architecture
 

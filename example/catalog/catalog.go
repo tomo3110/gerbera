@@ -868,9 +868,7 @@ func (v *CatalogView) pageToast() g.ComponentFunc {
 			gu.Button("Warning", gu.ButtonOutline, gl.Click("showToast"), gl.ClickValue("warning")),
 			gu.Button("Danger", gu.ButtonOutline, gl.Click("showToast"), gl.ClickValue("danger")),
 		),
-		expr.If(v.ToastVisible,
-			gul.Toast(v.ToastMessage, v.ToastVariant, "dismissToast"),
-		),
+		gul.Toast(v.ToastVisible, v.ToastMessage, v.ToastVariant, "dismissToast"),
 	)
 }
 
