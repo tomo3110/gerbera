@@ -139,6 +139,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func(context
 	dlog.sessionCreated(sess.ID)
 
 	params := Params{
+		Path:  r.URL.Path,
 		Query: r.URL.Query(),
 		Conn: ConnInfo{
 			LiveSession: sess,

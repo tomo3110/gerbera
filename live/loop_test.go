@@ -70,9 +70,13 @@ type loopPatcherView struct {
 	Page string
 }
 
-func (v *loopPatcherView) HandleParams(params url.Values) error {
-	v.Page = params.Get("page")
-	if v.Page == "" {
+func (v *loopPatcherView) HandleParams(path string, params url.Values) error {
+	switch path {
+	case "/profile":
+		v.Page = "profile"
+	case "/search":
+		v.Page = "search"
+	default:
 		v.Page = "home"
 	}
 	return nil
@@ -301,7 +305,7 @@ func TestViewLoopUnmount(t *testing.T) {
 
 func TestPushPatchCommand(t *testing.T) {
 	var q CommandQueue
-	q.PushPatch("/?page=profile")
+	q.PushPatch("/profile")
 	cmds := q.DrainCommands()
 	if len(cmds) != 1 {
 		t.Fatalf("expected 1 command, got %d", len(cmds))
@@ -309,8 +313,8 @@ func TestPushPatchCommand(t *testing.T) {
 	if cmds[0].Cmd != "push_patch" {
 		t.Errorf("expected cmd=push_patch, got %s", cmds[0].Cmd)
 	}
-	if cmds[0].Args["path"] != "/?page=profile" {
-		t.Errorf("expected path=/?page=profile, got %s", cmds[0].Args["path"])
+	if cmds[0].Args["path"] != "/profile" {
+		t.Errorf("expected path=/profile, got %s", cmds[0].Args["path"])
 	}
 }
 
@@ -361,10 +365,9 @@ func TestViewLoopParamsChange(t *testing.T) {
 		})
 	}()
 
-	// Simulate browser back/forward changing URL to ?page=profile
+	// Simulate browser back/forward changing URL to /profile
 	tr.PushEvent("gerbera:params_change", Payload{
-		"page":  "profile",
-		"_path": "/?page=profile",
+		"_path": "/profile",
 	})
 
 	time.Sleep(50 * time.Millisecond)
@@ -403,8 +406,7 @@ func TestViewLoopParamsChangeNonPatcher(t *testing.T) {
 
 	// Send params_change to a non-Patcher view — should be silently ignored
 	tr.PushEvent("gerbera:params_change", Payload{
-		"page":  "profile",
-		"_path": "/?page=profile",
+		"_path": "/profile",
 	})
 
 	time.Sleep(50 * time.Millisecond)

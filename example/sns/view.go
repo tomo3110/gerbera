@@ -101,11 +101,8 @@ func (v *SNSView) Mount(params gl.Params) error {
 	v.unreadNotifications, _ = dbUnreadNotificationCount(v.db, v.userID)
 	v.unreadMessages, _ = dbUnreadMessageCount(v.db, v.userID)
 
-	// Set initial page
-	v.page = "home"
-	if p := params.Get("page"); p != "" {
-		v.page = p
-	}
+	// Set initial page from URL path
+	v.page = pathToPage(params.Path)
 
 	// Load initial page data
 	return v.loadPageData(params)
@@ -461,7 +458,7 @@ func (v *SNSView) HandleEvent(event string, payload gl.Payload) error {
 
 	// Share
 	case "sharePost":
-		v.showToast("Share link: /?page=post&id="+payload["value"], "info")
+		v.showToast("Share link: /post?id="+payload["value"], "info")
 
 	// Delete post confirmation
 	case "confirmDeletePost":
@@ -572,17 +569,13 @@ func (v *SNSView) showToast(msg, variant string) {
 	v.toastVisible = true
 }
 
-// HandleParams restores view state from URL query parameters (browser back/forward).
-func (v *SNSView) HandleParams(params url.Values) error {
-	page := params.Get("page")
-	if page == "" {
-		page = "home"
-	}
-	v.page = page
+// HandleParams restores view state from URL path and query parameters (browser back/forward).
+func (v *SNSView) HandleParams(path string, params url.Values) error {
+	v.page = pathToPage(path)
 	v.drawerOpen = false
 	v.toastVisible = false
 	v.confirmOpen = false
-	switch page {
+	switch v.page {
 	case "home":
 		return v.loadTimeline()
 	case "profile":
@@ -607,19 +600,36 @@ func (v *SNSView) HandleParams(params url.Values) error {
 		v.settingsEmail = v.user.Email
 		v.settingsBio = v.user.Bio
 	case "search":
-		v.searchQuery = ""
-		v.searchUsers = nil
-		v.searchPosts = nil
+		if kw := params.Get("keyword"); kw != "" {
+			v.searchQuery = kw
+			v.searchUsers, _ = dbSearchUsers(v.db, kw, 10)
+			v.searchPosts, _ = dbSearchPosts(v.db, kw, v.userID, 20)
+		} else {
+			v.searchQuery = ""
+			v.searchUsers = nil
+			v.searchPosts = nil
+		}
 	}
 	return nil
 }
 
+// pathToPage converts a URL path to a page name.
+func pathToPage(path string) string {
+	p := strings.TrimPrefix(path, "/")
+	if p == "" {
+		return "home"
+	}
+	return p
+}
+
 // buildPath returns the URL path corresponding to the current view state.
 func (v *SNSView) buildPath() string {
-	q := url.Values{}
+	base := "/"
 	if v.page != "" && v.page != "home" {
-		q.Set("page", v.page)
+		base = "/" + v.page
 	}
+
+	q := url.Values{}
 	if v.page == "profile" && v.profileUser != nil && v.profileUser.ID != v.userID {
 		q.Set("id", strconv.FormatInt(v.profileUser.ID, 10))
 	}
@@ -629,10 +639,13 @@ func (v *SNSView) buildPath() string {
 	if v.page == "messages" && v.chatPartnerID > 0 {
 		q.Set("chat", strconv.FormatInt(v.chatPartnerID, 10))
 	}
-	if len(q) == 0 {
-		return "/"
+	if v.page == "search" && v.searchQuery != "" {
+		q.Set("keyword", v.searchQuery)
 	}
-	return "/?" + q.Encode()
+	if len(q) == 0 {
+		return base
+	}
+	return base + "?" + q.Encode()
 }
 
 func (v *SNSView) refreshCurrentPosts() {

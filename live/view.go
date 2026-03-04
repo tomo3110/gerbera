@@ -60,8 +60,10 @@ type SessionExpiredHandler interface {
 // HandleParams is called when the browser's back/forward buttons change the URL
 // (popstate event). Views that use PushPatch should implement this interface
 // to restore state when the user navigates through browser history.
+// The path parameter contains the URL path (e.g. "/profile"), and params
+// contains the query parameters (e.g. "id=123").
 type Patcher interface {
-	HandleParams(params url.Values) error
+	HandleParams(path string, params url.Values) error
 }
 
 // Unmounter is an optional interface that Views can implement
@@ -79,9 +81,10 @@ type ConnInfo struct {
 	UserAgent   string
 }
 
-// Params holds URL query parameters and connection info passed to Mount.
+// Params holds URL path, query parameters and connection info passed to Mount.
 type Params struct {
-	Query url.Values
+	Path  string     // URL path (e.g. "/profile")
+	Query url.Values // URL query parameters
 	Conn  ConnInfo
 }
 

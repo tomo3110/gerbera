@@ -217,15 +217,19 @@ func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
 	}
 }
 
-// payloadToURLValues converts a Payload to url.Values, skipping the internal "_path" key.
-func payloadToURLValues(p Payload) url.Values {
-	vals := make(url.Values)
-	for k, v := range p {
-		if k != "_path" {
-			vals.Set(k, v)
-		}
+// parsePathPayload extracts the URL path and query parameters from a
+// params_change payload. The "_path" key carries the full URL
+// (e.g. "/profile?id=123") sent by the client's popstate handler.
+func parsePathPayload(p Payload) (string, url.Values) {
+	rawPath := p["_path"]
+	if rawPath == "" {
+		return "/", make(url.Values)
 	}
-	return vals
+	u, err := url.Parse(rawPath)
+	if err != nil {
+		return "/", make(url.Values)
+	}
+	return u.Path, u.Query()
 }
 
 // loopProcessEvent handles a single client event inside ViewLoop.
@@ -236,7 +240,7 @@ func loopProcessEvent(sess *Session, transport Transport, cfg *handlerConfig, dl
 		if !ok {
 			return nil
 		}
-		vals := payloadToURLValues(payload)
+		path, vals := parsePathPayload(payload)
 
 		var diffStart time.Time
 		if cfg.debug {
@@ -244,7 +248,7 @@ func loopProcessEvent(sess *Session, transport Transport, cfg *handlerConfig, dl
 		}
 
 		sess.mu.Lock()
-		if err := patcher.HandleParams(vals); err != nil {
+		if err := patcher.HandleParams(path, vals); err != nil {
 			if dlog != nil {
 				dlog.handleError(sessionID, "HandleParams", err)
 			}

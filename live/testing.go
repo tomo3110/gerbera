@@ -107,13 +107,14 @@ func (tv *TestView) SimulateInfo(msg any) ([]diff.Patch, error) {
 }
 
 // SimulateParams simulates a browser back/forward navigation for Patcher implementations.
-func (tv *TestView) SimulateParams(params url.Values) ([]diff.Patch, error) {
+// The path parameter is the URL path (e.g. "/profile"), and params are the query parameters.
+func (tv *TestView) SimulateParams(path string, params url.Values) ([]diff.Patch, error) {
 	patcher, ok := tv.View.(Patcher)
 	if !ok {
 		return nil, nil
 	}
 
-	if err := patcher.HandleParams(params); err != nil {
+	if err := patcher.HandleParams(path, params); err != nil {
 		return nil, err
 	}
 
