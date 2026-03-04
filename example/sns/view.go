@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -100,11 +101,8 @@ func (v *SNSView) Mount(params gl.Params) error {
 	v.unreadNotifications, _ = dbUnreadNotificationCount(v.db, v.userID)
 	v.unreadMessages, _ = dbUnreadMessageCount(v.db, v.userID)
 
-	// Set initial page
-	v.page = "home"
-	if p := params.Get("page"); p != "" {
-		v.page = p
-	}
+	// Set initial page from URL path
+	v.page = pathToPage(params.Path)
 
 	// Load initial page data
 	return v.loadPageData(params)
@@ -245,6 +243,7 @@ func (v *SNSView) HandleEvent(event string, payload gl.Payload) error {
 			v.searchUsers = nil
 			v.searchPosts = nil
 		}
+		v.PushPatch(v.buildPath())
 
 	case "toggleDrawer":
 		v.drawerOpen = !v.drawerOpen
@@ -316,6 +315,7 @@ func (v *SNSView) HandleEvent(event string, payload gl.Payload) error {
 		}
 		v.page = "post"
 		v.loadPostDetail(postID)
+		v.PushPatch(v.buildPath())
 
 	case "viewProfile":
 		uid, _ := strconv.ParseInt(payload["value"], 10, 64)
@@ -324,6 +324,7 @@ func (v *SNSView) HandleEvent(event string, payload gl.Payload) error {
 		}
 		v.page = "profile"
 		v.loadProfile(uid)
+		v.PushPatch(v.buildPath())
 
 	// Follow
 	case "toggleFollow":
@@ -374,9 +375,11 @@ func (v *SNSView) HandleEvent(event string, payload gl.Payload) error {
 		}
 		v.page = "messages"
 		v.loadChat(partnerID)
+		v.PushPatch(v.buildPath())
 	case "backToConversations":
 		v.page = "messages"
 		v.loadConversations()
+		v.PushPatch(v.buildPath())
 	case "chatInput":
 		v.chatDraft = payload["value"]
 	case "chatSend":
@@ -455,7 +458,7 @@ func (v *SNSView) HandleEvent(event string, payload gl.Payload) error {
 
 	// Share
 	case "sharePost":
-		v.showToast("Share link: /?page=post&id="+payload["value"], "info")
+		v.showToast("Share link: /post?id="+payload["value"], "info")
 
 	// Delete post confirmation
 	case "confirmDeletePost":
@@ -564,6 +567,85 @@ func (v *SNSView) showToast(msg, variant string) {
 	v.toastMessage = msg
 	v.toastVariant = variant
 	v.toastVisible = true
+}
+
+// HandleParams restores view state from URL path and query parameters (browser back/forward).
+func (v *SNSView) HandleParams(path string, params url.Values) error {
+	v.page = pathToPage(path)
+	v.drawerOpen = false
+	v.toastVisible = false
+	v.confirmOpen = false
+	switch v.page {
+	case "home":
+		return v.loadTimeline()
+	case "profile":
+		if idStr := params.Get("id"); idStr != "" {
+			id, _ := strconv.ParseInt(idStr, 10, 64)
+			return v.loadProfile(id)
+		}
+		return v.loadProfile(v.userID)
+	case "post":
+		if idStr := params.Get("id"); idStr != "" {
+			id, _ := strconv.ParseInt(idStr, 10, 64)
+			return v.loadPostDetail(id)
+		}
+	case "messages":
+		if chatStr := params.Get("chat"); chatStr != "" {
+			id, _ := strconv.ParseInt(chatStr, 10, 64)
+			return v.loadChat(id)
+		}
+		return v.loadConversations()
+	case "settings":
+		v.settingsDisplayName = v.user.DisplayName
+		v.settingsEmail = v.user.Email
+		v.settingsBio = v.user.Bio
+	case "search":
+		if kw := params.Get("keyword"); kw != "" {
+			v.searchQuery = kw
+			v.searchUsers, _ = dbSearchUsers(v.db, kw, 10)
+			v.searchPosts, _ = dbSearchPosts(v.db, kw, v.userID, 20)
+		} else {
+			v.searchQuery = ""
+			v.searchUsers = nil
+			v.searchPosts = nil
+		}
+	}
+	return nil
+}
+
+// pathToPage converts a URL path to a page name.
+func pathToPage(path string) string {
+	p := strings.TrimPrefix(path, "/")
+	if p == "" {
+		return "home"
+	}
+	return p
+}
+
+// buildPath returns the URL path corresponding to the current view state.
+func (v *SNSView) buildPath() string {
+	base := "/"
+	if v.page != "" && v.page != "home" {
+		base = "/" + v.page
+	}
+
+	q := url.Values{}
+	if v.page == "profile" && v.profileUser != nil && v.profileUser.ID != v.userID {
+		q.Set("id", strconv.FormatInt(v.profileUser.ID, 10))
+	}
+	if v.page == "post" && v.detailPost != nil {
+		q.Set("id", strconv.FormatInt(v.detailPost.Post.ID, 10))
+	}
+	if v.page == "messages" && v.chatPartnerID > 0 {
+		q.Set("chat", strconv.FormatInt(v.chatPartnerID, 10))
+	}
+	if v.page == "search" && v.searchQuery != "" {
+		q.Set("keyword", v.searchQuery)
+	}
+	if len(q) == 0 {
+		return base
+	}
+	return base + "?" + q.Encode()
 }
 
 func (v *SNSView) refreshCurrentPosts() {

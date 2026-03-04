@@ -2,6 +2,7 @@ package live
 
 import (
 	"fmt"
+	"net/url"
 	"sync"
 	"testing"
 	"time"
@@ -63,6 +64,30 @@ type loopUnmountView struct {
 }
 
 func (v *loopUnmountView) Unmount() { v.Unmounted = true }
+
+type loopPatcherView struct {
+	loopTestView
+	Page string
+}
+
+func (v *loopPatcherView) HandleParams(path string, params url.Values) error {
+	switch path {
+	case "/profile":
+		v.Page = "profile"
+	case "/search":
+		v.Page = "search"
+	default:
+		v.Page = "home"
+	}
+	return nil
+}
+
+func (v *loopPatcherView) Render() []g.ComponentFunc {
+	return []g.ComponentFunc{
+		gd.Head(gd.Title("Test")),
+		gd.Body(gd.H1(gp.Value(fmt.Sprintf("Page: %s", v.Page)))),
+	}
+}
 
 // --- tests ---
 
@@ -276,4 +301,124 @@ func TestViewLoopUnmount(t *testing.T) {
 	if !view.Unmounted {
 		t.Error("expected Unmount() to be called on ViewLoop exit")
 	}
+}
+
+func TestPushPatchCommand(t *testing.T) {
+	var q CommandQueue
+	q.PushPatch("/profile")
+	cmds := q.DrainCommands()
+	if len(cmds) != 1 {
+		t.Fatalf("expected 1 command, got %d", len(cmds))
+	}
+	if cmds[0].Cmd != "push_patch" {
+		t.Errorf("expected cmd=push_patch, got %s", cmds[0].Cmd)
+	}
+	if cmds[0].Args["path"] != "/profile" {
+		t.Errorf("expected path=/profile, got %s", cmds[0].Args["path"])
+	}
+}
+
+func TestReplacePatchCommand(t *testing.T) {
+	var q CommandQueue
+	q.ReplacePatch("/?sort=date")
+	cmds := q.DrainCommands()
+	if len(cmds) != 1 {
+		t.Fatalf("expected 1 command, got %d", len(cmds))
+	}
+	if cmds[0].Cmd != "replace_patch" {
+		t.Errorf("expected cmd=replace_patch, got %s", cmds[0].Cmd)
+	}
+	if cmds[0].Args["path"] != "/?sort=date" {
+		t.Errorf("expected path=/?sort=date, got %s", cmds[0].Args["path"])
+	}
+}
+
+func TestPushNavigateCommand(t *testing.T) {
+	var q CommandQueue
+	q.PushNavigate("/other-page")
+	cmds := q.DrainCommands()
+	if len(cmds) != 1 {
+		t.Fatalf("expected 1 command, got %d", len(cmds))
+	}
+	if cmds[0].Cmd != "push_navigate" {
+		t.Errorf("expected cmd=push_navigate, got %s", cmds[0].Cmd)
+	}
+	if cmds[0].Args["path"] != "/other-page" {
+		t.Errorf("expected path=/other-page, got %s", cmds[0].Args["path"])
+	}
+}
+
+func TestViewLoopParamsChange(t *testing.T) {
+	view := &loopPatcherView{}
+	view.Mount(Params{})
+	view.Page = "home"
+
+	tr := NewTestTransport()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ViewLoop(view, tr, ViewLoopConfig{
+			SessionID: "test-sess",
+			Lang:      "en",
+		})
+	}()
+
+	// Simulate browser back/forward changing URL to /profile
+	tr.PushEvent("gerbera:params_change", Payload{
+		"_path": "/profile",
+	})
+
+	time.Sleep(50 * time.Millisecond)
+
+	if view.Page != "profile" {
+		t.Errorf("expected Page=profile, got %s", view.Page)
+	}
+
+	// Check that a message was sent
+	tr.mu.Lock()
+	msgCount := len(tr.Messages)
+	tr.mu.Unlock()
+	if msgCount == 0 {
+		t.Error("expected at least one message to be sent")
+	}
+
+	tr.Close()
+	wg.Wait()
+}
+
+func TestViewLoopParamsChangeNonPatcher(t *testing.T) {
+	view := &loopTestView{}
+	view.Mount(Params{})
+
+	tr := NewTestTransport()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ViewLoop(view, tr, ViewLoopConfig{
+			SessionID: "test-sess",
+			Lang:      "en",
+		})
+	}()
+
+	// Send params_change to a non-Patcher view — should be silently ignored
+	tr.PushEvent("gerbera:params_change", Payload{
+		"_path": "/profile",
+	})
+
+	time.Sleep(50 * time.Millisecond)
+
+	// No message should be sent (the event is dropped for non-Patcher views)
+	tr.mu.Lock()
+	msgCount := len(tr.Messages)
+	tr.mu.Unlock()
+	if msgCount != 0 {
+		t.Errorf("expected 0 messages for non-Patcher view, got %d", msgCount)
+	}
+
+	tr.Close()
+	wg.Wait()
 }

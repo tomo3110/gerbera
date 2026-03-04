@@ -1,6 +1,7 @@
 package live
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/tomo3110/gerbera/session"
@@ -216,8 +217,70 @@ func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
 	}
 }
 
+// parsePathPayload extracts the URL path and query parameters from a
+// params_change payload. The "_path" key carries the full URL
+// (e.g. "/profile?id=123") sent by the client's popstate handler.
+func parsePathPayload(p Payload) (string, url.Values) {
+	rawPath := p["_path"]
+	if rawPath == "" {
+		return "/", make(url.Values)
+	}
+	u, err := url.Parse(rawPath)
+	if err != nil {
+		return "/", make(url.Values)
+	}
+	return u.Path, u.Query()
+}
+
 // loopProcessEvent handles a single client event inside ViewLoop.
 func loopProcessEvent(sess *Session, transport Transport, cfg *handlerConfig, dlog *debugLogger, sessionID, eventName string, payload Payload) error {
+	// Handle params_change for Patcher views (browser back/forward)
+	if eventName == "gerbera:params_change" {
+		patcher, ok := sess.View.(Patcher)
+		if !ok {
+			return nil
+		}
+		path, vals := parsePathPayload(payload)
+
+		var diffStart time.Time
+		if cfg.debug {
+			diffStart = time.Now()
+		}
+
+		sess.mu.Lock()
+		if err := patcher.HandleParams(path, vals); err != nil {
+			if dlog != nil {
+				dlog.handleError(sessionID, "HandleParams", err)
+			}
+			sess.mu.Unlock()
+			return nil
+		}
+		patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
+		sess.mu.Unlock()
+		if err != nil {
+			if dlog != nil {
+				dlog.handleError(sessionID, "renderAndDiff", err)
+			}
+			return nil
+		}
+
+		var duration time.Duration
+		if cfg.debug {
+			duration = time.Since(diffStart)
+		}
+		if dlog != nil {
+			dlog.patchesGenerated(sessionID, len(patches), duration)
+		}
+
+		return transport.Send(Message{
+			Patches:    patches,
+			JSCommands: jsCommands,
+			ViewState:  viewState,
+			EventName:  eventName,
+			Duration:   duration,
+		})
+	}
+
 	var diffStart time.Time
 	if cfg.debug {
 		diffStart = time.Now()

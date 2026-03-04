@@ -8,6 +8,7 @@
   var reconnectAttempts = 0;
   var maxReconnectDelay = 30000;
   var reconnectOverlay = null;
+  var _navigating = false;
 
   // Decode HTML entities produced by Go's html.EscapeString.
   // Uses a textarea element so that the browser's HTML parser decodes entities
@@ -98,6 +99,7 @@
   }
 
   function onClose(ev) {
+    if (_navigating) return;
     if (window.__gerberaDebugDisconnect) {
       window.__gerberaDebugDisconnect();
     }
@@ -369,6 +371,15 @@
         case "navigate":
           if (cmd.args && cmd.args.url) location.href = cmd.args.url;
           break;
+        case "push_patch":
+          if (cmd.args && cmd.args.path) history.pushState({gerbera: true}, "", cmd.args.path);
+          break;
+        case "replace_patch":
+          if (cmd.args && cmd.args.path) history.replaceState({gerbera: true}, "", cmd.args.path);
+          break;
+        case "push_navigate":
+          if (cmd.args && cmd.args.path) { _navigating = true; if (ws) ws.close(); location.href = cmd.args.path; }
+          break;
       }
     });
   }
@@ -578,6 +589,15 @@
       });
     });
   }
+
+  window.addEventListener("popstate", function() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    var params = new URLSearchParams(window.location.search);
+    var p = {};
+    params.forEach(function(v, k) { p[k] = v; });
+    p["_path"] = window.location.pathname + window.location.search;
+    send("gerbera:params_change", p);
+  });
 
   connect();
 })();
