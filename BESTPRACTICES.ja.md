@@ -435,6 +435,97 @@ func (v *MyView) Mount(params gl.Params) error {
 
 > **注意**: `PushPatch` で変更した URL に直接アクセスできるよう、サーバー側のルーティングでそのパスを LiveView ハンドラにマッチさせる必要があります。Go の `http.ServeMux` では `mux.Handle("/", handler)` がキャッチオールとして機能します。
 
+### パスパラメータ（MatchPath）
+
+`/users/:id` のようなパスベースのパラメータを扱うには、`live.MatchPath` ユーティリティを使います:
+
+```go
+// MatchPath はパターンとパスを比較し、":param" セグメントを抽出します
+params, ok := gl.MatchPath("/users/:id", "/users/42")
+// params.Get("id") == "42", ok == true
+
+// 複数パラメータにも対応
+params, ok := gl.MatchPath("/users/:uid/posts/:pid", "/users/1/posts/99")
+// params.Get("uid") == "1", params.Get("pid") == "99"
+
+// マッチしない場合
+_, ok := gl.MatchPath("/users/:id", "/posts/42")
+// ok == false
+```
+
+#### ルーティングテーブルの構築
+
+複数のパターンを持つアプリケーションでは、ルート定義を構造化します:
+
+```go
+type route struct {
+    page   string
+    params gl.PathParams
+}
+
+func matchRoute(path string) route {
+    // パスパラメータ付きルートを先にマッチ
+    patterns := []struct {
+        pattern string
+        page    string
+    }{
+        {"/profile/:id", "profile"},
+        {"/post/:id", "post"},
+        {"/messages/:id", "messages"},
+    }
+    for _, p := range patterns {
+        if params, ok := gl.MatchPath(p.pattern, path); ok {
+            return route{page: p.page, params: params}
+        }
+    }
+    // 静的ルートのフォールバック
+    // ...
+}
+```
+
+#### HandleParams での使用
+
+```go
+func (v *MyView) HandleParams(path string, params url.Values) error {
+    r := matchRoute(path)
+    v.page = r.page
+    switch v.page {
+    case "profile":
+        if idStr := r.params.Get("id"); idStr != "" {
+            id, _ := strconv.ParseInt(idStr, 10, 64)
+            return v.loadProfile(id)
+        }
+        return v.loadProfile(v.userID)
+    case "search":
+        // クエリパラメータは従来通り url.Values から取得
+        v.keyword = params.Get("keyword")
+    }
+    return nil
+}
+```
+
+#### buildPath でのパス生成
+
+```go
+func (v *MyView) buildPath() string {
+    switch v.page {
+    case "profile":
+        if v.profileUser != nil && v.profileUser.ID != v.userID {
+            return "/profile/" + strconv.FormatInt(v.profileUser.ID, 10)
+        }
+        return "/profile"
+    case "search":
+        if v.keyword != "" {
+            return "/search?keyword=" + url.QueryEscape(v.keyword)
+        }
+        return "/search"
+    }
+    return "/"
+}
+```
+
+> **ポイント**: `MatchPath` はパスセグメントのパラメータ抽出のみを担当します。クエリストリング（`?keyword=...`）は従来通り `url.Values` で処理してください。
+
 ---
 
 ## 6. フォームとバリデーション
