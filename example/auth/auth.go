@@ -99,6 +99,7 @@ func dashboardPage() []g.ComponentFunc {
 					),
 				),
 			),
+			gl.Script(),
 		),
 	}
 }

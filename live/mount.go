@@ -1,9 +1,37 @@
 package live
 
 import (
+	"fmt"
+
 	"github.com/tomo3110/gerbera"
 	"github.com/tomo3110/gerbera/property"
 )
+
+// Script returns a ComponentFunc that injects the Gerbera client-side
+// JavaScript required for LiveMount to work.
+//
+// When using LiveMount within an SSR page rendered by g.Handler or
+// g.HandlerFunc, you must include Script() in the page's <body> so
+// that the client can detect [gerbera-live] elements and establish
+// WebSocket connections.
+//
+// Script() is not needed when the entire page is served by gl.Handler
+// (full LiveView), because gl.Handler injects the script automatically.
+//
+// Usage:
+//
+//	func page() []g.ComponentFunc {
+//	    return []g.ComponentFunc{
+//	        gd.Head(gd.Title("My Page")),
+//	        gd.Body(
+//	            gl.LiveMount("/live/widget"),
+//	            gl.Script(),
+//	        ),
+//	    }
+//	}
+func Script() gerbera.ComponentFunc {
+	return gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS))
+}
 
 // MountOption configures a LiveMount element.
 type MountOption func(gerbera.Node)

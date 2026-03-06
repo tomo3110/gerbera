@@ -92,6 +92,7 @@ func adminPage(page string, liveEndpoint string) []g.ComponentFunc {
 					gl.LiveMount(liveEndpoint),
 				),
 			),
+			gl.Script(),
 		),
 	}
 }
