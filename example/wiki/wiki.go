@@ -18,11 +18,12 @@ func init() {
 }
 
 func main() {
-	http.HandleFunc("/view/", viewHandle)
-	http.HandleFunc("/edit/", editHandle)
-	http.HandleFunc("/save/", saveHandle)
-	http.HandleFunc("/", listHandle)
-	log.Fatal(http.ListenAndServe(":8880", nil))
+	mux := http.NewServeMux()
+	mux.Handle("GET /view/{title}", http.HandlerFunc(viewHandle))
+	mux.Handle("GET /edit/{title}", http.HandlerFunc(editHandle))
+	mux.Handle("POST /save/{title}", http.HandlerFunc(saveHandle))
+	mux.Handle("GET /", g.HandlerFunc(listHandle))
+	log.Fatal(http.ListenAndServe(":8880", mux))
 }
 
 /** model */
@@ -97,7 +98,7 @@ func FetchPageNameList() ([]*Page, error) {
 /** controller */
 
 func viewHandle(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/view/"):]
+	title := r.PathValue("title")
 	page, err := LoadPage(title)
 	if err != nil {
 		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
@@ -110,7 +111,7 @@ func viewHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func editHandle(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/edit/"):]
+	title := r.PathValue("title")
 	page, err := LoadPage(title)
 	if err != nil {
 		page = &Page{Title: title}
@@ -122,7 +123,7 @@ func editHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func saveHandle(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/save/"):]
+	title := r.PathValue("title")
 	body := r.FormValue("body")
 	page := &Page{Title: title, Body: []byte(body)}
 	if err := page.Save(); err != nil {
@@ -132,16 +133,12 @@ func saveHandle(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
-func listHandle(w http.ResponseWriter, _ *http.Request) {
+func listHandle(r *http.Request) []g.ComponentFunc {
 	list, err := FetchPageNameList()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil
 	}
-	if err := listLayout(w, list); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return listPage(list)
 }
 
 /** view */
@@ -209,12 +206,12 @@ func editLayout(w http.ResponseWriter, page *Page) error {
 	)
 }
 
-func listLayout(w http.ResponseWriter, pages []*Page) error {
+func listPage(pages []*Page) []g.ComponentFunc {
 	list := make([]g.ConvertToMap, len(pages))
 	for i, page := range pages {
 		list[i] = page
 	}
-	return g.ExecuteTemplate(w, "jp",
+	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title("ページ一覧"),
 			gc.BootstrapCSS(),
@@ -235,5 +232,5 @@ func listLayout(w http.ResponseWriter, pages []*Page) error {
 				gd.P(gp.Value("empty pages ...")),
 			),
 		),
-	)
+	}
 }

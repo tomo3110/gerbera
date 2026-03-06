@@ -41,18 +41,19 @@ var records = []*Record{
 func main() {
 	addr := flag.String("addr", ":8820", "running address")
 	flag.Parse()
-	http.HandleFunc("/detail/", detailHandle)
-	http.HandleFunc("/", listHandle)
+	mux := http.NewServeMux()
+	mux.Handle("GET /detail/{name}", g.HandlerFunc(detailHandle))
+	mux.Handle("GET /", g.Handler(listPage()...))
 	log.Printf("dashboard server running on %s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	log.Fatal(http.ListenAndServe(*addr, mux))
 }
 
-func listHandle(w http.ResponseWriter, _ *http.Request) {
+func listPage() []g.ComponentFunc {
 	list := make([]g.ConvertToMap, len(records))
 	for i, r := range records {
 		list[i] = r
 	}
-	if err := g.ExecuteTemplate(w, "ja",
+	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title("社員ダッシュボード"),
 			gc.BootstrapCSS(),
@@ -108,13 +109,11 @@ func listHandle(w http.ResponseWriter, _ *http.Request) {
 				),
 			),
 		),
-	); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func detailHandle(w http.ResponseWriter, r *http.Request) {
-	name := r.URL.Path[len("/detail/"):]
+func detailHandle(r *http.Request) []g.ComponentFunc {
+	name := r.PathValue("name")
 	var found *Record
 	for _, rec := range records {
 		if rec.Name == name {
@@ -123,10 +122,9 @@ func detailHandle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if found == nil {
-		http.NotFound(w, r)
-		return
+		return nil
 	}
-	if err := g.ExecuteTemplate(w, "ja",
+	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title(found.Name+" - 詳細"),
 			gc.BootstrapCSS(),
@@ -152,8 +150,6 @@ func detailHandle(w http.ResponseWriter, r *http.Request) {
 				gp.Value("← 一覧に戻る"),
 			),
 		),
-	); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
