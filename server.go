@@ -39,7 +39,7 @@ func Handler(components ...ComponentFunc) http.Handler {
 //	    user, _ := userRepo.GetByID(id)
 //	    return userPage(user)
 //	}))
-func HandlerFunc(fn func(r *http.Request) []ComponentFunc) http.Handler {
+func HandlerFunc(fn func(r *http.Request) Components) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		components := fn(r)

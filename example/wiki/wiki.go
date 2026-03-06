@@ -97,7 +97,7 @@ func FetchPageNameList() ([]*Page, error) {
 
 /** controller */
 
-func viewHandle(r *http.Request) []g.ComponentFunc {
+func viewHandle(r *http.Request) g.Components {
 	title := r.PathValue("title")
 	page, err := LoadPage(title)
 	if err != nil {
@@ -107,7 +107,7 @@ func viewHandle(r *http.Request) []g.ComponentFunc {
 	return viewPage(page)
 }
 
-func editHandle(r *http.Request) []g.ComponentFunc {
+func editHandle(r *http.Request) g.Components {
 	title := r.PathValue("title")
 	page, err := LoadPage(title)
 	if err != nil {
@@ -127,7 +127,7 @@ func saveHandle(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
-func listHandle(r *http.Request) []g.ComponentFunc {
+func listHandle(r *http.Request) g.Components {
 	list, err := FetchPageNameList()
 	if err != nil {
 		return nil
@@ -137,8 +137,8 @@ func listHandle(r *http.Request) []g.ComponentFunc {
 
 /** view */
 
-func viewPage(page *Page) []g.ComponentFunc {
-	return []g.ComponentFunc{
+func viewPage(page *Page) g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title(page.Title),
 			gc.BootstrapCSS(),
@@ -161,8 +161,8 @@ func viewPage(page *Page) []g.ComponentFunc {
 	}
 }
 
-func editPage(page *Page) []g.ComponentFunc {
-	return []g.ComponentFunc{
+func editPage(page *Page) g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title(page.Title),
 			gc.BootstrapCSS(),
@@ -200,12 +200,12 @@ func editPage(page *Page) []g.ComponentFunc {
 	}
 }
 
-func listPage(pages []*Page) []g.ComponentFunc {
+func listPage(pages []*Page) g.Components {
 	list := make([]g.ConvertToMap, len(pages))
 	for i, page := range pages {
 		list[i] = page
 	}
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title("ページ一覧"),
 			gc.BootstrapCSS(),

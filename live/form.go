@@ -62,7 +62,7 @@ type FieldOpts struct {
 	// Error is the error message to display (if any).
 	Error string
 	// Extra attributes/children to apply to the input element.
-	Extra []gerbera.ComponentFunc
+	Extra gerbera.Components
 	// LabelClass is the CSS class for the label element.
 	LabelClass string
 	// InputClass is the CSS class for the input element.
@@ -88,11 +88,11 @@ func Field(name string, opts FieldOpts) gerbera.ComponentFunc {
 		wrapperClass = "gerbera-field"
 	}
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 
 	// Label
 	if opts.Label != "" {
-		labelAttrs := []gerbera.ComponentFunc{
+		labelAttrs := gerbera.Components{
 			property.Attr("for", name),
 			property.Value(opts.Label),
 		}
@@ -103,7 +103,7 @@ func Field(name string, opts FieldOpts) gerbera.ComponentFunc {
 	}
 
 	// Input
-	inputAttrs := []gerbera.ComponentFunc{
+	inputAttrs := gerbera.Components{
 		property.Attr("type", inputType),
 		property.Name(name),
 		property.ID(name),
@@ -142,7 +142,7 @@ func Field(name string, opts FieldOpts) gerbera.ComponentFunc {
 	}
 
 	return dom.Div(
-		append([]gerbera.ComponentFunc{property.Class(wrapperClass)}, children...)...,
+		append(gerbera.Components{property.Class(wrapperClass)}, children...)...,
 	)
 }
 
@@ -157,11 +157,11 @@ func TextareaField(name string, opts FieldOpts) gerbera.ComponentFunc {
 		wrapperClass = "gerbera-field"
 	}
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 
 	// Label
 	if opts.Label != "" {
-		labelAttrs := []gerbera.ComponentFunc{
+		labelAttrs := gerbera.Components{
 			property.Attr("for", name),
 			property.Value(opts.Label),
 		}
@@ -172,7 +172,7 @@ func TextareaField(name string, opts FieldOpts) gerbera.ComponentFunc {
 	}
 
 	// Textarea
-	textareaAttrs := []gerbera.ComponentFunc{
+	textareaAttrs := gerbera.Components{
 		property.Name(name),
 		property.ID(name),
 	}
@@ -210,7 +210,7 @@ func TextareaField(name string, opts FieldOpts) gerbera.ComponentFunc {
 	}
 
 	return dom.Div(
-		append([]gerbera.ComponentFunc{property.Class(wrapperClass)}, children...)...,
+		append(gerbera.Components{property.Class(wrapperClass)}, children...)...,
 	)
 }
 
@@ -225,11 +225,11 @@ func SelectField(name string, options []SelectOption, opts FieldOpts) gerbera.Co
 		wrapperClass = "gerbera-field"
 	}
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 
 	// Label
 	if opts.Label != "" {
-		labelAttrs := []gerbera.ComponentFunc{
+		labelAttrs := gerbera.Components{
 			property.Attr("for", name),
 			property.Value(opts.Label),
 		}
@@ -240,7 +240,7 @@ func SelectField(name string, options []SelectOption, opts FieldOpts) gerbera.Co
 	}
 
 	// Select + options
-	selectAttrs := []gerbera.ComponentFunc{
+	selectAttrs := gerbera.Components{
 		property.Name(name),
 		property.ID(name),
 	}
@@ -258,7 +258,7 @@ func SelectField(name string, options []SelectOption, opts FieldOpts) gerbera.Co
 		selectAttrs = append(selectAttrs, property.AriaDescribedBy(name+"-error"))
 	}
 	for _, opt := range options {
-		optAttrs := []gerbera.ComponentFunc{
+		optAttrs := gerbera.Components{
 			property.Attr("value", opt.Value),
 			property.Value(opt.Label),
 		}
@@ -285,7 +285,7 @@ func SelectField(name string, options []SelectOption, opts FieldOpts) gerbera.Co
 	}
 
 	return dom.Div(
-		append([]gerbera.ComponentFunc{property.Class(wrapperClass)}, children...)...,
+		append(gerbera.Components{property.Class(wrapperClass)}, children...)...,
 	)
 }
 

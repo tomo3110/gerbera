@@ -16,7 +16,7 @@ func Toast(open bool, message, variant, dismissEvent string) gerbera.ComponentFu
 	if variant == "" {
 		variant = "info"
 	}
-	wrapper := []gerbera.ComponentFunc{
+	wrapper := gerbera.Components{
 		dom.Div(
 			property.Class("g-toast", "g-toast-"+variant),
 			property.Role("alert"),
@@ -31,7 +31,7 @@ func Toast(open bool, message, variant, dismissEvent string) gerbera.ComponentFu
 		),
 	}
 	if !open {
-		wrapper = append([]gerbera.ComponentFunc{property.Attr("hidden", "")}, wrapper...)
+		wrapper = append(gerbera.Components{property.Attr("hidden", "")}, wrapper...)
 	}
 	return dom.Div(wrapper...)
 }

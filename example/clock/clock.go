@@ -61,14 +61,14 @@ func (v *ClockView) HandleEvent(event string, _ gl.Payload) error {
 	return nil
 }
 
-func (v *ClockView) Render() []g.ComponentFunc {
+func (v *ClockView) Render() g.Components {
 	clock := v.Now.Format("15:04:05")
 	mins := int(v.Elapsed.Minutes())
 	secs := int(v.Elapsed.Seconds()) % 60
 	tenths := int(v.Elapsed.Milliseconds()/100) % 10
 	stopwatch := fmt.Sprintf("%02d:%02d.%d", mins, secs, tenths)
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title("Clock — Gerbera TickerView Demo"),
 			gs.CSS(`

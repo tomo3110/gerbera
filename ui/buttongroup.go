@@ -24,7 +24,7 @@ var ButtonGroupSmall = property.ClassIf(true, "g-btngroup-sm")
 
 // ButtonGroup renders a segmented control / button group.
 func ButtonGroup(items []ButtonGroupItem, opts ButtonGroupOpts, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	wrapAttrs := []gerbera.ComponentFunc{
+	wrapAttrs := gerbera.Components{
 		property.Class("g-btngroup"),
 		property.ClassIf(opts.Small, "g-btngroup-sm"),
 		property.Role("group"),
@@ -32,7 +32,7 @@ func ButtonGroup(items []ButtonGroupItem, opts ButtonGroupOpts, extra ...gerbera
 	wrapAttrs = append(wrapAttrs, extra...)
 
 	for _, item := range items {
-		btnAttrs := []gerbera.ComponentFunc{
+		btnAttrs := gerbera.Components{
 			property.Class("g-btngroup-btn"),
 			property.ClassIf(item.Active, "g-btngroup-active"),
 			property.Attr("type", "button"),

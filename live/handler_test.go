@@ -23,8 +23,8 @@ func (v *testView) Mount(_ Params) error {
 	return nil
 }
 
-func (v *testView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *testView) Render() g.Components {
+	return g.Components{
 		gd.Head(gd.Title("Test")),
 		gd.Body(
 			gd.H1(gp.Value(fmt.Sprintf("Count: %d", v.Count))),
@@ -163,7 +163,7 @@ func TestThrottle(t *testing.T) {
 }
 
 func TestBuildTree(t *testing.T) {
-	components := []g.ComponentFunc{
+	components := g.Components{
 		gd.Head(gd.Title("Test")),
 		gd.Body(gd.H1(gp.Value("Hello"))),
 	}
@@ -181,7 +181,7 @@ func TestBuildTree(t *testing.T) {
 }
 
 func TestBuildTreeWithCSRFToken(t *testing.T) {
-	components := []g.ComponentFunc{
+	components := g.Components{
 		gd.Head(gd.Title("Test")),
 		gd.Body(gd.H1(gp.Value("Hello"))),
 	}

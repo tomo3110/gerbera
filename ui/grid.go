@@ -10,70 +10,70 @@ import (
 
 // Row renders a horizontal flex container (gap: 8px).
 func Row(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-row")}
+	attrs := gerbera.Components{property.Class("g-row")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }
 
 // Column renders a vertical flex container (gap: 8px).
 func Column(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-col")}
+	attrs := gerbera.Components{property.Class("g-col")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }
 
 // Stack renders a vertical stack with gap: 16px — for page-level content stacking.
 func Stack(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-stack")}
+	attrs := gerbera.Components{property.Class("g-stack")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }
 
 // HStack renders a horizontal stack (gap: 8px, wrap, align-center) — for button groups etc.
 func HStack(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-hstack")}
+	attrs := gerbera.Components{property.Class("g-hstack")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }
 
 // VStack renders a vertical stack with center alignment (gap: 8px) — for icon+label combos.
 func VStack(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-vstack")}
+	attrs := gerbera.Components{property.Class("g-vstack")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }
 
 // Center renders a flex container that centers its children both horizontally and vertically.
 func Center(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-center")}
+	attrs := gerbera.Components{property.Class("g-center")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }
 
 // Container renders a max-width container (960px) with auto margins.
 func Container(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-container")}
+	attrs := gerbera.Components{property.Class("g-container")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }
 
 // ContainerNarrow renders a narrow container (640px).
 func ContainerNarrow(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-container", "g-container-narrow")}
+	attrs := gerbera.Components{property.Class("g-container", "g-container-narrow")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }
 
 // ContainerWide renders a wide container (1280px).
 func ContainerWide(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-container", "g-container-wide")}
+	attrs := gerbera.Components{property.Class("g-container", "g-container-wide")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }
 
 // Grid renders a CSS Grid container (gap: 24px).
 func Grid(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class("g-grid")}
+	attrs := gerbera.Components{property.Class("g-grid")}
 	attrs = append(attrs, children...)
 	return dom.Div(attrs...)
 }

@@ -25,7 +25,7 @@ type ChatInputOpts struct {
 
 // ChatContainer renders a scrollable chat message list.
 func ChatContainer(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Class("g-chat"),
 		property.Role("log"),
 		property.AriaLabel("Chat messages"),
@@ -49,12 +49,12 @@ func ChatMessageView(msg ChatMessage) gerbera.ComponentFunc {
 		)
 	}
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 	if avatarEl != nil && !msg.Sent {
 		children = append(children, avatarEl)
 	}
 
-	bubble := []gerbera.ComponentFunc{
+	bubble := gerbera.Components{
 		property.Class("g-chat-bubble", bubbleClass),
 	}
 	if msg.Author != "" {
@@ -82,7 +82,7 @@ func ChatMessageView(msg ChatMessage) gerbera.ComponentFunc {
 		children = append(children, avatarEl)
 	}
 
-	rowAttrs := []gerbera.ComponentFunc{
+	rowAttrs := gerbera.Components{
 		property.Class("g-chat-row"),
 		property.ClassIf(msg.Sent, "g-chat-row-sent"),
 		property.ClassIf(!msg.Sent, "g-chat-row-received"),
@@ -98,7 +98,7 @@ func ChatInput(name, value string, opts ChatInputOpts, extra ...gerbera.Componen
 		ph = "Type a message..."
 	}
 
-	inputAttrs := []gerbera.ComponentFunc{
+	inputAttrs := gerbera.Components{
 		property.Class("g-chat-input-field"),
 		property.Name(name),
 		property.Attr("value", value),
@@ -117,7 +117,7 @@ func ChatInput(name, value string, opts ChatInputOpts, extra ...gerbera.Componen
 	if opts.SendEvent != "" {
 		btnType = "button"
 	}
-	sendBtn := []gerbera.ComponentFunc{
+	sendBtn := gerbera.Components{
 		property.Class("g-btn", "g-btn-primary", "g-chat-send"),
 		property.Attr("type", btnType),
 		property.AriaLabel("Send"),

@@ -67,7 +67,7 @@ func avatarInitial(name string) string {
 func ImageAvatar(src string, opts AvatarOpts, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
 	size := avatarSize(opts.Size)
 	shape := avatarShape(opts.Shape)
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Class("g-avatar", "g-avatar-"+shape, "g-avatar-"+size),
 	}
 	if opts.ClickEvent != "" {
@@ -78,7 +78,7 @@ func ImageAvatar(src string, opts AvatarOpts, extra ...gerbera.ComponentFunc) ge
 		)
 	}
 	attrs = append(attrs, extra...)
-	var imgOpts []gerbera.ComponentFunc
+	var imgOpts gerbera.Components
 	if opts.Alt != "" {
 		imgOpts = append(imgOpts, property.Attr("alt", opts.Alt))
 	}
@@ -91,7 +91,7 @@ func LetterAvatar(name string, opts AvatarOpts, extra ...gerbera.ComponentFunc) 
 	size := avatarSize(opts.Size)
 	shape := avatarShape(opts.Shape)
 	color := avatarColorForName(name)
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Class("g-avatar", "g-avatar-"+shape, "g-avatar-"+size),
 		property.Attr("style", fmt.Sprintf("background-color:%s", color)),
 		property.Value(avatarInitial(name)),
@@ -109,8 +109,8 @@ func LetterAvatar(name string, opts AvatarOpts, extra ...gerbera.ComponentFunc) 
 }
 
 // AvatarGroup renders a group of overlapping avatars with an optional "+N" overflow indicator.
-func AvatarGroup(avatars []gerbera.ComponentFunc, opts AvatarGroupOpts, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+func AvatarGroup(avatars gerbera.Components, opts AvatarGroupOpts, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
+	attrs := gerbera.Components{
 		property.Class("g-avatar-group"),
 	}
 	attrs = append(attrs, extra...)
@@ -126,7 +126,7 @@ func AvatarGroup(avatars []gerbera.ComponentFunc, opts AvatarGroupOpts, extra ..
 
 	if overflow > 0 {
 		size := avatarSize(opts.Size)
-		moreAttrs := []gerbera.ComponentFunc{
+		moreAttrs := gerbera.Components{
 			property.Class("g-avatar", "g-avatar-circle", "g-avatar-"+size, "g-avatar-group-more"),
 			property.Value(fmt.Sprintf("+%d", overflow)),
 		}

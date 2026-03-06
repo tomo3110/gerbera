@@ -18,8 +18,8 @@ import (
 //
 // Usage:
 //
-//	func page() []g.ComponentFunc {
-//	    return []g.ComponentFunc{
+//	func page() g.Components {
+//	    return g.Components{
 //	        gd.Head(gd.Title("My Page")),
 //	        gd.Body(
 //	            gl.LiveMount("/live/widget"),
@@ -63,7 +63,7 @@ func WithMountClass(class string) MountOption {
 //
 // Usage in an SSR layout:
 //
-//	func adminPage() []g.ComponentFunc {
+//	func adminPage() g.Components {
 //	    return layout("Admin",
 //	        gd.Header(gl.LiveMount("/admin/notifications")),
 //	        gd.Main(gl.LiveMount("/admin/orders")),

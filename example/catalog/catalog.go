@@ -158,8 +158,8 @@ func (v *CatalogView) currentTheme() g.ComponentFunc {
 	}
 }
 
-func (v *CatalogView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *CatalogView) Render() g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title("Gerbera UI Catalog"),
 			gd.Meta(gp.Attr("name", "viewport"), gp.Attr("content", "width=device-width, initial-scale=1")),
@@ -370,7 +370,7 @@ func (v *CatalogView) pageButton() g.ComponentFunc {
 
 func (v *CatalogView) pageIcon() g.ComponentFunc {
 	names := gu.IconNames()
-	var iconCells []g.ComponentFunc
+	var iconCells g.Components
 	for _, name := range names {
 		iconCells = append(iconCells, gu.VStack(
 			gp.Attr("style", "padding:12px;border:1px solid var(--g-border);border-radius:var(--g-radius);min-width:80px"),
@@ -378,8 +378,8 @@ func (v *CatalogView) pageIcon() g.ComponentFunc {
 			gd.Span(gp.Attr("style", "font-size:11px;color:var(--g-text-tertiary)"), gp.Value(name)),
 		))
 	}
-	items := []g.ComponentFunc{section("Icon", fmt.Sprintf("SVG icons (%d available). Usage: gu.Icon(name, size).", len(names)))}
-	hstackAttrs := append([]g.ComponentFunc{}, iconCells...)
+	items := g.Components{section("Icon", fmt.Sprintf("SVG icons (%d available). Usage: gu.Icon(name, size).", len(names)))}
+	hstackAttrs := append(g.Components{}, iconCells...)
 	items = append(items, gu.HStack(hstackAttrs...))
 	return gu.Stack(items...)
 }
@@ -541,11 +541,11 @@ func (v *CatalogView) pageTree() g.ComponentFunc {
 			gu.Tree([]gu.TreeNode{
 				{
 					Label: "src", Icon: "folder", Open: v.TreeOpen["src"],
-					Attrs: []g.ComponentFunc{gl.Click("treeToggle"), gl.ClickValue("src")},
+					Attrs: g.Components{gl.Click("treeToggle"), gl.ClickValue("src")},
 					Children: []gu.TreeNode{
 						{
 							Label: "components", Icon: "folder", Open: v.TreeOpen["components"],
-							Attrs: []g.ComponentFunc{gl.Click("treeToggle"), gl.ClickValue("components")},
+							Attrs: g.Components{gl.Click("treeToggle"), gl.ClickValue("components")},
 							Children: []gu.TreeNode{
 								{Label: "Button.tsx", Icon: "file"},
 								{Label: "Card.tsx", Icon: "file"},
@@ -554,7 +554,7 @@ func (v *CatalogView) pageTree() g.ComponentFunc {
 						},
 						{
 							Label: "pages", Icon: "folder", Open: v.TreeOpen["pages"],
-							Attrs: []g.ComponentFunc{gl.Click("treeToggle"), gl.ClickValue("pages")},
+							Attrs: g.Components{gl.Click("treeToggle"), gl.ClickValue("pages")},
 							Children: []gu.TreeNode{
 								{Label: "index.tsx", Icon: "file"},
 								{Label: "about.tsx", Icon: "file"},
@@ -810,7 +810,7 @@ func (v *CatalogView) pageStepper() g.ComponentFunc {
 }
 
 func (v *CatalogView) pageInfiniteScroll() g.ComponentFunc {
-	var items []g.ComponentFunc
+	var items g.Components
 	for i := 0; i < v.InfScrollItems; i++ {
 		items = append(items, gu.Card(
 			gd.Div(gp.Class("g-page-body"),
@@ -1204,7 +1204,7 @@ func (v *CatalogView) calSelectedStr() string {
 }
 
 func (v *CatalogView) pageChat() g.ComponentFunc {
-	var msgViews []g.ComponentFunc
+	var msgViews g.Components
 	for _, m := range v.ChatMessages {
 		msgViews = append(msgViews, gu.ChatMessageView(m))
 	}
@@ -1741,7 +1741,7 @@ func (v *CatalogView) pageChart() g.ComponentFunc {
 		liveChart = gu.LineChart(series, liveOpts)
 	}
 
-	items := []g.ComponentFunc{
+	items := g.Components{
 		section("Charts (Live)", "Interactive charts with server-driven events. Click on data points."),
 		gu.ButtonGroup(chartTypes, gu.ButtonGroupOpts{ClickEvent: "chartTypeChange"}),
 		gd.Div(gp.Attr("style", "margin-top:16px"), liveChart),
@@ -1825,7 +1825,7 @@ func (v *CatalogView) pageChart() g.ComponentFunc {
 }
 
 func (v *CatalogView) pageAvatar() g.ComponentFunc {
-	items := []g.ComponentFunc{
+	items := g.Components{
 		section("Image Avatar", "Avatar with an image. Sizes: xs, sm, md, lg, xl."),
 		gu.HStack(
 			gu.ImageAvatar("https://i.pravatar.cc/64?u=1", gu.AvatarOpts{Size: "xs", Alt: "User 1"}),
@@ -1852,7 +1852,7 @@ func (v *CatalogView) pageAvatar() g.ComponentFunc {
 		),
 
 		section("Avatar Group", "Overlapping avatar group with optional max display count."),
-		gu.AvatarGroup([]g.ComponentFunc{
+		gu.AvatarGroup(g.Components{
 			gu.LetterAvatar("Alice", gu.AvatarOpts{}),
 			gu.LetterAvatar("Bob", gu.AvatarOpts{}),
 			gu.LetterAvatar("Charlie", gu.AvatarOpts{}),

@@ -139,8 +139,8 @@ func (v *WikiView) HandleEvent(event string, payload gl.Payload) error {
 	return nil
 }
 
-func (v *WikiView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *WikiView) Render() g.Components {
+	return g.Components{
 		gd.Head(gd.Title("Wiki Live")),
 		gd.Body(
 			gp.Class("container"),

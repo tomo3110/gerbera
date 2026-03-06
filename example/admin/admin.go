@@ -79,8 +79,8 @@ func userRows() [][]string {
 // SSR Layout — shared shell rendered on each page load
 // ---------------------------------------------------------------------------
 
-func adminPage(page string, liveEndpoint string) []g.ComponentFunc {
-	return []g.ComponentFunc{
+func adminPage(page string, liveEndpoint string) g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title("Admin Panel"),
 			gu.Theme(),
@@ -125,8 +125,8 @@ func (v *DashboardView) Mount(_ gl.Params) error {
 	return nil
 }
 
-func (v *DashboardView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *DashboardView) Render() g.Components {
+	return g.Components{
 		gd.Body(
 			gu.Stack(
 				gu.PageHeader("Dashboard",
@@ -248,7 +248,7 @@ func (v *UsersView) Mount(_ gl.Params) error {
 	return nil
 }
 
-func (v *UsersView) Render() []g.ComponentFunc {
+func (v *UsersView) Render() g.Components {
 	rows := userRows()
 	pageSize := 8
 	start := v.TablePage * pageSize
@@ -258,7 +258,7 @@ func (v *UsersView) Render() []g.ComponentFunc {
 	}
 	pageRows := rows[start:end]
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Body(
 			gu.PageHeader("User Management",
 				gu.Breadcrumb(
@@ -385,13 +385,13 @@ func (v *MessagesView) Mount(_ gl.Params) error {
 	return nil
 }
 
-func (v *MessagesView) Render() []g.ComponentFunc {
-	var msgViews []g.ComponentFunc
+func (v *MessagesView) Render() g.Components {
+	var msgViews g.Components
 	for _, m := range v.ChatMessages {
 		msgViews = append(msgViews, gu.ChatMessageView(m))
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Body(
 			gu.PageHeader("Messages",
 				gu.Breadcrumb(
@@ -452,11 +452,11 @@ func (v *SettingsView) Mount(_ gl.Params) error {
 	return nil
 }
 
-func (v *SettingsView) Render() []g.ComponentFunc {
+func (v *SettingsView) Render() g.Components {
 	min0, max100 := 0, 100
 	min5, max50 := 5, 50
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Body(
 			gu.PageHeader("Settings",
 				gu.Breadcrumb(

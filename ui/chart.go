@@ -145,7 +145,7 @@ func chartPad(opts ChartOpts) chartPadding {
 // ---------- SVG element builders ----------
 
 func svgRoot(w, h int, opts ChartOpts, children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Class("g-chart"),
 		property.Attr("viewBox", fmt.Sprintf("0 0 %d %d", w, h)),
 		property.Attr("xmlns", "http://www.w3.org/2000/svg"),
@@ -164,13 +164,13 @@ func svgRoot(w, h int, opts ChartOpts, children ...gerbera.ComponentFunc) gerber
 }
 
 func svgG(class string, children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{property.Class(class)}
+	attrs := gerbera.Components{property.Class(class)}
 	attrs = append(attrs, children...)
 	return gerbera.Tag("g", attrs...)
 }
 
 func svgRect(x, y, w, h float64, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Attr("x", ff(x)),
 		property.Attr("y", ff(y)),
 		property.Attr("width", ff(w)),
@@ -181,7 +181,7 @@ func svgRect(x, y, w, h float64, extra ...gerbera.ComponentFunc) gerbera.Compone
 }
 
 func svgCircle(cx, cy, r float64, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Attr("cx", ff(cx)),
 		property.Attr("cy", ff(cy)),
 		property.Attr("r", ff(r)),
@@ -191,7 +191,7 @@ func svgCircle(cx, cy, r float64, extra ...gerbera.ComponentFunc) gerbera.Compon
 }
 
 func svgLine(x1, y1, x2, y2 float64, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Attr("x1", ff(x1)),
 		property.Attr("y1", ff(y1)),
 		property.Attr("x2", ff(x2)),
@@ -202,7 +202,7 @@ func svgLine(x1, y1, x2, y2 float64, extra ...gerbera.ComponentFunc) gerbera.Com
 }
 
 func svgText(x, y float64, text string, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Attr("x", ff(x)),
 		property.Attr("y", ff(y)),
 		property.Value(text),
@@ -212,7 +212,7 @@ func svgText(x, y float64, text string, extra ...gerbera.ComponentFunc) gerbera.
 }
 
 func svgPath(d string, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Attr("d", d),
 	}
 	attrs = append(attrs, extra...)
@@ -220,7 +220,7 @@ func svgPath(d string, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
 }
 
 func svgPolyline(points string, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Attr("points", points),
 	}
 	attrs = append(attrs, extra...)
@@ -243,7 +243,7 @@ func renderGrid(opts ChartOpts, pad chartPadding, yScale linearScale, ticks []fl
 		return nil
 	}
 	plotW := float64(opts.Width - pad.Left - pad.Right)
-	var lines []gerbera.ComponentFunc
+	var lines gerbera.Components
 	for _, t := range ticks {
 		y := yScale.Apply(t)
 		lines = append(lines, svgLine(float64(pad.Left), y, float64(pad.Left)+plotW, y))
@@ -253,7 +253,7 @@ func renderGrid(opts ChartOpts, pad chartPadding, yScale linearScale, ticks []fl
 
 func renderAxes(opts ChartOpts, pad chartPadding, yScale linearScale, ticks []float64, xLabels []string) gerbera.ComponentFunc {
 	plotW := float64(opts.Width - pad.Left - pad.Right)
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 
 	// Y axis line
 	children = append(children, svgLine(
@@ -308,7 +308,7 @@ func renderLegend(series []Series, opts ChartOpts, pad chartPadding) gerbera.Com
 		return nil
 	}
 	x := float64(opts.Width - pad.Right + 10)
-	var items []gerbera.ComponentFunc
+	var items gerbera.Components
 	for i, s := range series {
 		y := float64(pad.Top + i*20)
 		color := seriesColor(opts, s, i)
@@ -329,8 +329,8 @@ func renderChartTitle(title string, w int) gerbera.ComponentFunc {
 
 // ---------- empty data fallback ----------
 
-func renderEmpty(opts ChartOpts, extra []gerbera.ComponentFunc) gerbera.ComponentFunc {
-	children := []gerbera.ComponentFunc{
+func renderEmpty(opts ChartOpts, extra gerbera.Components) gerbera.ComponentFunc {
+	children := gerbera.Components{
 		svgText(float64(opts.Width/2), float64(opts.Height/2), "No data",
 			property.Attr("text-anchor", "middle"),
 			property.Attr("fill", "var(--g-text-tertiary)"),
@@ -398,18 +398,18 @@ func LineChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc) 
 		labelIdx[l] = i
 	}
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 	if g := renderGrid(opts, pad, yScale, ticks); g != nil {
 		children = append(children, g)
 	}
 	children = append(children, renderAxes(opts, pad, yScale, ticks, xLabels))
 
 	// Data lines
-	var dataChildren []gerbera.ComponentFunc
+	var dataChildren gerbera.Components
 	for si, s := range series {
 		color := seriesColor(opts, s, si)
 		pts := ""
-		var circles []gerbera.ComponentFunc
+		var circles gerbera.Components
 		for _, p := range s.Points {
 			idx := labelIdx[p.Label]
 			x := float64(pad.Left) + step*float64(idx) + step/2
@@ -418,7 +418,7 @@ func LineChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc) 
 				pts += " "
 			}
 			pts += fmt.Sprintf("%s,%s", ff(x), ff(y))
-			circleExtra := []gerbera.ComponentFunc{
+			circleExtra := gerbera.Components{
 				property.Class("g-chart-point"),
 				property.Attr("fill", color),
 			}
@@ -472,13 +472,13 @@ func ColumnChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc
 		labelIdx[l] = i
 	}
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 	if g := renderGrid(opts, pad, yScale, ticks); g != nil {
 		children = append(children, g)
 	}
 	children = append(children, renderAxes(opts, pad, yScale, ticks, xLabels))
 
-	var dataChildren []gerbera.ComponentFunc
+	var dataChildren gerbera.Components
 	for si, s := range series {
 		color := seriesColor(opts, s, si)
 		for _, p := range s.Points {
@@ -491,7 +491,7 @@ func ColumnChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc
 				y = baseY
 				h = -h
 			}
-			rectExtra := []gerbera.ComponentFunc{
+			rectExtra := gerbera.Components{
 				property.Attr("fill", color),
 				property.Attr("rx", "2"),
 			}
@@ -538,11 +538,11 @@ func BarChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc) g
 		labelIdx[l] = i
 	}
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 
 	// Horizontal grid
 	if opts.ShowGrid {
-		var gridLines []gerbera.ComponentFunc
+		var gridLines gerbera.Components
 		for _, t := range ticks {
 			x := xScale.Apply(t)
 			gridLines = append(gridLines, svgLine(x, float64(pad.Top), x, float64(opts.Height-pad.Bottom)))
@@ -551,7 +551,7 @@ func BarChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc) g
 	}
 
 	// Axes
-	var axisChildren []gerbera.ComponentFunc
+	var axisChildren gerbera.Components
 	axisChildren = append(axisChildren, svgLine(
 		float64(pad.Left), float64(pad.Top),
 		float64(pad.Left), float64(opts.Height-pad.Bottom),
@@ -577,7 +577,7 @@ func BarChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc) g
 	children = append(children, svgG("g-chart-axes", axisChildren...))
 
 	// Data bars
-	var dataChildren []gerbera.ComponentFunc
+	var dataChildren gerbera.Components
 	for si, s := range series {
 		color := seriesColor(opts, s, si)
 		for _, p := range s.Points {
@@ -591,7 +591,7 @@ func BarChart(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc) g
 				rx = x
 				w = -w
 			}
-			rectExtra := []gerbera.ComponentFunc{
+			rectExtra := gerbera.Components{
 				property.Attr("fill", color),
 				property.Attr("rx", "2"),
 			}
@@ -632,12 +632,12 @@ func PieChart(data []DataPoint, opts ChartOpts, extra ...gerbera.ComponentFunc) 
 	cy := float64(opts.Height) / 2
 	r := math.Min(cx, cy) - 40
 
-	var dataChildren []gerbera.ComponentFunc
+	var dataChildren gerbera.Components
 
 	// Single slice 100% → use circle
 	if len(data) == 1 {
 		color := opts.Colors[0]
-		sliceExtra := []gerbera.ComponentFunc{
+		sliceExtra := gerbera.Components{
 			property.Class("g-chart-slice"),
 			property.Attr("fill", color),
 		}
@@ -653,7 +653,7 @@ func PieChart(data []DataPoint, opts ChartOpts, extra ...gerbera.ComponentFunc) 
 			endAngle := startAngle + sweep
 
 			pathD := describeArc(cx, cy, r, startAngle, endAngle)
-			sliceExtra := []gerbera.ComponentFunc{
+			sliceExtra := gerbera.Components{
 				property.Class("g-chart-slice"),
 				property.Attr("fill", color),
 			}
@@ -666,12 +666,12 @@ func PieChart(data []DataPoint, opts ChartOpts, extra ...gerbera.ComponentFunc) 
 		}
 	}
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 	children = append(children, svgG("g-chart-data", dataChildren...))
 
 	// Legend for pie
 	if opts.ShowLegend {
-		var legendItems []gerbera.ComponentFunc
+		var legendItems gerbera.Components
 		lx := float64(opts.Width) - 130.0
 		for i, d := range data {
 			ly := float64(40 + i*20)
@@ -714,20 +714,20 @@ func ScatterPlot(series []Series, opts ChartOpts, extra ...gerbera.ComponentFunc
 		labelIdx[l] = i
 	}
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 	if g := renderGrid(opts, pad, yScale, ticks); g != nil {
 		children = append(children, g)
 	}
 	children = append(children, renderAxes(opts, pad, yScale, ticks, xLabels))
 
-	var dataChildren []gerbera.ComponentFunc
+	var dataChildren gerbera.Components
 	for si, s := range series {
 		color := seriesColor(opts, s, si)
 		for _, p := range s.Points {
 			idx := labelIdx[p.Label]
 			x := float64(pad.Left) + step*float64(idx) + step/2
 			y := yScale.Apply(p.Value)
-			circleExtra := []gerbera.ComponentFunc{
+			circleExtra := gerbera.Components{
 				property.Class("g-chart-point"),
 				property.Attr("fill", color),
 			}
@@ -832,11 +832,11 @@ func StackedBarChart(series []Series, opts ChartOpts, extra ...gerbera.Component
 	plotH := float64(opts.Height - pad.Top - pad.Bottom)
 	barH := plotH / float64(len(yLabels)) * 0.7
 
-	var children []gerbera.ComponentFunc
+	var children gerbera.Components
 
 	// Grid
 	if opts.ShowGrid {
-		var gridLines []gerbera.ComponentFunc
+		var gridLines gerbera.Components
 		for _, t := range ticks {
 			x := xScale.Apply(t)
 			gridLines = append(gridLines, svgLine(x, float64(pad.Top), x, float64(opts.Height-pad.Bottom)))
@@ -845,7 +845,7 @@ func StackedBarChart(series []Series, opts ChartOpts, extra ...gerbera.Component
 	}
 
 	// Axes
-	var axisChildren []gerbera.ComponentFunc
+	var axisChildren gerbera.Components
 	axisChildren = append(axisChildren, svgLine(
 		float64(pad.Left), float64(pad.Top),
 		float64(pad.Left), float64(opts.Height-pad.Bottom),
@@ -871,7 +871,7 @@ func StackedBarChart(series []Series, opts ChartOpts, extra ...gerbera.Component
 
 	// Stacked data
 	offsets := make([]float64, len(yLabels))
-	var dataChildren []gerbera.ComponentFunc
+	var dataChildren gerbera.Components
 	for si, s := range series {
 		color := seriesColor(opts, s, si)
 		for _, p := range s.Points {
@@ -879,7 +879,7 @@ func StackedBarChart(series []Series, opts ChartOpts, extra ...gerbera.Component
 			y := float64(pad.Top) + rowH*float64(idx) + (rowH-barH)/2
 			x := xScale.Apply(offsets[idx])
 			w := xScale.Apply(offsets[idx]+p.Value) - x
-			rectExtra := []gerbera.ComponentFunc{
+			rectExtra := gerbera.Components{
 				property.Attr("fill", color),
 				property.Attr("rx", "2"),
 			}

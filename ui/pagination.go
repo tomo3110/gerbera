@@ -48,9 +48,9 @@ func Pagination(opts PaginationOpts, extra ...gerbera.ComponentFunc) gerbera.Com
 
 	// Build page buttons
 	pages := PaginationPages(opts.Page, totalPages)
-	var pageButtons []gerbera.ComponentFunc
+	var pageButtons gerbera.Components
 	// Prev button
-	prevAttrs := []gerbera.ComponentFunc{
+	prevAttrs := gerbera.Components{
 		property.Class("g-pagination-btn", "g-pagination-prev"),
 		property.Attr("type", "button"),
 		property.AriaLabel("Previous page"),
@@ -73,7 +73,7 @@ func Pagination(opts PaginationOpts, extra ...gerbera.ComponentFunc) gerbera.Com
 			))
 		} else {
 			isActive := p == opts.Page
-			btnAttrs := []gerbera.ComponentFunc{
+			btnAttrs := gerbera.Components{
 				property.Class("g-pagination-btn"),
 				property.ClassIf(isActive, "g-pagination-active"),
 				property.Attr("type", "button"),
@@ -95,7 +95,7 @@ func Pagination(opts PaginationOpts, extra ...gerbera.ComponentFunc) gerbera.Com
 	}
 
 	// Next button
-	nextAttrs := []gerbera.ComponentFunc{
+	nextAttrs := gerbera.Components{
 		property.Class("g-pagination-btn", "g-pagination-next"),
 		property.Attr("type", "button"),
 		property.AriaLabel("Next page"),
@@ -110,7 +110,7 @@ func Pagination(opts PaginationOpts, extra ...gerbera.ComponentFunc) gerbera.Com
 	}
 	pageButtons = append(pageButtons, dom.Button(nextAttrs...))
 
-	wrapAttrs := []gerbera.ComponentFunc{
+	wrapAttrs := gerbera.Components{
 		property.Class("g-pagination"),
 		property.Role("navigation"),
 		property.AriaLabel("Pagination"),
@@ -118,7 +118,7 @@ func Pagination(opts PaginationOpts, extra ...gerbera.ComponentFunc) gerbera.Com
 	wrapAttrs = append(wrapAttrs, extra...)
 	wrapAttrs = append(wrapAttrs,
 		info,
-		dom.Div(append([]gerbera.ComponentFunc{property.Class("g-pagination-pages")}, pageButtons...)...),
+		dom.Div(append(gerbera.Components{property.Class("g-pagination-pages")}, pageButtons...)...),
 	)
 
 	return dom.Nav(wrapAttrs...)

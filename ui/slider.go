@@ -32,7 +32,7 @@ func Slider(name string, value int, opts SliderOpts, extra ...gerbera.ComponentF
 		label = name
 	}
 
-	inputAttrs := []gerbera.ComponentFunc{
+	inputAttrs := gerbera.Components{
 		property.Class("g-slider-input"),
 		property.Type("range"),
 		property.Name(name),
@@ -50,7 +50,7 @@ func Slider(name string, value int, opts SliderOpts, extra ...gerbera.ComponentF
 		inputAttrs = append(inputAttrs, property.Attr("gerbera-input", opts.InputEvent))
 	}
 
-	wrapAttrs := []gerbera.ComponentFunc{
+	wrapAttrs := gerbera.Components{
 		property.Class("g-slider"),
 	}
 	wrapAttrs = append(wrapAttrs, extra...)

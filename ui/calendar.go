@@ -38,7 +38,7 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 	startWeekday := int(firstDay.Weekday())
 
 	// Header row with day names
-	var headerCells []gerbera.ComponentFunc
+	var headerCells gerbera.Components
 	for _, d := range dayNames {
 		headerCells = append(headerCells, dom.Div(
 			property.Class("g-calendar-dayname"),
@@ -47,7 +47,7 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 	}
 
 	// Day cells
-	var dayCells []gerbera.ComponentFunc
+	var dayCells gerbera.Components
 
 	// Previous month padding
 	if startWeekday > 0 {
@@ -67,7 +67,7 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 		isToday := sameDate(current, opts.Today)
 		isSelected := opts.Selected != nil && sameDate(current, *opts.Selected)
 
-		dayAttrs := []gerbera.ComponentFunc{
+		dayAttrs := gerbera.Components{
 			property.Class("g-calendar-day"),
 			property.ClassIf(isToday, "g-calendar-day-today"),
 			property.ClassIf(isSelected, "g-calendar-day-selected"),
@@ -98,7 +98,7 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 
 	var prevBtn gerbera.ComponentFunc
 	if hasNav {
-		prevBtnAttrs := []gerbera.ComponentFunc{
+		prevBtnAttrs := gerbera.Components{
 			property.Class("g-btn", "g-btn-sm", "g-calendar-nav"),
 			property.Attr("type", "button"),
 			property.AriaLabel("Previous month"),
@@ -112,7 +112,7 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 
 	var nextBtn gerbera.ComponentFunc
 	if hasNav {
-		nextBtnAttrs := []gerbera.ComponentFunc{
+		nextBtnAttrs := gerbera.Components{
 			property.Class("g-btn", "g-btn-sm", "g-calendar-nav"),
 			property.Attr("type", "button"),
 			property.AriaLabel("Next month"),
@@ -125,9 +125,9 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 	}
 
 	// Month select options
-	var monthOpts []gerbera.ComponentFunc
+	var monthOpts gerbera.Components
 	for m := time.January; m <= time.December; m++ {
-		optAttrs := []gerbera.ComponentFunc{
+		optAttrs := gerbera.Components{
 			property.Attr("value", fmt.Sprintf("%d", int(m))),
 			property.Value(m.String()),
 		}
@@ -145,9 +145,9 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 	if yearMax == 0 {
 		yearMax = opts.Year + 10
 	}
-	var yearOpts []gerbera.ComponentFunc
+	var yearOpts gerbera.Components
 	for y := yearMin; y <= yearMax; y++ {
-		optAttrs := []gerbera.ComponentFunc{
+		optAttrs := gerbera.Components{
 			property.Attr("value", fmt.Sprintf("%d", y)),
 			property.Value(fmt.Sprintf("%d", y)),
 		}
@@ -157,7 +157,7 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 		yearOpts = append(yearOpts, dom.Option(optAttrs...))
 	}
 
-	monthSelectAttrs := append([]gerbera.ComponentFunc{
+	monthSelectAttrs := append(gerbera.Components{
 		property.Class("g-calendar-select"),
 		property.Name("calendar-month"),
 		property.AriaLabel("Month"),
@@ -170,7 +170,7 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 	}
 	monthSelect := dom.Select(monthSelectAttrs...)
 
-	yearSelectAttrs := append([]gerbera.ComponentFunc{
+	yearSelectAttrs := append(gerbera.Components{
 		property.Class("g-calendar-select"),
 		property.Name("calendar-year"),
 		property.AriaLabel("Year"),
@@ -183,7 +183,7 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 	}
 	yearSelect := dom.Select(yearSelectAttrs...)
 
-	wrapAttrs := []gerbera.ComponentFunc{
+	wrapAttrs := gerbera.Components{
 		property.Class("g-calendar"),
 		property.Role("grid"),
 		property.AriaLabel(fmt.Sprintf("%s %d", opts.Month.String(), opts.Year)),
@@ -191,7 +191,7 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 	wrapAttrs = append(wrapAttrs, extra...)
 
 	// Header with nav + selectors
-	headerChildren := []gerbera.ComponentFunc{
+	headerChildren := gerbera.Components{
 		property.Class("g-calendar-header"),
 	}
 	if prevBtn != nil {
@@ -210,12 +210,12 @@ func Calendar(opts CalendarOpts, extra ...gerbera.ComponentFunc) gerbera.Compone
 
 	// Day names row
 	wrapAttrs = append(wrapAttrs,
-		dom.Div(append([]gerbera.ComponentFunc{property.Class("g-calendar-weekdays")}, headerCells...)...),
+		dom.Div(append(gerbera.Components{property.Class("g-calendar-weekdays")}, headerCells...)...),
 	)
 
 	// Day grid
 	wrapAttrs = append(wrapAttrs,
-		dom.Div(append([]gerbera.ComponentFunc{property.Class("g-calendar-grid")}, dayCells...)...),
+		dom.Div(append(gerbera.Components{property.Class("g-calendar-grid")}, dayCells...)...),
 	)
 
 	return dom.Div(wrapAttrs...)

@@ -8,7 +8,7 @@ import (
 
 // Sidebar renders a vertical navigation sidebar.
 func Sidebar(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	return dom.Nav(append([]gerbera.ComponentFunc{property.Class("g-sidebar")}, children...)...)
+	return dom.Nav(append(gerbera.Components{property.Class("g-sidebar")}, children...)...)
 }
 
 // SidebarHeader renders the title section of the sidebar.
@@ -22,7 +22,7 @@ func SidebarHeader(title string) gerbera.ComponentFunc {
 // SidebarLink renders a navigation link in the sidebar.
 // If active is true, the active style is applied.
 func SidebarLink(href, label string, active bool, attrs ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	a := []gerbera.ComponentFunc{
+	a := gerbera.Components{
 		property.Class("g-sidebar-link"),
 		property.ClassIf(active, "g-sidebar-link-active"),
 		property.Href(href),
@@ -48,7 +48,7 @@ type BreadcrumbItem struct {
 
 // Breadcrumb renders a breadcrumb navigation trail.
 func Breadcrumb(items ...BreadcrumbItem) gerbera.ComponentFunc {
-	var parts []gerbera.ComponentFunc
+	var parts gerbera.Components
 	for i, item := range items {
 		if i > 0 {
 			parts = append(parts, dom.Li(
@@ -69,7 +69,7 @@ func Breadcrumb(items ...BreadcrumbItem) gerbera.ComponentFunc {
 			))
 		}
 	}
-	return dom.Ul(append([]gerbera.ComponentFunc{
+	return dom.Ul(append(gerbera.Components{
 		property.Class("g-breadcrumb"),
 		property.AriaLabel("Breadcrumb"),
 	}, parts...)...)

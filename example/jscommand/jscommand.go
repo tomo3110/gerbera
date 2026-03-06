@@ -85,13 +85,13 @@ func (v *JSCommandView) HandleEvent(event string, _ gl.Payload) error {
 	return nil
 }
 
-func (v *JSCommandView) Render() []g.ComponentFunc {
+func (v *JSCommandView) Render() g.Components {
 	logItems := make([]g.ConvertToMap, len(v.Log))
 	for i, e := range v.Log {
 		logItems[i] = e
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title("JS Commands — Gerbera Demo"),
 			gs.CSS(`
@@ -195,7 +195,7 @@ func (v *JSCommandView) Render() []g.ComponentFunc {
 
 // scrollContent generates enough lines to make the scroll box scrollable.
 func scrollContent() g.ComponentFunc {
-	var children []g.ComponentFunc
+	var children g.Components
 	for i := 1; i <= 30; i++ {
 		children = append(children, gd.P(gp.Value(fmt.Sprintf("Line %d — scroll content", i))))
 	}

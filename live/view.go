@@ -16,7 +16,7 @@ type View interface {
 
 	// Render returns the component tree for the current state.
 	// The returned slice is mounted as children of the <html> root.
-	Render() []gerbera.ComponentFunc
+	Render() gerbera.Components
 
 	// HandleEvent processes a user event sent via WebSocket.
 	HandleEvent(event string, payload Payload) error

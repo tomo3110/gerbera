@@ -36,7 +36,7 @@ func InfiniteScroll(opts InfiniteScrollOpts, children ...gerbera.ComponentFunc) 
 		opts.ThrottleMs = 200
 	}
 
-	wrapAttrs := []gerbera.ComponentFunc{
+	wrapAttrs := gerbera.Components{
 		property.Class("g-infinitescroll"),
 	}
 
@@ -45,7 +45,7 @@ func InfiniteScroll(opts InfiniteScrollOpts, children ...gerbera.ComponentFunc) 
 		listPressed := boolStr(opts.View == InfiniteScrollList)
 		gridPressed := boolStr(opts.View == InfiniteScrollGrid)
 
-		listBtn := []gerbera.ComponentFunc{
+		listBtn := gerbera.Components{
 			property.Class("g-infinitescroll-toggle"),
 			property.ClassIf(opts.View == InfiniteScrollList, "g-infinitescroll-toggle-active"),
 			property.Attr("type", "button"),
@@ -62,7 +62,7 @@ func InfiniteScroll(opts InfiniteScrollOpts, children ...gerbera.ComponentFunc) 
 			listBtn = append(listBtn, property.Attr("data-value", "list"))
 		}
 
-		gridBtn := []gerbera.ComponentFunc{
+		gridBtn := gerbera.Components{
 			property.Class("g-infinitescroll-toggle"),
 			property.ClassIf(opts.View == InfiniteScrollGrid, "g-infinitescroll-toggle-active"),
 			property.Attr("type", "button"),
@@ -88,7 +88,7 @@ func InfiniteScroll(opts InfiniteScrollOpts, children ...gerbera.ComponentFunc) 
 	}
 
 	// Content area
-	contentAttrs := []gerbera.ComponentFunc{
+	contentAttrs := gerbera.Components{
 		property.Class("g-infinitescroll-content"),
 		property.ClassIf(opts.View == InfiniteScrollGrid, "g-infinitescroll-grid"),
 		property.AriaLive("polite"),

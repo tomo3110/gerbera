@@ -48,8 +48,8 @@ func TestHandler_StaticContent(t *testing.T) {
 }
 
 func TestHandlerFunc_ContentType(t *testing.T) {
-	h := HandlerFunc(func(r *http.Request) []ComponentFunc {
-		return []ComponentFunc{Tag("head"), Tag("body")}
+	h := HandlerFunc(func(r *http.Request) Components {
+		return Components{Tag("head"), Tag("body")}
 	})
 	r := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -61,12 +61,12 @@ func TestHandlerFunc_ContentType(t *testing.T) {
 }
 
 func TestHandlerFunc_DynamicContent(t *testing.T) {
-	h := HandlerFunc(func(r *http.Request) []ComponentFunc {
+	h := HandlerFunc(func(r *http.Request) Components {
 		name := r.URL.Query().Get("name")
 		if name == "" {
 			name = "World"
 		}
-		return []ComponentFunc{
+		return Components{
 			Tag("head"),
 			Tag("body", Tag("h1", Literal("Hello, "+name))),
 		}
@@ -99,8 +99,8 @@ func TestHandlerFunc_WithMiddleware(t *testing.T) {
 		})
 	}
 
-	h := mw(HandlerFunc(func(r *http.Request) []ComponentFunc {
-		return []ComponentFunc{Tag("head"), Tag("body")}
+	h := mw(HandlerFunc(func(r *http.Request) Components {
+		return Components{Tag("head"), Tag("body")}
 	}))
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -121,7 +121,7 @@ func TestHandler_ImplementsHTTPHandler(t *testing.T) {
 }
 
 func TestHandlerFunc_ImplementsHTTPHandler(t *testing.T) {
-	var h http.Handler = HandlerFunc(func(r *http.Request) []ComponentFunc {
+	var h http.Handler = HandlerFunc(func(r *http.Request) Components {
 		return nil
 	})
 	_ = h
@@ -140,8 +140,8 @@ func TestHandler_UsesLangEn(t *testing.T) {
 }
 
 func TestHandlerFunc_UsesLangEn(t *testing.T) {
-	h := HandlerFunc(func(r *http.Request) []ComponentFunc {
-		return []ComponentFunc{Tag("head"), Tag("body")}
+	h := HandlerFunc(func(r *http.Request) Components {
+		return Components{Tag("head"), Tag("body")}
 	})
 	r := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()

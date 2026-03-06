@@ -27,9 +27,9 @@ func NumberInput(name string, value int, opts NumberInputOpts, extra ...gerbera.
 		step = 1
 	}
 
-	minAttr := []gerbera.ComponentFunc{}
-	maxAttr := []gerbera.ComponentFunc{}
-	ariaAttrs := []gerbera.ComponentFunc{
+	minAttr := gerbera.Components{}
+	maxAttr := gerbera.Components{}
+	ariaAttrs := gerbera.Components{
 		property.AriaValueNow(value),
 	}
 
@@ -45,7 +45,7 @@ func NumberInput(name string, value int, opts NumberInputOpts, extra ...gerbera.
 	decDisabled := opts.Disabled || (opts.Min != nil && value <= *opts.Min)
 	incDisabled := opts.Disabled || (opts.Max != nil && value >= *opts.Max)
 
-	inputAttrs := []gerbera.ComponentFunc{
+	inputAttrs := gerbera.Components{
 		property.Class("g-numberinput-field"),
 		property.Type("number"),
 		property.Name(name),
@@ -59,7 +59,7 @@ func NumberInput(name string, value int, opts NumberInputOpts, extra ...gerbera.
 		inputAttrs = append(inputAttrs, property.Attr("gerbera-change", opts.ChangeEvent))
 	}
 
-	decBtn := []gerbera.ComponentFunc{
+	decBtn := gerbera.Components{
 		property.Class("g-numberinput-btn", "g-numberinput-dec"),
 		property.Attr("type", "button"),
 		property.Attr("tabindex", "-1"),
@@ -71,7 +71,7 @@ func NumberInput(name string, value int, opts NumberInputOpts, extra ...gerbera.
 		decBtn = append(decBtn, property.Attr("gerbera-click", opts.DecrementEvent))
 	}
 
-	incBtn := []gerbera.ComponentFunc{
+	incBtn := gerbera.Components{
 		property.Class("g-numberinput-btn", "g-numberinput-inc"),
 		property.Attr("type", "button"),
 		property.Attr("tabindex", "-1"),
@@ -83,7 +83,7 @@ func NumberInput(name string, value int, opts NumberInputOpts, extra ...gerbera.
 		incBtn = append(incBtn, property.Attr("gerbera-click", opts.IncrementEvent))
 	}
 
-	wrapAttrs := []gerbera.ComponentFunc{
+	wrapAttrs := gerbera.Components{
 		property.Class("g-numberinput"),
 		property.Role("spinbutton"),
 		property.AriaLabel(name),

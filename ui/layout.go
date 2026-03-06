@@ -23,7 +23,7 @@ func AdminShell(sidebar, content gerbera.ComponentFunc) gerbera.ComponentFunc {
 // MobileHeader renders a mobile-only header bar with a hamburger button and title.
 // hamburgerAttrs can include live.Click to open a drawer.
 func MobileHeader(title string, hamburgerAttrs ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	btnAttrs := []gerbera.ComponentFunc{
+	btnAttrs := gerbera.Components{
 		property.Class("g-hamburger"),
 		property.AriaLabel("Menu"),
 	}
@@ -39,7 +39,7 @@ func MobileHeader(title string, hamburgerAttrs ...gerbera.ComponentFunc) gerbera
 
 // PageHeader renders a page header bar with title and optional action elements.
 func PageHeader(title string, children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	inner := []gerbera.ComponentFunc{
+	inner := gerbera.Components{
 		property.Class("g-page-header"),
 		dom.H1(property.Class("g-page-header-title"), property.Value(title)),
 	}

@@ -33,8 +33,8 @@ func (v *DashboardView) Mount(params gl.Params) error {
 	return nil
 }
 
-func (v *DashboardView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *DashboardView) Render() g.Components {
+	return g.Components{
 		gd.Body(
 			gu.Stack(
 				expr.If(v.SessionExpired,
@@ -83,8 +83,8 @@ func (v *DashboardView) OnSessionExpired() error {
 // SSR pages
 // ---------------------------------------------------------------------------
 
-func dashboardPage() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func dashboardPage() g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title("Auth Demo"),
 			gu.Theme(),
@@ -104,8 +104,8 @@ func dashboardPage() []g.ComponentFunc {
 	}
 }
 
-func loginPage(csrfToken string, errMsg string) []g.ComponentFunc {
-	return []g.ComponentFunc{
+func loginPage(csrfToken string, errMsg string) g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title("Login - Auth Demo"),
 			gu.Theme(),

@@ -1720,7 +1720,7 @@ func extractBgColor(html string) string {
 }
 
 func TestAvatarGroup(t *testing.T) {
-	avatars := []gerbera.ComponentFunc{
+	avatars := gerbera.Components{
 		LetterAvatar("Alice", AvatarOpts{}),
 		LetterAvatar("Bob", AvatarOpts{}),
 		LetterAvatar("Charlie", AvatarOpts{}),
@@ -1740,7 +1740,7 @@ func TestAvatarGroup(t *testing.T) {
 }
 
 func TestAvatarGroupNoOverflow(t *testing.T) {
-	avatars := []gerbera.ComponentFunc{
+	avatars := gerbera.Components{
 		LetterAvatar("Alice", AvatarOpts{}),
 		LetterAvatar("Bob", AvatarOpts{}),
 	}
@@ -2055,7 +2055,7 @@ func TestLetterAvatarWithEvents(t *testing.T) {
 }
 
 func TestAvatarGroupWithEvents(t *testing.T) {
-	avatars := []gerbera.ComponentFunc{
+	avatars := gerbera.Components{
 		LetterAvatar("Alice", AvatarOpts{}),
 		LetterAvatar("Bob", AvatarOpts{}),
 		LetterAvatar("Charlie", AvatarOpts{}),

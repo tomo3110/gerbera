@@ -14,8 +14,8 @@ import (
 	gul "github.com/tomo3110/gerbera/ui/live"
 )
 
-func (v *SNSView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *SNSView) Render() g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title("SNS"),
 			gd.Meta(gp.Attr("name", "viewport"), gp.Attr("content", "width=device-width, initial-scale=1")),
@@ -64,8 +64,8 @@ func (v *SNSView) Render() []g.ComponentFunc {
 	}
 }
 
-func (v *SNSView) renderNavLinks() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *SNSView) renderNavLinks() g.Components {
+	return g.Components{
 		navLink("home", "Home", "home", v.page == "home", 0),
 		navLink("search", "Search", "search", v.page == "search", 0),
 		navLink("bell", "Notifications", "home", false, v.unreadNotifications),
@@ -81,8 +81,8 @@ func (v *SNSView) renderNavLinks() []g.ComponentFunc {
 }
 
 // renderDrawerNavLinks returns nav links for the mobile drawer (separate closures from sidebar).
-func (v *SNSView) renderDrawerNavLinks() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *SNSView) renderDrawerNavLinks() g.Components {
+	return g.Components{
 		navLink("home", "Home", "home", v.page == "home", 0),
 		navLink("search", "Search", "search", v.page == "search", 0),
 		navLink("bell", "Notifications", "home", false, v.unreadNotifications),
@@ -111,9 +111,9 @@ func (v *SNSView) renderContent() g.ComponentFunc {
 		return g.Tag("page-post", v.renderPostDetail()...)
 	case "messages":
 		if v.chatPartner != nil {
-			return g.Tag("page-messages", append([]g.ComponentFunc{gp.Key("chat")}, v.renderChat()...)...)
+			return g.Tag("page-messages", append(g.Components{gp.Key("chat")}, v.renderChat()...)...)
 		}
-		return g.Tag("page-messages", append([]g.ComponentFunc{gp.Key("list")}, v.renderConversationList()...)...)
+		return g.Tag("page-messages", append(g.Components{gp.Key("list")}, v.renderConversationList()...)...)
 	case "settings":
 		return g.Tag("page-settings", v.renderSettings()...)
 	case "search":
@@ -125,13 +125,13 @@ func (v *SNSView) renderContent() g.ComponentFunc {
 
 // --- Home Timeline ---
 
-func (v *SNSView) renderTimeline() []g.ComponentFunc {
-	var postCards []g.ComponentFunc
+func (v *SNSView) renderTimeline() g.Components {
+	var postCards g.Components
 	for _, p := range v.posts {
 		postCards = append(postCards, postCard(p))
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gu.Card(
 			composeBox(v.composeDraft, v.composeChars),
 		),
@@ -148,7 +148,7 @@ func (v *SNSView) renderTimeline() []g.ComponentFunc {
 
 // --- Profile ---
 
-func (v *SNSView) renderProfile() []g.ComponentFunc {
+func (v *SNSView) renderProfile() g.Components {
 	u := v.profileUser
 	isOwnProfile := u.ID == v.userID
 
@@ -168,12 +168,12 @@ func (v *SNSView) renderProfile() []g.ComponentFunc {
 		}
 	}
 
-	var postCards []g.ComponentFunc
+	var postCards g.Components
 	for _, p := range v.profilePosts {
 		postCards = append(postCards, postCard(p))
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gu.Card(
 			gd.Div(
 				gp.Class("profile-header"),
@@ -226,16 +226,16 @@ func (v *SNSView) renderProfile() []g.ComponentFunc {
 
 // --- Post Detail ---
 
-func (v *SNSView) renderPostDetail() []g.ComponentFunc {
+func (v *SNSView) renderPostDetail() g.Components {
 	p := v.detailPost
 	isOwner := p.Post.UserID == v.userID
 
-	var commentItems []g.ComponentFunc
+	var commentItems g.Components
 	for _, c := range v.detailComments {
 		commentItems = append(commentItems, renderComment(c))
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Button(
 			gp.Class("chat-back-btn"),
 			gl.Click("nav"), gl.ClickValue("home"),
@@ -293,20 +293,20 @@ func renderComment(c CommentWithUser) g.ComponentFunc {
 
 // --- Messages ---
 
-func (v *SNSView) renderMessages() []g.ComponentFunc {
+func (v *SNSView) renderMessages() g.Components {
 	if v.chatPartner != nil {
 		return v.renderChat()
 	}
 	return v.renderConversationList()
 }
 
-func (v *SNSView) renderConversationList() []g.ComponentFunc {
-	var items []g.ComponentFunc
+func (v *SNSView) renderConversationList() g.Components {
+	var items g.Components
 	for _, c := range v.conversations {
 		items = append(items, renderConvoItem(c))
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Div(gp.Attr("style", "padding: var(--g-space-md); font-size: 1.1rem; font-weight: 700"),
 			gp.Value("Messages"),
 		),
@@ -342,8 +342,8 @@ func renderConvoItem(c ConversationSummary) g.ComponentFunc {
 	)
 }
 
-func (v *SNSView) renderChat() []g.ComponentFunc {
-	var msgViews []g.ComponentFunc
+func (v *SNSView) renderChat() g.Components {
+	var msgViews g.Components
 	msgViews = append(msgViews, gp.ID("chat-messages"))
 	for _, m := range v.chatMessages {
 		msgViews = append(msgViews, gu.ChatMessageView(gu.ChatMessage{
@@ -354,7 +354,7 @@ func (v *SNSView) renderChat() []g.ComponentFunc {
 		}))
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Div(
 			gp.Attr("style", "display:flex; align-items:center; gap:var(--g-space-sm); padding:var(--g-space-sm) 0"),
 			gd.Button(
@@ -385,8 +385,8 @@ func (v *SNSView) renderChat() []g.ComponentFunc {
 
 // --- Settings ---
 
-func (v *SNSView) renderSettings() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *SNSView) renderSettings() g.Components {
+	return g.Components{
 		gd.Div(gp.Attr("style", "padding: var(--g-space-md) 0; font-size: 1.1rem; font-weight: 700"),
 			gp.Value("Settings"),
 		),
@@ -470,8 +470,8 @@ func (v *SNSView) renderSettings() []g.ComponentFunc {
 
 // --- Search ---
 
-func (v *SNSView) renderSearch() []g.ComponentFunc {
-	var results []g.ComponentFunc
+func (v *SNSView) renderSearch() g.Components {
+	var results g.Components
 
 	if v.searchQuery != "" {
 		// User results
@@ -499,7 +499,7 @@ func (v *SNSView) renderSearch() []g.ComponentFunc {
 		}
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Div(gp.Attr("style", "padding: var(--g-space-md) 0; font-size: 1.1rem; font-weight: 700"),
 			gp.Value("Search"),
 		),
@@ -512,7 +512,7 @@ func (v *SNSView) renderSearch() []g.ComponentFunc {
 					gl.Debounce(300),
 				),
 			),
-			gd.Div(append([]g.ComponentFunc{gp.Key("sr:" + v.searchQuery)}, results...)...),
+			gd.Div(append(g.Components{gp.Key("sr:" + v.searchQuery)}, results...)...),
 		),
 	}
 }

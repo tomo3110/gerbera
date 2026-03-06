@@ -45,8 +45,8 @@ func main() {
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }
 
-func formPage() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func formPage() g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title("アンケートフォーム"),
 			gc.BootstrapCSS(),
@@ -165,7 +165,7 @@ func submitHandle(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/results", http.StatusSeeOther)
 }
 
-func resultsHandle(_ *http.Request) []g.ComponentFunc {
+func resultsHandle(_ *http.Request) g.Components {
 	mu.Lock()
 	list := make([]g.ConvertToMap, len(responses))
 	for i, r := range responses {
@@ -173,7 +173,7 @@ func resultsHandle(_ *http.Request) []g.ComponentFunc {
 	}
 	mu.Unlock()
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title("アンケート結果"),
 			gc.BootstrapCSS(),

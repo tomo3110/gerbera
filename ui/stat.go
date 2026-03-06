@@ -9,7 +9,7 @@ import (
 // StatCard renders a KPI/metric display card with a label and value.
 // Additional opts are applied to the outer container.
 func StatCard(label, value string, opts ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	inner := []gerbera.ComponentFunc{
+	inner := gerbera.Components{
 		property.Class("g-stat"),
 		dom.P(property.Class("g-stat-label"), property.Value(label)),
 		dom.P(property.Class("g-stat-value"), property.Value(value)),

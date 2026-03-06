@@ -48,12 +48,12 @@ func main() {
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }
 
-func listPage() []g.ComponentFunc {
+func listPage() g.Components {
 	list := make([]g.ConvertToMap, len(records))
 	for i, r := range records {
 		list[i] = r
 	}
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title("社員ダッシュボード"),
 			gc.BootstrapCSS(),
@@ -112,7 +112,7 @@ func listPage() []g.ComponentFunc {
 	}
 }
 
-func detailHandle(r *http.Request) []g.ComponentFunc {
+func detailHandle(r *http.Request) g.Components {
 	name := r.PathValue("name")
 	var found *Record
 	for _, rec := range records {
@@ -124,7 +124,7 @@ func detailHandle(r *http.Request) []g.ComponentFunc {
 	if found == nil {
 		return nil
 	}
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title(found.Name+" - 詳細"),
 			gc.BootstrapCSS(),

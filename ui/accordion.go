@@ -27,7 +27,7 @@ type AccordionOpts struct {
 // When ToggleEvent is empty, uses native <details>/<summary> (browser-controlled).
 // When ToggleEvent is set, uses <button>/<div> with ARIA attributes (server-controlled).
 func Accordion(items []AccordionItem, opts AccordionOpts, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	wrapAttrs := []gerbera.ComponentFunc{
+	wrapAttrs := gerbera.Components{
 		property.Class("g-accordion"),
 	}
 	wrapAttrs = append(wrapAttrs, extra...)
@@ -35,7 +35,7 @@ func Accordion(items []AccordionItem, opts AccordionOpts, extra ...gerbera.Compo
 	if opts.ToggleEvent == "" {
 		// Native details/summary mode
 		for _, item := range items {
-			detailAttrs := []gerbera.ComponentFunc{
+			detailAttrs := gerbera.Components{
 				property.Class("g-accordion-item"),
 			}
 			if item.Open {
@@ -60,7 +60,7 @@ func Accordion(items []AccordionItem, opts AccordionOpts, extra ...gerbera.Compo
 			headerID := fmt.Sprintf("g-accordion-header-%s", idx)
 			bodyID := fmt.Sprintf("g-accordion-body-%s", idx)
 
-			headerAttrs := []gerbera.ComponentFunc{
+			headerAttrs := gerbera.Components{
 				property.Class("g-accordion-header"),
 				property.ID(headerID),
 				property.Attr("type", "button"),
@@ -71,14 +71,14 @@ func Accordion(items []AccordionItem, opts AccordionOpts, extra ...gerbera.Compo
 				property.Attr("gerbera-value", idx),
 			}
 
-			bodyAttrs := []gerbera.ComponentFunc{
+			bodyAttrs := gerbera.Components{
 				property.Class("g-accordion-body"),
 				property.ID(bodyID),
 				property.Role("region"),
 				property.AriaLabelledBy(headerID),
 			}
 
-			itemAttrs := []gerbera.ComponentFunc{
+			itemAttrs := gerbera.Components{
 				property.Class("g-accordion-item"),
 				property.ClassIf(item.Open, "g-accordion-open"),
 				dom.Button(headerAttrs...),

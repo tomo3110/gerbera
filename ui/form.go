@@ -9,7 +9,7 @@ import (
 
 // FormGroup renders a form field wrapper with bottom margin.
 func FormGroup(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	return dom.Div(append([]gerbera.ComponentFunc{property.Class("g-form-group")}, children...)...)
+	return dom.Div(append(gerbera.Components{property.Class("g-form-group")}, children...)...)
 }
 
 // FormLabel renders a styled <label> element.
@@ -24,7 +24,7 @@ func FormLabel(text, forID string) gerbera.ComponentFunc {
 // FormInput renders a styled <input> element.
 // opts can include property.Type, property.Placeholder, live.Input, etc.
 func FormInput(name string, opts ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Class("g-form-input"),
 		property.Name(name),
 	}
@@ -40,14 +40,14 @@ type FormOption struct {
 
 // FormSelect renders a styled <select> element.
 func FormSelect(name string, options []FormOption, opts ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	var optEls []gerbera.ComponentFunc
+	var optEls gerbera.Components
 	for _, o := range options {
 		optEls = append(optEls, dom.Option(
 			property.Attr("value", o.Value),
 			property.Value(o.Label),
 		))
 	}
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Class("g-form-select"),
 		property.Name(name),
 	}
@@ -58,7 +58,7 @@ func FormSelect(name string, options []FormOption, opts ...gerbera.ComponentFunc
 
 // FormTextarea renders a styled <textarea> element.
 func FormTextarea(name string, opts ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Class("g-form-textarea"),
 		property.Name(name),
 	}
@@ -89,7 +89,7 @@ var FormSelectError gerbera.ComponentFunc = property.ClassIf(true, "g-form-selec
 
 // Checkbox renders a styled checkbox with label.
 func Checkbox(name, label string, checked bool, opts ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	inputAttrs := []gerbera.ComponentFunc{
+	inputAttrs := gerbera.Components{
 		property.Attr("type", "checkbox"),
 		property.Name(name),
 	}
@@ -107,7 +107,7 @@ func Checkbox(name, label string, checked bool, opts ...gerbera.ComponentFunc) g
 
 // Radio renders a styled radio button with label.
 func Radio(name, value, label string, checked bool, opts ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	inputAttrs := []gerbera.ComponentFunc{
+	inputAttrs := gerbera.Components{
 		property.Attr("type", "radio"),
 		property.Name(name),
 		property.Attr("value", value),

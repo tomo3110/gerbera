@@ -113,8 +113,8 @@ func (v *ChatView) Unmount() {
 	}
 }
 
-func (v *ChatView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *ChatView) Render() g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title("Chat — Gerbera LiveView"),
 			gd.Meta(gp.Attr("name", "viewport"), gp.Attr("content", "width=device-width, initial-scale=1")),
@@ -163,7 +163,7 @@ func (v *ChatView) renderJoinForm() g.ComponentFunc {
 }
 
 func (v *ChatView) renderChat() g.ComponentFunc {
-	var msgViews []g.ComponentFunc
+	var msgViews g.Components
 	msgViews = append(msgViews, gp.ID("chat-messages"))
 	for _, m := range v.Messages {
 		msg := m // capture
