@@ -57,7 +57,7 @@ func main() {
 	// Static file serving for avatars
 	mux.Handle("GET /avatars/", http.StripPrefix("/avatars/", http.FileServer(http.Dir("uploads/avatars"))))
 
-	// Static auth pages
+	// Auth pages — redirect if already logged in, otherwise render SSR
 	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		if sess := session.FromContext(r.Context()); sess != nil {
 			if _, ok := sess.Get("user_id").(int64); ok {
@@ -65,9 +65,7 @@ func main() {
 				return
 			}
 		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		components := loginPage(r)
-		g.ExecuteTemplate(w, "en", components...)
+		g.Handler(loginPage(r)...).ServeHTTP(w, r)
 	})
 
 	mux.HandleFunc("POST /login", loginPostHandler(db))
@@ -79,9 +77,7 @@ func main() {
 				return
 			}
 		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		components := registerPage(r)
-		g.ExecuteTemplate(w, "en", components...)
+		g.Handler(registerPage(r)...).ServeHTTP(w, r)
 	})
 
 	mux.HandleFunc("POST /register", registerPostHandler(db))

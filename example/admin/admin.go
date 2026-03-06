@@ -18,32 +18,9 @@ import (
 	gul "github.com/tomo3110/gerbera/ui/live"
 )
 
-type AdminView struct {
-	Page          string
-	UserTablePage int
-	SortCol       string
-	SortDir       string
-	ModalOpen     bool
-	SelectedUser  int
-	ConfirmOpen   bool
-	DeleteTarget  int
-	ToastVisible  bool
-	ToastMessage  string
-	ToastVariant  string
-
-	// Settings
-	ItemsPerPage int
-	NotifyFreq   int
-
-	// Calendar
-	CalYear     int
-	CalMonth    time.Month
-	CalSelected *time.Time
-
-	// Messages
-	ChatMessages []gu.ChatMessage
-	ChatDraft    string
-}
+// ---------------------------------------------------------------------------
+// Shared data
+// ---------------------------------------------------------------------------
 
 type user struct {
 	Name   string
@@ -70,29 +47,39 @@ var users = []user{
 	{"Olivia Pope", "olivia@example.com", "Editor", "Active"},
 }
 
-func (v *AdminView) Mount(params gl.Params) error {
-	v.Page = "dashboard"
-	v.SortCol = "name"
-	v.SortDir = "asc"
-	v.SelectedUser = -1
-	v.DeleteTarget = -1
-	v.ItemsPerPage = 10
-	v.NotifyFreq = 30
-	now := time.Now()
-	v.CalYear = now.Year()
-	v.CalMonth = now.Month()
-	v.ChatMessages = []gu.ChatMessage{
-		{Author: "System", Content: "Welcome to Admin Messages.", Timestamp: "09:00", Sent: false},
-		{Author: "Alice Johnson", Content: "The new user report is ready for review.", Timestamp: "09:15", Sent: false, Avatar: "A"},
-		{Content: "Thanks, I'll take a look now.", Timestamp: "09:16", Sent: true},
+func countActive() int {
+	n := 0
+	for _, u := range users {
+		if u.Status == "Active" {
+			n++
+		}
 	}
-	if p := params.Get("page"); p != "" {
-		v.Page = p
-	}
-	return nil
+	return n
 }
 
-func (v *AdminView) Render() []g.ComponentFunc {
+func countByRole(role string) int {
+	n := 0
+	for _, u := range users {
+		if u.Role == role {
+			n++
+		}
+	}
+	return n
+}
+
+func userRows() [][]string {
+	var rows [][]string
+	for i, u := range users {
+		rows = append(rows, []string{u.Name, u.Email, u.Role, u.Status, fmt.Sprintf("%d", i)})
+	}
+	return rows
+}
+
+// ---------------------------------------------------------------------------
+// SSR Layout — shared shell rendered on each page load
+// ---------------------------------------------------------------------------
+
+func adminPage(page string, liveEndpoint string) []g.ComponentFunc {
 	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title("Admin Panel"),
@@ -100,51 +87,50 @@ func (v *AdminView) Render() []g.ComponentFunc {
 		),
 		gd.Body(
 			gu.AdminShell(
-				v.renderSidebar(),
-				v.renderContent(),
+				sidebar(page),
+				gd.Div(gp.Class("g-page-body"),
+					gl.LiveMount(liveEndpoint),
+				),
 			),
-			gul.Toast(v.ToastVisible, v.ToastMessage, v.ToastVariant, "dismissToast"),
 		),
 	}
 }
 
-func (v *AdminView) renderSidebar() g.ComponentFunc {
+func sidebar(active string) g.ComponentFunc {
 	return gu.Sidebar(
 		gu.SidebarHeader("Admin Panel"),
-		gu.SidebarLink("#", "Dashboard", v.Page == "dashboard",
-			gl.Click("nav"), gl.ClickValue("dashboard")),
-		gu.SidebarLink("#", "Users", v.Page == "users",
-			gl.Click("nav"), gl.ClickValue("users")),
-		gu.SidebarLink("#", "Messages", v.Page == "messages",
-			gl.Click("nav"), gl.ClickValue("messages")),
+		gu.SidebarLink("/admin", "Dashboard", active == "dashboard"),
+		gu.SidebarLink("/admin/users", "Users", active == "users"),
+		gu.SidebarLink("/admin/messages", "Messages", active == "messages"),
 		gu.SidebarDivider(),
-		gu.SidebarLink("#", "Settings", v.Page == "settings",
-			gl.Click("nav"), gl.ClickValue("settings")),
+		gu.SidebarLink("/admin/settings", "Settings", active == "settings"),
 	)
 }
 
-func (v *AdminView) renderContent() g.ComponentFunc {
-	var body g.ComponentFunc
-	switch v.Page {
-	case "users":
-		body = v.pageUsers()
-	case "messages":
-		body = v.pageMessages()
-	case "settings":
-		body = v.pageSettings()
-	default:
-		body = v.pageDashboard()
-	}
-	return body
+// ---------------------------------------------------------------------------
+// DashboardView — stats, recent activity, calendar
+// ---------------------------------------------------------------------------
+
+type DashboardView struct {
+	CalYear     int
+	CalMonth    time.Month
+	CalSelected *time.Time
 }
 
-func (v *AdminView) pageDashboard() g.ComponentFunc {
-	return gd.Div(
-		gu.PageHeader("Dashboard",
-			gu.Breadcrumb(gu.BreadcrumbItem{Label: "Dashboard", Href: ""}),
-		),
-		gd.Div(gp.Class("g-page-body"),
+func (v *DashboardView) Mount(_ gl.Params) error {
+	now := time.Now()
+	v.CalYear = now.Year()
+	v.CalMonth = now.Month()
+	return nil
+}
+
+func (v *DashboardView) Render() []g.ComponentFunc {
+	return []g.ComponentFunc{
+		gd.Body(
 			gu.Stack(
+				gu.PageHeader("Dashboard",
+					gu.Breadcrumb(gu.BreadcrumbItem{Label: "Dashboard"}),
+				),
 				gu.Grid(gu.GridCols4,
 					gu.StatCard("Total Users", fmt.Sprintf("%d", len(users))),
 					gu.StatCard("Active Users", fmt.Sprintf("%d", countActive())),
@@ -189,58 +175,165 @@ func (v *AdminView) pageDashboard() g.ComponentFunc {
 				),
 			),
 		),
+	}
+}
+
+func (v *DashboardView) HandleEvent(event string, payload gl.Payload) error {
+	switch event {
+	case "calSelect":
+		if dateStr := payload["value"]; dateStr != "" {
+			if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+				v.CalSelected = &t
+			}
+		}
+	case "calPrev":
+		v.CalMonth--
+		if v.CalMonth < time.January {
+			v.CalMonth = time.December
+			v.CalYear--
+		}
+	case "calNext":
+		v.CalMonth++
+		if v.CalMonth > time.December {
+			v.CalMonth = time.January
+			v.CalYear++
+		}
+	case "calMonthChange":
+		var m int
+		fmt.Sscanf(payload["value"], "%d", &m)
+		if m >= 1 && m <= 12 {
+			v.CalMonth = time.Month(m)
+		}
+	case "calYearChange":
+		var y int
+		fmt.Sscanf(payload["value"], "%d", &y)
+		if y > 0 {
+			v.CalYear = y
+		}
+	}
+	return nil
+}
+
+func activityRow(name, action, timeAgo string) g.ComponentFunc {
+	return gd.Tr(
+		gd.Td(gp.Value(name)),
+		gd.Td(gp.Value(action)),
+		gd.Td(gp.Attr("style", "color:var(--g-text-tertiary)"), gp.Value(timeAgo)),
 	)
 }
 
-func (v *AdminView) pageUsers() g.ComponentFunc {
+// ---------------------------------------------------------------------------
+// UsersView — data table, modal, confirm dialog, toast
+// ---------------------------------------------------------------------------
+
+type UsersView struct {
+	TablePage    int
+	SortCol      string
+	SortDir      string
+	ModalOpen    bool
+	SelectedUser int
+	ConfirmOpen  bool
+	DeleteTarget int
+	ToastVisible bool
+	ToastMessage string
+	ToastVariant string
+}
+
+func (v *UsersView) Mount(_ gl.Params) error {
+	v.SortCol = "name"
+	v.SortDir = "asc"
+	v.SelectedUser = -1
+	v.DeleteTarget = -1
+	return nil
+}
+
+func (v *UsersView) Render() []g.ComponentFunc {
 	rows := userRows()
 	pageSize := 8
-	start := v.UserTablePage * pageSize
+	start := v.TablePage * pageSize
 	end := start + pageSize
 	if end > len(rows) {
 		end = len(rows)
 	}
 	pageRows := rows[start:end]
 
-	return gd.Div(
-		gu.PageHeader("User Management",
-			gu.Breadcrumb(
-				gu.BreadcrumbItem{Label: "Dashboard", Href: "#"},
-				gu.BreadcrumbItem{Label: "Users", Href: ""},
+	return []g.ComponentFunc{
+		gd.Body(
+			gu.PageHeader("User Management",
+				gu.Breadcrumb(
+					gu.BreadcrumbItem{Label: "Dashboard", Href: "/admin"},
+					gu.BreadcrumbItem{Label: "Users"},
+				),
 			),
-		),
-		gd.Div(gp.Class("g-page-body"),
 			gul.DataTable(gul.DataTableOpts{
 				Columns: []gul.Column{
 					{Key: "name", Label: "Name", Sortable: true},
 					{Key: "email", Label: "Email", Sortable: true},
 					{Key: "role", Label: "Role", Sortable: true},
-					{Key: "status", Label: "Status", Sortable: false},
-					{Key: "actions", Label: "Actions", Sortable: false},
+					{Key: "status", Label: "Status"},
+					{Key: "actions", Label: "Actions"},
 				},
 				Rows:      pageRows,
 				SortCol:   v.SortCol,
 				SortDir:   v.SortDir,
 				SortEvent: "sort",
-				Page:      v.UserTablePage,
+				Page:      v.TablePage,
 				PageSize:  pageSize,
 				Total:     len(users),
 				PageEvent: "userPage",
 			}),
+			renderUserModal(v.ModalOpen, v.SelectedUser),
+			gul.Confirm(v.ConfirmOpen, "Delete User",
+				"Are you sure you want to delete this user? This action cannot be undone.",
+				"doDelete", "cancelDelete"),
+			gul.Toast(v.ToastVisible, v.ToastMessage, v.ToastVariant, "dismissToast"),
 		),
-		v.renderUserModal(),
-		gul.Confirm(v.ConfirmOpen, "Delete User",
-			"Are you sure you want to delete this user? This action cannot be undone.",
-			"doDelete", "cancelDelete"),
-	)
+	}
 }
 
-func (v *AdminView) renderUserModal() g.ComponentFunc {
-	if v.SelectedUser < 0 || v.SelectedUser >= len(users) {
+func (v *UsersView) HandleEvent(event string, payload gl.Payload) error {
+	switch event {
+	case "sort":
+		col := payload["value"]
+		if v.SortCol == col {
+			if v.SortDir == "asc" {
+				v.SortDir = "desc"
+			} else {
+				v.SortDir = "asc"
+			}
+		} else {
+			v.SortCol = col
+			v.SortDir = "asc"
+		}
+	case "userPage":
+		fmt.Sscanf(payload["value"], "%d", &v.TablePage)
+	case "viewUser":
+		fmt.Sscanf(payload["value"], "%d", &v.SelectedUser)
+		v.ModalOpen = true
+	case "closeUserModal":
+		v.ModalOpen = false
+	case "confirmDeleteUser":
+		fmt.Sscanf(payload["value"], "%d", &v.DeleteTarget)
+		v.ConfirmOpen = true
+	case "doDelete":
+		v.ConfirmOpen = false
+		v.ToastVisible = true
+		v.ToastMessage = "User deleted successfully."
+		v.ToastVariant = "success"
+	case "cancelDelete":
+		v.ConfirmOpen = false
+	case "dismissToast":
+		v.ToastVisible = false
+	}
+	return nil
+}
+
+func renderUserModal(open bool, idx int) g.ComponentFunc {
+	if idx < 0 || idx >= len(users) {
 		return gul.Modal(false, "closeUserModal")
 	}
-	u := users[v.SelectedUser]
-	return gul.Modal(v.ModalOpen, "closeUserModal",
+	u := users[idx]
+	return gul.Modal(open, "closeUserModal",
 		gul.ModalHeader("User Details", "closeUserModal"),
 		gul.ModalBody(
 			gu.FormGroup(
@@ -266,20 +359,45 @@ func (v *AdminView) renderUserModal() g.ComponentFunc {
 	)
 }
 
-func (v *AdminView) pageMessages() g.ComponentFunc {
+func statusBadge(status string) g.ComponentFunc {
+	if status == "Active" {
+		return gu.Badge("Active", "dark")
+	}
+	return gu.Badge("Inactive", "outline")
+}
+
+// ---------------------------------------------------------------------------
+// MessagesView — chat
+// ---------------------------------------------------------------------------
+
+type MessagesView struct {
+	ChatMessages []gu.ChatMessage
+	ChatDraft    string
+}
+
+func (v *MessagesView) Mount(_ gl.Params) error {
+	v.ChatMessages = []gu.ChatMessage{
+		{Author: "System", Content: "Welcome to Admin Messages.", Timestamp: "09:00", Sent: false},
+		{Author: "Alice Johnson", Content: "The new user report is ready for review.", Timestamp: "09:15", Sent: false, Avatar: "A"},
+		{Content: "Thanks, I'll take a look now.", Timestamp: "09:16", Sent: true},
+	}
+	return nil
+}
+
+func (v *MessagesView) Render() []g.ComponentFunc {
 	var msgViews []g.ComponentFunc
 	for _, m := range v.ChatMessages {
 		msgViews = append(msgViews, gu.ChatMessageView(m))
 	}
 
-	return gd.Div(
-		gu.PageHeader("Messages",
-			gu.Breadcrumb(
-				gu.BreadcrumbItem{Label: "Dashboard", Href: "#"},
-				gu.BreadcrumbItem{Label: "Messages", Href: ""},
+	return []g.ComponentFunc{
+		gd.Body(
+			gu.PageHeader("Messages",
+				gu.Breadcrumb(
+					gu.BreadcrumbItem{Label: "Dashboard", Href: "/admin"},
+					gu.BreadcrumbItem{Label: "Messages"},
+				),
 			),
-		),
-		gd.Div(gp.Class("g-page-body"),
 			gu.Card(
 				gu.CardHeader("Team Chat"),
 				gd.Div(gp.Attr("style", "height:400px;display:flex;flex-direction:column"),
@@ -295,21 +413,56 @@ func (v *AdminView) pageMessages() g.ComponentFunc {
 				),
 			),
 		),
-	)
+	}
 }
 
-func (v *AdminView) pageSettings() g.ComponentFunc {
+func (v *MessagesView) HandleEvent(event string, payload gl.Payload) error {
+	switch event {
+	case "chatInput":
+		v.ChatDraft = payload["value"]
+	case "chatSend", "chatKeydown":
+		if event == "chatKeydown" && payload["key"] != "Enter" {
+			return nil
+		}
+		if strings.TrimSpace(v.ChatDraft) != "" {
+			v.ChatMessages = append(v.ChatMessages, gu.ChatMessage{
+				Content:   v.ChatDraft,
+				Timestamp: time.Now().Format("15:04"),
+				Sent:      true,
+			})
+			v.ChatDraft = ""
+		}
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// SettingsView — form inputs, number input, slider
+// ---------------------------------------------------------------------------
+
+type SettingsView struct {
+	ItemsPerPage int
+	NotifyFreq   int
+}
+
+func (v *SettingsView) Mount(_ gl.Params) error {
+	v.ItemsPerPage = 10
+	v.NotifyFreq = 30
+	return nil
+}
+
+func (v *SettingsView) Render() []g.ComponentFunc {
 	min0, max100 := 0, 100
 	min5, max50 := 5, 50
 
-	return gd.Div(
-		gu.PageHeader("Settings",
-			gu.Breadcrumb(
-				gu.BreadcrumbItem{Label: "Dashboard", Href: "#"},
-				gu.BreadcrumbItem{Label: "Settings", Href: ""},
+	return []g.ComponentFunc{
+		gd.Body(
+			gu.PageHeader("Settings",
+				gu.Breadcrumb(
+					gu.BreadcrumbItem{Label: "Dashboard", Href: "/admin"},
+					gu.BreadcrumbItem{Label: "Settings"},
+				),
 			),
-		),
-		gd.Div(gp.Class("g-page-body"),
 			gu.Stack(
 				gu.Card(
 					gu.CardHeader("General Settings"),
@@ -355,103 +508,11 @@ func (v *AdminView) pageSettings() g.ComponentFunc {
 				),
 			),
 		),
-	)
+	}
 }
 
-func (v *AdminView) HandleEvent(event string, payload gl.Payload) error {
+func (v *SettingsView) HandleEvent(event string, payload gl.Payload) error {
 	switch event {
-	case "nav":
-		v.Page = payload["value"]
-		v.ModalOpen = false
-		v.ConfirmOpen = false
-		v.ToastVisible = false
-	case "sort":
-		col := payload["value"]
-		if v.SortCol == col {
-			if v.SortDir == "asc" {
-				v.SortDir = "desc"
-			} else {
-				v.SortDir = "asc"
-			}
-		} else {
-			v.SortCol = col
-			v.SortDir = "asc"
-		}
-	case "userPage":
-		fmt.Sscanf(payload["value"], "%d", &v.UserTablePage)
-	case "viewUser":
-		fmt.Sscanf(payload["value"], "%d", &v.SelectedUser)
-		v.ModalOpen = true
-	case "closeUserModal":
-		v.ModalOpen = false
-	case "confirmDeleteUser":
-		fmt.Sscanf(payload["value"], "%d", &v.DeleteTarget)
-		v.ConfirmOpen = true
-	case "doDelete":
-		v.ConfirmOpen = false
-		v.ToastVisible = true
-		v.ToastMessage = "User deleted successfully."
-		v.ToastVariant = "success"
-	case "cancelDelete":
-		v.ConfirmOpen = false
-	case "dismissToast":
-		v.ToastVisible = false
-
-	// Calendar
-	case "calSelect":
-		if dateStr := payload["value"]; dateStr != "" {
-			if t, err := time.Parse("2006-01-02", dateStr); err == nil {
-				v.CalSelected = &t
-			}
-		}
-	case "calPrev":
-		v.CalMonth--
-		if v.CalMonth < time.January {
-			v.CalMonth = time.December
-			v.CalYear--
-		}
-	case "calNext":
-		v.CalMonth++
-		if v.CalMonth > time.December {
-			v.CalMonth = time.January
-			v.CalYear++
-		}
-	case "calMonthChange":
-		var m int
-		fmt.Sscanf(payload["value"], "%d", &m)
-		if m >= 1 && m <= 12 {
-			v.CalMonth = time.Month(m)
-		}
-	case "calYearChange":
-		var y int
-		fmt.Sscanf(payload["value"], "%d", &y)
-		if y > 0 {
-			v.CalYear = y
-		}
-
-	// Messages
-	case "chatInput":
-		v.ChatDraft = payload["value"]
-	case "chatSend":
-		if strings.TrimSpace(v.ChatDraft) != "" {
-			v.ChatMessages = append(v.ChatMessages, gu.ChatMessage{
-				Content:   v.ChatDraft,
-				Timestamp: time.Now().Format("15:04"),
-				Sent:      true,
-			})
-			v.ChatDraft = ""
-		}
-	case "chatKeydown":
-		if payload["key"] == "Enter" && strings.TrimSpace(v.ChatDraft) != "" {
-			v.ChatMessages = append(v.ChatMessages, gu.ChatMessage{
-				Content:   v.ChatDraft,
-				Timestamp: time.Now().Format("15:04"),
-				Sent:      true,
-			})
-			v.ChatDraft = ""
-		}
-
-	// Settings
 	case "settingsItemsInc":
 		v.ItemsPerPage += 5
 		if v.ItemsPerPage > 50 {
@@ -468,48 +529,9 @@ func (v *AdminView) HandleEvent(event string, payload gl.Payload) error {
 	return nil
 }
 
-func activityRow(name, action, timeAgo string) g.ComponentFunc {
-	return gd.Tr(
-		gd.Td(gp.Value(name)),
-		gd.Td(gp.Value(action)),
-		gd.Td(gp.Attr("style", "color:var(--g-text-tertiary)"), gp.Value(timeAgo)),
-	)
-}
-
-func statusBadge(status string) g.ComponentFunc {
-	if status == "Active" {
-		return gu.Badge("Active", "dark")
-	}
-	return gu.Badge("Inactive", "outline")
-}
-
-func userRows() [][]string {
-	var rows [][]string
-	for i, u := range users {
-		rows = append(rows, []string{u.Name, u.Email, u.Role, u.Status, fmt.Sprintf("%d", i)})
-	}
-	return rows
-}
-
-func countActive() int {
-	n := 0
-	for _, u := range users {
-		if u.Status == "Active" {
-			n++
-		}
-	}
-	return n
-}
-
-func countByRole(role string) int {
-	n := 0
-	for _, u := range users {
-		if u.Role == role {
-			n++
-		}
-	}
-	return n
-}
+// ---------------------------------------------------------------------------
+// main — SSR pages + LiveMount endpoints
+// ---------------------------------------------------------------------------
 
 func main() {
 	addr := flag.String("addr", ":8910", "listen address")
@@ -521,7 +543,25 @@ func main() {
 		opts = append(opts, gl.WithDebug())
 	}
 
-	http.Handle("/", gl.Handler(func(_ context.Context) gl.View { return &AdminView{} }, opts...))
+	mux := http.NewServeMux()
+
+	// SSR pages — each embeds a LiveMount for its interactive section
+	mux.Handle("GET /admin", g.Handler(adminPage("dashboard", "/admin/live/dashboard")...))
+	mux.Handle("GET /admin/users", g.Handler(adminPage("users", "/admin/live/users")...))
+	mux.Handle("GET /admin/messages", g.Handler(adminPage("messages", "/admin/live/messages")...))
+	mux.Handle("GET /admin/settings", g.Handler(adminPage("settings", "/admin/live/settings")...))
+
+	// LiveView endpoints for LiveMount
+	mux.Handle("/admin/live/dashboard", gl.Handler(func(_ context.Context) gl.View { return &DashboardView{} }, opts...))
+	mux.Handle("/admin/live/users", gl.Handler(func(_ context.Context) gl.View { return &UsersView{} }, opts...))
+	mux.Handle("/admin/live/messages", gl.Handler(func(_ context.Context) gl.View { return &MessagesView{} }, opts...))
+	mux.Handle("/admin/live/settings", gl.Handler(func(_ context.Context) gl.View { return &SettingsView{} }, opts...))
+
+	// Redirect root to /admin
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/admin", http.StatusFound)
+	})
+
 	log.Printf("admin running on %s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	log.Fatal(http.ListenAndServe(*addr, mux))
 }

@@ -14,13 +14,14 @@ import (
 func main() {
 	addr := flag.String("addr", ":8810", "running address")
 	flag.Parse()
-	mux := g.NewServeMux(
+	mux := http.NewServeMux()
+	mux.Handle("GET /", g.Handler(
 		gd.Head(
 			gd.Title("ポートフォリオ - 田中太郎"),
 			gc.MaterializeCSS(),
 		),
 		body(),
-	)
+	))
 	log.Printf("portfolio server running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }

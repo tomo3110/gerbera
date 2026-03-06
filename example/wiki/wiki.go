@@ -19,8 +19,8 @@ func init() {
 
 func main() {
 	mux := http.NewServeMux()
-	mux.Handle("GET /view/{title}", http.HandlerFunc(viewHandle))
-	mux.Handle("GET /edit/{title}", http.HandlerFunc(editHandle))
+	mux.Handle("GET /view/{title}", g.HandlerFunc(viewHandle))
+	mux.Handle("GET /edit/{title}", g.HandlerFunc(editHandle))
 	mux.Handle("POST /save/{title}", http.HandlerFunc(saveHandle))
 	mux.Handle("GET /", g.HandlerFunc(listHandle))
 	log.Fatal(http.ListenAndServe(":8880", mux))
@@ -97,29 +97,23 @@ func FetchPageNameList() ([]*Page, error) {
 
 /** controller */
 
-func viewHandle(w http.ResponseWriter, r *http.Request) {
+func viewHandle(r *http.Request) []g.ComponentFunc {
 	title := r.PathValue("title")
 	page, err := LoadPage(title)
 	if err != nil {
-		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
-		return
+		// Page not found — return edit page for creation
+		return editPage(&Page{Title: title})
 	}
-	if err := viewLayout(w, page); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return viewPage(page)
 }
 
-func editHandle(w http.ResponseWriter, r *http.Request) {
+func editHandle(r *http.Request) []g.ComponentFunc {
 	title := r.PathValue("title")
 	page, err := LoadPage(title)
 	if err != nil {
 		page = &Page{Title: title}
 	}
-	if err := editLayout(w, page); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return editPage(page)
 }
 
 func saveHandle(w http.ResponseWriter, r *http.Request) {
@@ -143,8 +137,8 @@ func listHandle(r *http.Request) []g.ComponentFunc {
 
 /** view */
 
-func viewLayout(w http.ResponseWriter, page *Page) error {
-	return g.ExecuteTemplate(w, "jp",
+func viewPage(page *Page) []g.ComponentFunc {
+	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title(page.Title),
 			gc.BootstrapCSS(),
@@ -164,11 +158,11 @@ func viewLayout(w http.ResponseWriter, page *Page) error {
 				gp.Value(string(page.Body)),
 			),
 		),
-	)
+	}
 }
 
-func editLayout(w http.ResponseWriter, page *Page) error {
-	return g.ExecuteTemplate(w, "jp",
+func editPage(page *Page) []g.ComponentFunc {
+	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title(page.Title),
 			gc.BootstrapCSS(),
@@ -203,7 +197,7 @@ func editLayout(w http.ResponseWriter, page *Page) error {
 				),
 			),
 		),
-	)
+	}
 }
 
 func listPage(pages []*Page) []g.ComponentFunc {

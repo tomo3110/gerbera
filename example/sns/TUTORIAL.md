@@ -137,7 +137,7 @@ mux.Handle("/", authGuard(gl.Handler(func(_ context.Context) gl.View {
 
 ### auth.go — Static Auth Pages
 
-Login and register pages are server-side rendered (not LiveView) using `g.ExecuteTemplate()`. They share a `renderAuthPage()` function that generates the HTML based on `isRegister` flag.
+Login and register pages are server-side rendered (not LiveView) using `g.Handler()`. They share a `renderAuthPage()` function that generates the HTML based on `isRegister` flag. POST error responses use `g.ExecuteTemplate()` directly for status code control.
 
 CSRF tokens are generated via `session.GenerateCSRFToken(sess)` and validated on form submission.
 
