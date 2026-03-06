@@ -512,7 +512,7 @@ func (v *SNSView) renderSearch() []g.ComponentFunc {
 					gl.Debounce(300),
 				),
 			),
-			gd.Div(results...),
+			gd.Div(append([]g.ComponentFunc{gp.Key("sr:" + v.searchQuery)}, results...)...),
 		),
 	}
 }
