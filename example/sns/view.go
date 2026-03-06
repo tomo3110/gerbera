@@ -147,7 +147,11 @@ func (v *SNSView) loadPageData(params gl.Params, pathParams gl.PathParams) error
 		v.settingsEmail = v.user.Email
 		v.settingsBio = v.user.Bio
 	case "search":
-		// empty initially
+		if kw := params.Get("keyword"); kw != "" {
+			v.searchQuery = kw
+			v.searchUsers, _ = dbSearchUsers(v.db, kw, 10)
+			v.searchPosts, _ = dbSearchPosts(v.db, kw, v.userID, 20)
+		}
 	}
 	return nil
 }
@@ -210,6 +214,9 @@ func (v *SNSView) loadConversations() error {
 }
 
 func (v *SNSView) loadChat(partnerID int64) error {
+	if partnerID == v.userID {
+		return v.loadConversations()
+	}
 	partner, err := dbGetUserByID(v.db, partnerID)
 	if err != nil {
 		return err
@@ -459,10 +466,12 @@ func (v *SNSView) HandleEvent(event string, payload gl.Payload) error {
 		if strings.TrimSpace(v.searchQuery) == "" {
 			v.searchUsers = nil
 			v.searchPosts = nil
+			v.ReplacePatch(v.buildPath())
 			return nil
 		}
 		v.searchUsers, _ = dbSearchUsers(v.db, v.searchQuery, 10)
 		v.searchPosts, _ = dbSearchPosts(v.db, v.searchQuery, v.userID, 20)
+		v.ReplacePatch(v.buildPath())
 
 	// Share
 	case "sharePost":
