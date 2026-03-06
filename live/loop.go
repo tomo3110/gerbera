@@ -9,7 +9,6 @@ import (
 
 // ViewLoopConfig holds the parameters needed to run a ViewLoop.
 type ViewLoopConfig struct {
-	Params        Params
 	SessionID     string        // LiveView session ID (debug)
 	CSRFToken     string
 	Lang          string

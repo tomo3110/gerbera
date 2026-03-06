@@ -101,8 +101,10 @@ func (t *WSTransport) Send(msg Message) error {
 	})
 }
 
-// errConnClosed is a sentinel indicating the connection was closed.
-var errConnClosed = errors.New("connection closed")
+// ErrConnClosed is a sentinel indicating the transport connection was closed.
+// Custom Transport implementations should return this error from Receive
+// when the underlying connection is terminated.
+var ErrConnClosed = errors.New("connection closed")
 
 // Receive blocks until the next client event arrives or the connection closes.
 func (t *WSTransport) Receive() (string, Payload, error) {
@@ -123,7 +125,7 @@ func (t *WSTransport) Receive() (string, Payload, error) {
 		case raw := <-t.msgCh:
 			return t.unmarshal(raw)
 		default:
-			return "", nil, errConnClosed
+			return "", nil, ErrConnClosed
 		}
 	}
 }

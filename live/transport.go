@@ -12,7 +12,7 @@ import (
 // It bundles DOM patches, JS commands, and optional debug metadata.
 type Message struct {
 	Patches      []diff.Patch
-	JSCommands   []jsCommand
+	JSCommands   []JSCommand
 	ViewState    json.RawMessage // debug panel (nil when debug is off)
 	EventName    string          // debug panel
 	EventPayload Payload         // debug panel

@@ -2,8 +2,9 @@ package live
 
 import "sync"
 
-// jsCommand represents a server-to-client command.
-type jsCommand struct {
+// JSCommand represents a server-to-client command.
+// Exported so that custom Transport implementations can inspect Message contents.
+type JSCommand struct {
 	Cmd    string            `json:"cmd"`
 	Target string            `json:"target,omitempty"`
 	Args   map[string]string `json:"args,omitempty"`
@@ -12,25 +13,25 @@ type jsCommand struct {
 // wsMessage is the message envelope when JS commands are present.
 type wsMessage struct {
 	Patches    any         `json:"patches"`
-	JSCommands []jsCommand `json:"js_commands,omitempty"`
+	JSCommands []JSCommand `json:"js_commands,omitempty"`
 }
 
 // JSCommander is an optional interface for Views that issue JS commands.
 type JSCommander interface {
-	DrainCommands() []jsCommand
+	DrainCommands() []JSCommand
 }
 
 // CommandQueue is a helper that Views can embed to gain JS command support.
 type CommandQueue struct {
 	mu   sync.Mutex
-	cmds []jsCommand
+	cmds []JSCommand
 }
 
 // PushCommand queues a JS command to be sent to the client after the next render.
 func (q *CommandQueue) PushCommand(cmd string, target string, args map[string]string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	q.cmds = append(q.cmds, jsCommand{Cmd: cmd, Target: target, Args: args})
+	q.cmds = append(q.cmds, JSCommand{Cmd: cmd, Target: target, Args: args})
 }
 
 // ScrollTo queues a scrollTo command for the given CSS selector.
@@ -131,7 +132,7 @@ func (q *CommandQueue) PushNavigate(path string) {
 }
 
 // DrainCommands returns all queued commands and clears the queue.
-func (q *CommandQueue) DrainCommands() []jsCommand {
+func (q *CommandQueue) DrainCommands() []JSCommand {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	cmds := q.cmds

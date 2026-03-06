@@ -41,7 +41,7 @@ func (t *TestTransport) Send(msg Message) error {
 func (t *TestTransport) Receive() (string, Payload, error) {
 	ev, ok := <-t.events
 	if !ok {
-		return "", nil, errConnClosed
+		return "", nil, ErrConnClosed
 	}
 	return ev.event, ev.payload, nil
 }
