@@ -116,15 +116,82 @@ func TestHandlerFunc_WithMiddleware(t *testing.T) {
 }
 
 func TestHandler_ImplementsHTTPHandler(t *testing.T) {
-	// Handler returns http.HandlerFunc which implements http.Handler
 	var h http.Handler = Handler(Tag("head"), Tag("body"))
 	_ = h
 }
 
 func TestHandlerFunc_ImplementsHTTPHandler(t *testing.T) {
-	// HandlerFunc returns http.HandlerFunc which implements http.Handler
 	var h http.Handler = HandlerFunc(func(r *http.Request) []ComponentFunc {
 		return nil
 	})
 	_ = h
+}
+
+func TestNewServeMux_StillWorks(t *testing.T) {
+	mux := NewServeMux(Tag("head"), Tag("body", Tag("p", Literal("legacy"))))
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+
+	body := w.Body.String()
+	if !strings.Contains(body, "<p>legacy</p>") {
+		t.Errorf("NewServeMux should still render, got: %s", body)
+	}
+	if !strings.Contains(body, `lang="ja"`) {
+		t.Error("NewServeMux should use lang=ja")
+	}
+}
+
+func TestHandler_UsesLangEn(t *testing.T) {
+	h := Handler(Tag("head"), Tag("body"))
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+
+	body := w.Body.String()
+	if !strings.Contains(body, `lang="en"`) {
+		t.Errorf("Handler should use lang=en, got: %s", body)
+	}
+}
+
+func TestHandlerFunc_UsesLangEn(t *testing.T) {
+	h := HandlerFunc(func(r *http.Request) []ComponentFunc {
+		return []ComponentFunc{Tag("head"), Tag("body")}
+	})
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+
+	body := w.Body.String()
+	if !strings.Contains(body, `lang="en"`) {
+		t.Errorf("HandlerFunc should use lang=en, got: %s", body)
+	}
+}
+
+func TestHandler_WithServeMux(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle("GET /about", Handler(
+		Tag("head", Tag("title", Literal("About"))),
+		Tag("body", Tag("h1", Literal("About Page"))),
+	))
+	mux.Handle("GET /contact", Handler(
+		Tag("head", Tag("title", Literal("Contact"))),
+		Tag("body", Tag("h1", Literal("Contact Page"))),
+	))
+
+	// Test /about
+	r := httptest.NewRequest("GET", "/about", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+	if !strings.Contains(w.Body.String(), "About Page") {
+		t.Errorf("/about should render About Page, got: %s", w.Body.String())
+	}
+
+	// Test /contact
+	r = httptest.NewRequest("GET", "/contact", nil)
+	w = httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+	if !strings.Contains(w.Body.String(), "Contact Page") {
+		t.Errorf("/contact should render Contact Page, got: %s", w.Body.String())
+	}
 }
