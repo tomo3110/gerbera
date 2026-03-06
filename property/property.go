@@ -11,29 +11,22 @@ import (
 // Elements with the same tag but different keys produce an OpReplace patch,
 // forcing a full subtree replacement instead of a recursive diff.
 func Key(key string) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
-		el.Key = key
-		return nil
+	return func(n gerbera.Node) {
+		n.SetKey(key)
 	}
 }
 
 func Class(c ...string) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
-		el.ClassNames = make(gerbera.ClassMap, len(c))
+	return func(n gerbera.Node) {
 		for _, s := range c {
-			el.ClassNames[s] = false
+			n.AddClass(s)
 		}
-		return nil
 	}
 }
 
 func Attr(key string, val any) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
-		if el.Attr == nil {
-			el.Attr = make(map[string]string)
-		}
-		el.Attr[key] = html.EscapeString(fmt.Sprint(val))
-		return nil
+	return func(n gerbera.Node) {
+		n.SetAttribute(key, html.EscapeString(fmt.Sprint(val)))
 	}
 }
 
@@ -46,39 +39,30 @@ func Name(text string) gerbera.ComponentFunc {
 }
 
 func Value(value any) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
-		el.Value = html.EscapeString(fmt.Sprint(value))
-		return nil
+	return func(n gerbera.Node) {
+		n.SetText(html.EscapeString(fmt.Sprint(value)))
 	}
 }
 
 // ClassIf conditionally adds a CSS class name to the element.
 // If condition is true, the class is added; otherwise it is not.
 func ClassIf(condition bool, className string) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
+	return func(n gerbera.Node) {
 		if condition {
-			if el.ClassNames == nil {
-				el.ClassNames = make(gerbera.ClassMap)
-			}
-			el.ClassNames[className] = false
+			n.AddClass(className)
 		}
-		return nil
 	}
 }
 
 // ClassMap conditionally adds CSS class names based on a map.
 // Each key is a class name and the bool value determines if it should be included.
 func ClassMap(classes map[string]bool) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
-		if el.ClassNames == nil {
-			el.ClassNames = make(gerbera.ClassMap)
-		}
+	return func(n gerbera.Node) {
 		for name, active := range classes {
 			if active {
-				el.ClassNames[name] = false
+				n.AddClass(name)
 			}
 		}
-		return nil
 	}
 }
 
@@ -104,40 +88,28 @@ func Placeholder(text string) gerbera.ComponentFunc {
 
 // Disabled sets the disabled attribute.
 func Disabled(disabled bool) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
+	return func(n gerbera.Node) {
 		if disabled {
-			if el.Attr == nil {
-				el.Attr = make(map[string]string)
-			}
-			el.Attr["disabled"] = "disabled"
+			n.SetAttribute("disabled", "disabled")
 		}
-		return nil
 	}
 }
 
 // Required sets the required attribute.
 func Required(required bool) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
+	return func(n gerbera.Node) {
 		if required {
-			if el.Attr == nil {
-				el.Attr = make(map[string]string)
-			}
-			el.Attr["required"] = "required"
+			n.SetAttribute("required", "required")
 		}
-		return nil
 	}
 }
 
 // Readonly sets the readonly attribute.
 func Readonly(readonly bool) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
+	return func(n gerbera.Node) {
 		if readonly {
-			if el.Attr == nil {
-				el.Attr = make(map[string]string)
-			}
-			el.Attr["readonly"] = "readonly"
+			n.SetAttribute("readonly", "readonly")
 		}
-		return nil
 	}
 }
 

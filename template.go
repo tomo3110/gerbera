@@ -36,11 +36,9 @@ func (t *Template) init() {
 	t.buf.Reset()
 }
 
-func (t *Template) Mount(fn ...ComponentFunc) (err error) {
+func (t *Template) Mount(fn ...ComponentFunc) error {
 	t.init()
-	if t.el, err = Parse(t.el, fn...); err != nil {
-		return err
-	}
+	t.el = Parse(t.el, fn...)
 	if err := Render(t.buf, t.el); err != nil {
 		return err
 	}

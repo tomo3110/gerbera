@@ -77,11 +77,7 @@ func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
 
 	// Build the initial tree so that the first diff has a baseline.
 	components := view.Render()
-	initTree, err := buildTree(cfg.Lang, cfg.SessionID, cfg.CSRFToken, components)
-	if err != nil {
-		return err
-	}
-	sess.tree = initTree
+	sess.tree = buildTree(cfg.Lang, cfg.SessionID, cfg.CSRFToken, components)
 
 	hcfg := &handlerConfig{
 		debug:      cfg.Debug,
@@ -123,14 +119,8 @@ func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
 				sess.mu.Unlock()
 				continue
 			}
-			patches, jsCommands, viewState, err := renderAndDiff(sess, hcfg)
+			patches, jsCommands, viewState := renderAndDiff(sess, hcfg)
 			sess.mu.Unlock()
-			if err != nil {
-				if cfg.DLog != nil {
-					cfg.DLog.handleError(cfg.SessionID, "renderAndDiff", err)
-				}
-				continue
-			}
 
 			var duration time.Duration
 			if cfg.Debug {
@@ -169,14 +159,8 @@ func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
 				sess.mu.Unlock()
 				continue
 			}
-			patches, jsCommands, viewState, err := renderAndDiff(sess, hcfg)
+			patches, jsCommands, viewState := renderAndDiff(sess, hcfg)
 			sess.mu.Unlock()
-			if err != nil {
-				if cfg.DLog != nil {
-					cfg.DLog.handleError(cfg.SessionID, "renderAndDiff", err)
-				}
-				continue
-			}
 
 			var duration time.Duration
 			if cfg.Debug {
@@ -200,17 +184,15 @@ func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
 			if h, ok := view.(SessionExpiredHandler); ok {
 				sess.mu.Lock()
 				h.OnSessionExpired()
-				patches, jsCommands, viewState, err := renderAndDiff(sess, hcfg)
+				patches, jsCommands, viewState := renderAndDiff(sess, hcfg)
 				sess.mu.Unlock()
-				if err == nil {
-					transport.Send(Message{
-						Patches:    patches,
-						JSCommands: jsCommands,
-						ViewState:  viewState,
-						EventName:  "session_expired",
-					})
-					time.Sleep(100 * time.Millisecond)
-				}
+				transport.Send(Message{
+					Patches:    patches,
+					JSCommands: jsCommands,
+					ViewState:  viewState,
+					EventName:  "session_expired",
+				})
+				time.Sleep(100 * time.Millisecond)
 			}
 			return ErrSessionExpired
 		}
@@ -255,14 +237,8 @@ func loopProcessEvent(sess *Session, transport Transport, cfg *handlerConfig, dl
 			sess.mu.Unlock()
 			return nil
 		}
-		patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
+		patches, jsCommands, viewState := renderAndDiff(sess, cfg)
 		sess.mu.Unlock()
-		if err != nil {
-			if dlog != nil {
-				dlog.handleError(sessionID, "renderAndDiff", err)
-			}
-			return nil
-		}
 
 		var duration time.Duration
 		if cfg.debug {
@@ -294,14 +270,8 @@ func loopProcessEvent(sess *Session, transport Transport, cfg *handlerConfig, dl
 		sess.mu.Unlock()
 		return nil
 	}
-	patches, jsCommands, viewState, err := renderAndDiff(sess, cfg)
+	patches, jsCommands, viewState := renderAndDiff(sess, cfg)
 	sess.mu.Unlock()
-	if err != nil {
-		if dlog != nil {
-			dlog.handleError(sessionID, "renderAndDiff", err)
-		}
-		return nil
-	}
 
 	var duration time.Duration
 	if cfg.debug {

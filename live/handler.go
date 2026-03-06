@@ -159,11 +159,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func(context
 	components := view.Render()
 	components = appendScriptComponents(components, cfg.debug)
 
-	tree, err := buildTree(cfg.lang, sess.ID, sess.CSRFToken, components)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	tree := buildTree(cfg.lang, sess.ID, sess.CSRFToken, components)
 
 	sess.mu.Lock()
 	sess.tree = tree
@@ -237,17 +233,14 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 // renderAndDiff renders the view and computes patches against the stored tree.
 // Must be called with sess.mu held.
 // When debug is true, it also marshals the View state for the debug panel.
-func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand, json.RawMessage, error) {
+func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand, json.RawMessage) {
 	components := sess.View.Render()
 	components = appendScriptComponents(components, cfg.debug)
 	lang := ""
 	if sess.tree != nil && sess.tree.Attr != nil {
 		lang = sess.tree.Attr["lang"]
 	}
-	newTree, err := buildTree(lang, sess.ID, sess.CSRFToken, components)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	newTree := buildTree(lang, sess.ID, sess.CSRFToken, components)
 
 	patches := diff.Diff(sess.tree, newTree)
 	sess.tree = newTree
@@ -264,7 +257,7 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand
 		viewState, _ = json.Marshal(sess.View)
 	}
 
-	return patches, cmds, viewState, nil
+	return patches, cmds, viewState
 }
 
 // appendScriptComponents appends gerbera JS (and debug JS when enabled)
@@ -289,7 +282,7 @@ func appendScriptComponents(components []gerbera.ComponentFunc, debug bool) []ge
 }
 
 // buildTree creates the full <html> Element tree from view components.
-func buildTree(lang, sessionID, csrfToken string, components []gerbera.ComponentFunc) (*gerbera.Element, error) {
+func buildTree(lang, sessionID, csrfToken string, components []gerbera.ComponentFunc) *gerbera.Element {
 	root := &gerbera.Element{
 		TagName:    "html",
 		Attr:       gerbera.AttrMap{"lang": lang, "gerbera-session": sessionID},
@@ -297,10 +290,7 @@ func buildTree(lang, sessionID, csrfToken string, components []gerbera.Component
 		Children:   make([]*gerbera.Element, 0),
 	}
 
-	root, err := gerbera.Parse(root, components...)
-	if err != nil {
-		return nil, err
-	}
+	root = gerbera.Parse(root, components...)
 
 	// Inject CSRF meta tag into <head> if a token is provided
 	if csrfToken != "" {
@@ -318,5 +308,5 @@ func buildTree(lang, sessionID, csrfToken string, components []gerbera.Component
 		}
 	}
 
-	return root, nil
+	return root
 }

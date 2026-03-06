@@ -11,30 +11,19 @@ func TestTag(t *testing.T) {
 	list := []struct {
 		name string
 		want *Element
-		err  bool
 	}{
-		{name: "body", want: &Element{}, err: false},
-		{name: "p", want: &Element{}, err: false},
-		{name: "", want: &Element{}, err: true},
+		{name: "body", want: &Element{}},
+		{name: "p", want: &Element{}},
 	}
 	for _, item := range list {
 		t.Run(item.name, func(t *testing.T) {
 			parent := &Element{TagName: "div"}
-			err := Tag(item.name)(parent)
-			if err != nil {
-				t.Error(err)
-			}
+			Tag(item.name)(parent)
 			for _, c := range parent.Children {
 				if c.TagName != item.name {
-					if item.err {
-						continue
-					}
 					t.Error("TagNameが異なります")
 				}
 				if len(c.Children) != 0 {
-					if item.err {
-						continue
-					}
 					t.Error("要素が空であるはず")
 				}
 			}
@@ -44,9 +33,7 @@ func TestTag(t *testing.T) {
 
 func TestSkip(t *testing.T) {
 	p := &Element{TagName: "div"}
-	if err := Skip()(p); err != nil {
-		t.Error(err.Error())
-	}
+	Skip()(p)
 	if len(p.Children) != 0 {
 		t.Errorf("子要素が追加されている: want = %d, result = %d\n", 0, len(p.Children))
 	}

@@ -8,9 +8,7 @@ import (
 
 func testCommon(t *testing.T, c gerbera.ComponentFunc, wantTagName string) {
 	parent := &gerbera.Element{TagName: "div"}
-	if err := c(parent); err != nil {
-		t.Error(err.Error())
-	}
+	c(parent)
 	target := parent.Children[0]
 	if target == nil {
 		t.Error("要素が正常に追加されていません")

@@ -112,13 +112,9 @@ func Hook(name string) gerbera.ComponentFunc {
 // Clicking the link will push state and send a navigation event
 // instead of performing a full page reload.
 func LiveLink(href string) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
-		if el.Attr == nil {
-			el.Attr = make(map[string]string)
-		}
-		el.Attr["href"] = href
-		el.Attr["gerbera-live-link"] = href
-		return nil
+	return func(n gerbera.Node) {
+		n.SetAttribute("href", href)
+		n.SetAttribute("gerbera-live-link", href)
 	}
 }
 

@@ -7,46 +7,33 @@ import (
 type CallbackFunc func(gerbera.ConvertToMap) gerbera.ComponentFunc
 
 func If(expr bool, trueCF gerbera.ComponentFunc, otherCF ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	return func(parent *gerbera.Element) error {
+	return func(parent gerbera.Node) {
 		if expr {
-			if err := trueCF(parent); err != nil {
-				return err
-			}
+			trueCF(parent)
 		} else {
 			for _, ef := range otherCF {
-				if err := ef(parent); err != nil {
-					return err
-				}
+				ef(parent)
 			}
 		}
-		return nil
 	}
 }
 
 func Unless(expr bool, falseCF gerbera.ComponentFunc, otherCF ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	return func(parent *gerbera.Element) error {
+	return func(parent gerbera.Node) {
 		if !expr {
-			if err := falseCF(parent); err != nil {
-				return err
-			}
+			falseCF(parent)
 		} else {
 			for _, ef := range otherCF {
-				if err := ef(parent); err != nil {
-					return err
-				}
+				ef(parent)
 			}
 		}
-		return nil
 	}
 }
 
 func Each(list []gerbera.ConvertToMap, callback CallbackFunc) gerbera.ComponentFunc {
-	return func(parent *gerbera.Element) error {
+	return func(parent gerbera.Node) {
 		for _, item := range list {
-			if err := callback(item)(parent); err != nil {
-				return err
-			}
+			callback(item)(parent)
 		}
-		return nil
 	}
 }
