@@ -1,8 +1,6 @@
 package live
 
 import (
-	"fmt"
-
 	"github.com/tomo3110/gerbera"
 	"github.com/tomo3110/gerbera/property"
 )
@@ -30,7 +28,10 @@ import (
 //	    }
 //	}
 func Script() gerbera.ComponentFunc {
-	return gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS))
+	return func(parent gerbera.Node) {
+		child := parent.AppendElement("script")
+		child.SetText(gerberaJS)
+	}
 }
 
 // MountOption configures a LiveMount element.

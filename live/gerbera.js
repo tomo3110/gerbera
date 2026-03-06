@@ -599,5 +599,160 @@
     send("gerbera:params_change", p);
   });
 
-  connect();
+  // Mount LiveView components embedded in SSR pages via gl.LiveMount().
+  // Each [gerbera-live] element gets its own fetch + WebSocket connection.
+  function mountLiveComponents() {
+    document.querySelectorAll("[gerbera-live]").forEach(function(el) {
+      if (el._gbLiveMounted) return;
+      el._gbLiveMounted = true;
+      var path = el.getAttribute("gerbera-live");
+      fetch(path).then(function(res) { return res.text(); }).then(function(html) {
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(html, "text/html");
+        var body = doc.body;
+        if (body) {
+          // Remove script tags injected by gl.Handler (they are for full LiveView pages)
+          body.querySelectorAll("script").forEach(function(s) { s.remove(); });
+          el.innerHTML = body.innerHTML;
+          var compSid = doc.documentElement.getAttribute("gerbera-session");
+          var compCsrfMeta = doc.querySelector('meta[name="gerbera-csrf"]');
+          var compCsrf = compCsrfMeta ? compCsrfMeta.getAttribute("content") : "";
+          if (compSid) {
+            var compWs = new WebSocket(
+              proto + "//" + location.host + path + "?gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
+            );
+            var liveSend = function(name, payload) {
+              if (compWs.readyState === WebSocket.OPEN) {
+                el.classList.add("gerbera-loading");
+                compWs.send(JSON.stringify({e: name, p: payload}));
+              }
+            };
+            compWs.onopen = function() {
+              bindScoped(el, liveSend);
+            };
+            compWs.onmessage = function(ev) {
+              el.classList.remove("gerbera-loading");
+              var data = JSON.parse(ev.data);
+              var patches;
+              var jsCommands;
+              if (Array.isArray(data)) {
+                patches = data;
+              } else {
+                patches = typeof data.patches === "string" ? JSON.parse(data.patches) : (data.patches || []);
+                jsCommands = data.js_commands;
+              }
+              patches.forEach(function(p) {
+                var n = el;
+                for (var i = 0; i < p.path.length; i++) {
+                  if (!n.children[p.path[i]]) return;
+                  n = n.children[p.path[i]];
+                }
+                var v = p.val != null ? p.val : "";
+                switch (p.op) {
+                  case "text":
+                    if (n.children.length > 0) {
+                      var tn = null;
+                      for (var j = 0; j < n.childNodes.length; j++) {
+                        if (n.childNodes[j].nodeType === 3) { tn = n.childNodes[j]; break; }
+                      }
+                      if (tn) { tn.textContent = v; }
+                      else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
+                    } else { n.textContent = v; }
+                    break;
+                  case "html":
+                    if (isSVG(n)) {
+                      while (n.firstChild) n.removeChild(n.firstChild);
+                      if (v) n.appendChild(parseFragment(v, n));
+                    } else { n.innerHTML = v; }
+                    break;
+                  case "attr":
+                    var dv = decodeAttr(v);
+                    n.setAttribute(p.key, dv);
+                    if (p.key === "value" && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.tagName === "SELECT")) {
+                      if (!(_composing && n === document.activeElement)) { n.value = dv; }
+                    }
+                    break;
+                  case "rattr": n.removeAttribute(p.key); break;
+                  case "class":
+                    if (isSVG(n)) { n.setAttribute("class", v); }
+                    else { n.className = v; }
+                    break;
+                  case "insert": {
+                    var frag = parseFragment(p.html, n);
+                    n.insertBefore(frag, n.children[p.idx] || null);
+                    break;
+                  }
+                  case "remove":
+                    if (n.children[p.idx]) n.removeChild(n.children[p.idx]);
+                    break;
+                  case "replace": {
+                    var frag = parseFragment(p.html, n.parentNode);
+                    n.replaceWith(frag);
+                    break;
+                  }
+                }
+              });
+              if (patches.length > 0) bindScoped(el, liveSend);
+              executeJSCommands(jsCommands);
+            };
+            compWs.onclose = function() {
+              // LiveMount components do not show reconnect overlay;
+              // the parent SSR page remains usable.
+            };
+          }
+        }
+      });
+    });
+  }
+
+  // Bind gerbera event attributes within a scoped container element,
+  // using the provided sendFn for WebSocket communication.
+  function bindScoped(container, sendFn) {
+    EVENTS.forEach(function(type) {
+      container.querySelectorAll("[gerbera-" + type + "]").forEach(function(el) {
+        if (el._gb && el._gb[type]) return;
+        if (!el._gb) el._gb = {};
+        el._gb[type] = true;
+        el.addEventListener(type, function(e) {
+          if (type === "submit") e.preventDefault();
+          if (type === "keydown" && (e.isComposing || e.keyCode === 229)) return;
+          if (type === "input" && _composing) return;
+          if (type === "keydown" && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === "Escape")) {
+            if (el.getAttribute("role") === "combobox") e.preventDefault();
+          }
+          var name = el.getAttribute("gerbera-" + type);
+          var kf = el.getAttribute("gerbera-key");
+          if (kf && e.key !== kf) return;
+          var p = {};
+          if (type === "input" || type === "change") p.value = el.value;
+          if (type === "keydown") p.key = e.key;
+          var gv = el.getAttribute("gerbera-value");
+          if (gv) p.value = gv;
+          if (type === "submit") {
+            var form = el.tagName === "FORM" ? el : el.closest("form");
+            if (form) { new FormData(form).forEach(function(v, k) { p[k] = v; }); }
+          }
+          var debounceMs = parseInt(el.getAttribute("gerbera-debounce"));
+          if (debounceMs > 0) {
+            var timerKey = "_gbDebounce_" + type;
+            if (el[timerKey]) clearTimeout(el[timerKey]);
+            el[timerKey] = setTimeout(function() {
+              el[timerKey] = null;
+              sendFn(name, p);
+            }, debounceMs);
+          } else {
+            sendFn(name, p);
+          }
+        });
+      });
+    });
+  }
+
+  // If running as a full LiveView page (session on <html>), connect normally.
+  // Otherwise, only mount LiveView components embedded in the SSR page.
+  if (sid) {
+    connect();
+  } else {
+    mountLiveComponents();
+  }
 })();
