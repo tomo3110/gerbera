@@ -127,21 +127,6 @@ func TestHandlerFunc_ImplementsHTTPHandler(t *testing.T) {
 	_ = h
 }
 
-func TestNewServeMux_StillWorks(t *testing.T) {
-	mux := NewServeMux(Tag("head"), Tag("body", Tag("p", Literal("legacy"))))
-	r := httptest.NewRequest("GET", "/", nil)
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, r)
-
-	body := w.Body.String()
-	if !strings.Contains(body, "<p>legacy</p>") {
-		t.Errorf("NewServeMux should still render, got: %s", body)
-	}
-	if !strings.Contains(body, `lang="ja"`) {
-		t.Error("NewServeMux should use lang=ja")
-	}
-}
-
 func TestHandler_UsesLangEn(t *testing.T) {
 	h := Handler(Tag("head"), Tag("body"))
 	r := httptest.NewRequest("GET", "/", nil)

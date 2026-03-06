@@ -2,28 +2,6 @@ package gerbera
 
 import "net/http"
 
-// NewServeMux creates an http.ServeMux that serves a single page.
-//
-// Deprecated: Use Handler or HandlerFunc with http.ServeMux instead.
-// NewServeMux always uses lang="ja" and binds to "/", which limits flexibility.
-//
-//	// Before:
-//	http.ListenAndServe(":8800", g.NewServeMux(components...))
-//
-//	// After:
-//	mux := http.NewServeMux()
-//	mux.Handle("GET /", g.Handler(components...))
-//	http.ListenAndServe(":8800", mux)
-func NewServeMux(c ...ComponentFunc) *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if err := ExecuteTemplate(w, "ja", c...); err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-		}
-	})
-	return mux
-}
-
 // Handler returns an http.Handler that renders static page content.
 // The components are fixed at handler creation time and do not change
 // per request. For dynamic content that depends on the request, use
