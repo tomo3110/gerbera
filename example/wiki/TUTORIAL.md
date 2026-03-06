@@ -46,7 +46,7 @@ func main() {
 }
 ```
 
-`NewServeMux` is a helper optimized for single-page apps. For applications with multiple routes, use the standard `http.HandleFunc` directly.
+`g.Handler()` is the recommended approach for serving static pages, and `g.HandlerFunc()` for dynamic pages that depend on the request. For applications with multiple routes, use the standard `http.HandleFunc` directly.
 
 ## Step 3: Building Views — ExecuteTemplate
 

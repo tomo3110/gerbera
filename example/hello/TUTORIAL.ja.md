@@ -4,7 +4,7 @@
 
 gerbera を使った最小限の Web ページを作成します。このチュートリアルでは以下の機能を学びます。
 
-- `NewServeMux` — 簡易 HTTP サーバーの作成
+- `Handler` — 簡易 HTTP サーバーの作成
 - `BootstrapCSS` — `<head>` に Bootstrap 5 CSS/JS を追加
 - `Body`, `H1`, `P` — 基本的な DOM 要素の構築
 - `Class`, `Value` — 属性・テキストの設定
@@ -47,7 +47,7 @@ func body() g.ComponentFunc {
 }
 ```
 
-`ComponentFunc` は `func(*Element) error` 型で、gerbera の基本単位です。すべての DOM ヘルパーは `ComponentFunc` を返します。
+`ComponentFunc` は `func(Node)` 型で、gerbera の基本単位です。`Node` は `Element` を抽象化するインターフェースです。すべての DOM ヘルパーは `ComponentFunc` を返します。
 
 - `gd.Body(...)` — `<body>` 要素を作成し、引数の子要素を追加
 - `gp.Class("container")` — `class="container"` 属性を設定
@@ -59,18 +59,19 @@ func body() g.ComponentFunc {
 func main() {
 	addr := flag.String("addr", ":8800", "running address")
 	flag.Parse()
-	mux := g.NewServeMux(
+	mux := http.NewServeMux()
+	mux.Handle("GET /", g.Handler(
 		gd.Head(
 			gd.Title("Gerbera Template Engine !"),
 			gc.BootstrapCSS(),
 		),
 		body(),
-	)
+	))
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }
 ```
 
-- `g.NewServeMux(head, body)` は `http.ServeMux` を返し、ルートパス `/` にハンドラを登録します
+- `g.Handler(children...)` は `http.Handler` を返し、指定されたコンポーネントを HTML ページとしてレンダリングします
 - `gd.Head(children...)` は `<head>` 要素を作成し、子要素を追加します
 - `gc.BootstrapCSS()` は Bootstrap 5 の CSS/JS CDN リンクを追加し、charset/viewport メタタグが存在しなければ自動追加します
 
@@ -98,7 +99,7 @@ go run example/hello/hello.go -addr :3000
 
 | 関数 | 説明 |
 |------|------|
-| `g.NewServeMux(children...)` | ルートパスにハンドラを持つ ServeMux を返す |
+| `g.Handler(children...)` | 指定コンポーネントをレンダリングする `http.Handler` を返す |
 | `gc.BootstrapCSS()` | `<head>` に Bootstrap 5 CSS/JS を追加 |
 | `gd.Head(children...)` | `<head>` 要素 |
 | `gd.Title(text)` | `<title>` 要素 |

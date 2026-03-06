@@ -128,7 +128,7 @@ func main() {
 }
 ```
 
-`NewServeMux` is optimized for single-route apps. When multiple routes are needed, use the standard `http.HandleFunc` and call `g.ExecuteTemplate` within each handler.
+`g.Handler()` is the recommended approach for serving static pages, and `g.HandlerFunc()` for dynamic pages that depend on the request. When multiple routes are needed, use the standard `http.HandleFunc` and call `g.ExecuteTemplate` within each handler.
 
 ## Running
 

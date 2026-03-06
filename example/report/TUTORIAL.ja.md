@@ -37,7 +37,7 @@ if err := tmpl.Mount(
 
 - `g.Template{Lang: "ja"}` で直接テンプレートを作成します
 - `Mount(children...)` は内部で `Parse` → `Render` を実行し、バッファに HTML を蓄積します
-- `ExecuteTemplate` や `NewServeMux` を使わない、最も低レベルなテンプレート操作です
+- `ExecuteTemplate` や `Handler` を使わない、最も低レベルなテンプレート操作です
 
 ## ステップ 2: String() / Bytes() で出力
 

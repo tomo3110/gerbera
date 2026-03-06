@@ -46,7 +46,7 @@ func main() {
 }
 ```
 
-`NewServeMux` は単一ページ向けのヘルパーです。複数ルートを持つアプリでは、標準の `http.HandleFunc` を直接使用します。
+`g.Handler()` は静的ページの配信に推奨されるアプローチで、`g.HandlerFunc()` はリクエストに依存する動的ページ向けです。複数ルートを持つアプリでは、標準の `http.HandleFunc` を直接使用します。
 
 ## ステップ 3: ビューの構築 — ExecuteTemplate
 
