@@ -12,9 +12,7 @@ func buildHead(t *testing.T, children ...gerbera.ComponentFunc) *gerbera.Element
 	t.Helper()
 	head := &gerbera.Element{TagName: "head"}
 	for _, cf := range children {
-		if err := cf(head); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		cf(head)
 	}
 	return head
 }
@@ -145,9 +143,7 @@ func TestEnsureDefaults_NoDoubleCharset(t *testing.T) {
 		TagName:  "head",
 		Children: []*gerbera.Element{charsetMeta},
 	}
-	if err := BootstrapCSS()(head); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	BootstrapCSS()(head)
 	count := countChildren(head, "meta", map[string]string{"charset": "utf-8"})
 	if count != 1 {
 		t.Errorf("charset meta count: got %d, want 1", count)
@@ -167,9 +163,7 @@ func TestEnsureDefaults_NoDoubleViewport(t *testing.T) {
 		TagName:  "head",
 		Children: []*gerbera.Element{viewportMeta},
 	}
-	if err := MaterializeCSS()(head); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	MaterializeCSS()(head)
 	count := countChildren(head, "meta", map[string]string{"name": "viewport"})
 	if count != 1 {
 		t.Errorf("viewport meta count: got %d, want 1", count)
@@ -193,9 +187,7 @@ func TestEnsureDefaults_BothPresent(t *testing.T) {
 		Children: []*gerbera.Element{charsetMeta, viewportMeta},
 	}
 	before := len(head.Children)
-	if err := TailwindCSS()(head); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	TailwindCSS()(head)
 	// Should only have added the Tailwind script (no new meta tags)
 	added := len(head.Children) - before
 	if added != 1 {
@@ -210,9 +202,7 @@ func TestBootstrapCSS_CharsetPrepended(t *testing.T) {
 		TagName:  "head",
 		Children: []*gerbera.Element{title},
 	}
-	if err := BootstrapCSS()(head); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	BootstrapCSS()(head)
 	// charset should be the first child
 	first := head.Children[0]
 	if first.TagName != "meta" || first.Attr["charset"] != "utf-8" {
@@ -282,9 +272,7 @@ func TestBootstrapCSS_IntegrationWithRender(t *testing.T) {
 	titleEl := &gerbera.Element{TagName: "title", Value: "My Page"}
 	head.Children = append(head.Children, titleEl)
 
-	if err := BootstrapCSS()(head); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	BootstrapCSS()(head)
 
 	var buf bytes.Buffer
 	if err := gerbera.Render(&buf, head); err != nil {

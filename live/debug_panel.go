@@ -146,10 +146,7 @@ func renderDebugPanelHTML() string {
 			Children:   make([]*gerbera.Element, 0),
 		}
 
-		wrapper, err := gerbera.Parse(wrapper, debugPanelComponents()...)
-		if err != nil {
-			return
-		}
+		wrapper = gerbera.Parse(wrapper, debugPanelComponents()...)
 
 		var sb strings.Builder
 		for _, child := range wrapper.Children {

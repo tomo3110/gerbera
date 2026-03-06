@@ -31,47 +31,32 @@ var emptyElements = map[string]struct{}{
 	"wbr":      {},
 }
 
-type ComponentFunc func(*Element) error
+// ComponentFunc is a function that builds HTML elements.
+// It operates on a Node to add children, attributes, and text content.
+// ComponentFuncs are pure construction functions — they do not perform I/O.
+type ComponentFunc func(Node)
 
 type ClassMap map[string]bool
 type AttrMap map[string]string
 type StyleMap map[string]any
 
 func Tag(tagName string, fus ...ComponentFunc) ComponentFunc {
-	el := &Element{TagName: tagName}
-	return func(parent *Element) error {
-		el.Children = nil
-		el.ClassNames = nil
-		el.Attr = nil
-		el.Value = ""
-		el.Key = ""
-		for _, ef := range fus {
-			if err := ef(el); err != nil {
-				return err
-			}
+	return func(parent Node) {
+		child := parent.AppendElement(tagName)
+		for _, f := range fus {
+			f(child)
 		}
-		if err := el.AppendTo(parent); err != nil {
-			return err
-		}
-		return nil
 	}
 }
 
 func Skip() ComponentFunc {
-	return func(parent *Element) error {
-		return nil
-	}
+	return func(parent Node) {}
 }
 
 func Literal(lines ...string) ComponentFunc {
 	joined := strings.Join(lines, "\n")
-	return func(parent *Element) error {
-		if parent.Value == "" {
-			parent.Value = joined
-		} else {
-			parent.Value += joined
-		}
-		return nil
+	return func(parent Node) {
+		parent.SetText(joined)
 	}
 }
 

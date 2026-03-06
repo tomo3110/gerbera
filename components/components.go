@@ -48,6 +48,15 @@ func ensureDefaults(parent *gerbera.Element) {
 	}
 }
 
+// asElement extracts the underlying *Element from a Node.
+// CDN components need direct Element access to inspect and manipulate children.
+func asElement(n gerbera.Node) *gerbera.Element {
+	if el, ok := n.(*gerbera.Element); ok {
+		return el
+	}
+	return nil
+}
+
 // BootstrapCSS adds Bootstrap CSS and JS (jsdelivr CDN) to the parent element.
 // It also ensures charset and viewport meta tags are present.
 // When called without arguments, uses the default version (5.3.3) with SRI hashes.
@@ -57,7 +66,11 @@ func BootstrapCSS(version ...string) gerbera.ComponentFunc {
 	if len(version) > 0 {
 		ver = version[0]
 	}
-	return func(parent *gerbera.Element) error {
+	return func(n gerbera.Node) {
+		parent := asElement(n)
+		if parent == nil {
+			return
+		}
 		ensureDefaults(parent)
 		cssURL := fmt.Sprintf("https://cdn.jsdelivr.net/npm/bootstrap@%s/dist/css/bootstrap.min.css", ver)
 		jsURL := fmt.Sprintf("https://cdn.jsdelivr.net/npm/bootstrap@%s/dist/js/bootstrap.bundle.min.js", ver)
@@ -78,7 +91,6 @@ func BootstrapCSS(version ...string) gerbera.ComponentFunc {
 			&gerbera.Element{TagName: "link", Attr: linkAttr},
 			&gerbera.Element{TagName: "script", Attr: scriptAttr},
 		)
-		return nil
 	}
 }
 
@@ -90,7 +102,11 @@ func MaterializeCSS(version ...string) gerbera.ComponentFunc {
 	if len(version) > 0 {
 		ver = version[0]
 	}
-	return func(parent *gerbera.Element) error {
+	return func(n gerbera.Node) {
+		parent := asElement(n)
+		if parent == nil {
+			return
+		}
 		ensureDefaults(parent)
 		parent.Children = append(parent.Children,
 			&gerbera.Element{
@@ -107,7 +123,6 @@ func MaterializeCSS(version ...string) gerbera.ComponentFunc {
 				},
 			},
 		)
-		return nil
 	}
 }
 
@@ -119,7 +134,11 @@ func TailwindCSS(version ...string) gerbera.ComponentFunc {
 	if len(version) > 0 {
 		ver = version[0]
 	}
-	return func(parent *gerbera.Element) error {
+	return func(n gerbera.Node) {
+		parent := asElement(n)
+		if parent == nil {
+			return
+		}
 		ensureDefaults(parent)
 		parent.Children = append(parent.Children,
 			&gerbera.Element{
@@ -129,6 +148,5 @@ func TailwindCSS(version ...string) gerbera.ComponentFunc {
 				},
 			},
 		)
-		return nil
 	}
 }

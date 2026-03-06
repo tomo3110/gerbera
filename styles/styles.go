@@ -8,18 +8,12 @@ import (
 )
 
 func Style(styleMap gerbera.StyleMap) gerbera.ComponentFunc {
-	return func(el *gerbera.Element) error {
-		if el.Attr == nil {
-			el.Attr = make(map[string]string)
-		}
+	return func(n gerbera.Node) {
 		var b strings.Builder
 		for key, val := range styleMap {
-			if _, err := fmt.Fprintf(&b, "%s: %s; ", key, fmt.Sprint(val)); err != nil {
-				return err
-			}
+			fmt.Fprintf(&b, "%s: %s; ", key, fmt.Sprint(val))
 		}
-		el.Attr["style"] = strings.TrimRight(b.String(), " ")
-		return nil
+		n.SetAttribute("style", strings.TrimRight(b.String(), " "))
 	}
 }
 
@@ -28,15 +22,14 @@ func StyleIf(condition bool, styleMap gerbera.StyleMap) gerbera.ComponentFunc {
 	if condition {
 		return Style(styleMap)
 	}
-	return func(el *gerbera.Element) error { return nil }
+	return func(n gerbera.Node) {}
 }
 
 // CSS generates a <style> element with raw CSS content.
 // Useful for embedding component-scoped CSS.
 func CSS(cssText string) gerbera.ComponentFunc {
-	return gerbera.Tag("style", func(el *gerbera.Element) error {
-		el.Value = cssText
-		return nil
+	return gerbera.Tag("style", func(n gerbera.Node) {
+		n.SetText(cssText)
 	})
 }
 

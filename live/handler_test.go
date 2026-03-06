@@ -133,9 +133,7 @@ func TestEventBindings(t *testing.T) {
 				Attr:    make(g.AttrMap),
 			}
 			fn := tt.fn(tt.event)
-			if err := fn(el); err != nil {
-				t.Fatal(err)
-			}
+			fn(el)
 			if el.Attr[tt.attr] != tt.event {
 				t.Errorf("expected %s=%s, got %s", tt.attr, tt.event, el.Attr[tt.attr])
 			}
@@ -149,9 +147,7 @@ func TestKeyBinding(t *testing.T) {
 		Attr:    make(g.AttrMap),
 	}
 	fn := Key("Enter")
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if el.Attr["gerbera-key"] != "Enter" {
 		t.Errorf("expected gerbera-key=Enter, got %s", el.Attr["gerbera-key"])
 	}
@@ -160,9 +156,7 @@ func TestKeyBinding(t *testing.T) {
 func TestThrottle(t *testing.T) {
 	el := &g.Element{TagName: "div", Attr: make(g.AttrMap)}
 	fn := Throttle(200)
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if el.Attr["gerbera-throttle"] != "200" {
 		t.Errorf("expected gerbera-throttle=200, got %s", el.Attr["gerbera-throttle"])
 	}
@@ -174,10 +168,7 @@ func TestBuildTree(t *testing.T) {
 		gd.Body(gd.H1(gp.Value("Hello"))),
 	}
 
-	tree, err := buildTree("ja", "test-id", "", components)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tree := buildTree("ja", "test-id", "", components)
 	if tree.TagName != "html" {
 		t.Errorf("expected html root, got %s", tree.TagName)
 	}
@@ -195,10 +186,7 @@ func TestBuildTreeWithCSRFToken(t *testing.T) {
 		gd.Body(gd.H1(gp.Value("Hello"))),
 	}
 
-	tree, err := buildTree("ja", "test-id", "csrf-token-abc", components)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tree := buildTree("ja", "test-id", "csrf-token-abc", components)
 
 	// Find <head> and check that first child is the CSRF meta tag
 	var head *g.Element

@@ -33,9 +33,7 @@ func TestAdditionalEventBindings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			el := &g.Element{TagName: "div", Attr: make(g.AttrMap)}
 			fn := tt.fn("test-event")
-			if err := fn(el); err != nil {
-				t.Fatal(err)
-			}
+			fn(el)
 			if el.Attr[tt.attr] != "test-event" {
 				t.Errorf("expected %s=test-event, got %s", tt.attr, el.Attr[tt.attr])
 			}
@@ -48,9 +46,7 @@ func TestAdditionalEventBindings(t *testing.T) {
 func TestDebounce(t *testing.T) {
 	el := &g.Element{TagName: "input", Attr: make(g.AttrMap)}
 	fn := Debounce(300)
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if el.Attr["gerbera-debounce"] != "300" {
 		t.Errorf("expected gerbera-debounce=300, got %s", el.Attr["gerbera-debounce"])
 	}
@@ -61,9 +57,7 @@ func TestDebounce(t *testing.T) {
 func TestHookBinding(t *testing.T) {
 	el := &g.Element{TagName: "div", Attr: make(g.AttrMap)}
 	fn := Hook("scroll-sync")
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if el.Attr["gerbera-hook"] != "scroll-sync" {
 		t.Errorf("expected gerbera-hook=scroll-sync, got %s", el.Attr["gerbera-hook"])
 	}
@@ -74,9 +68,7 @@ func TestHookBinding(t *testing.T) {
 func TestLiveLink(t *testing.T) {
 	el := &g.Element{TagName: "a", Attr: make(g.AttrMap)}
 	fn := LiveLink("/about")
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if el.Attr["href"] != "/about" {
 		t.Errorf("expected href=/about, got %s", el.Attr["href"])
 	}
@@ -90,18 +82,14 @@ func TestLiveLink(t *testing.T) {
 func TestClassIf(t *testing.T) {
 	el := &g.Element{TagName: "div"}
 	fn := gp.ClassIf(true, "active")
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if _, ok := el.ClassNames["active"]; !ok {
 		t.Error("expected 'active' class when condition is true")
 	}
 
 	el2 := &g.Element{TagName: "div"}
 	fn2 := gp.ClassIf(false, "active")
-	if err := fn2(el2); err != nil {
-		t.Fatal(err)
-	}
+	fn2(el2)
 	if el2.ClassNames != nil {
 		if _, ok := el2.ClassNames["active"]; ok {
 			t.Error("expected no 'active' class when condition is false")
@@ -116,9 +104,7 @@ func TestClassMap(t *testing.T) {
 		"disabled": false,
 		"primary":  true,
 	})
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if _, ok := el.ClassNames["active"]; !ok {
 		t.Error("expected 'active' class")
 	}
@@ -155,9 +141,7 @@ func TestAriaHelpers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			el := &g.Element{TagName: "div", Attr: make(g.AttrMap)}
-			if err := tt.fn(el); err != nil {
-				t.Fatal(err)
-			}
+			tt.fn(el)
 			if el.Attr[tt.key] != tt.value {
 				t.Errorf("expected %s=%s, got %s", tt.key, tt.value, el.Attr[tt.key])
 			}
@@ -185,9 +169,7 @@ func TestPropertyHelpers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			el := &g.Element{TagName: "input", Attr: make(g.AttrMap)}
-			if err := tt.fn(el); err != nil {
-				t.Fatal(err)
-			}
+			tt.fn(el)
 			if el.Attr[tt.key] != tt.value {
 				t.Errorf("expected %s=%s, got %s", tt.key, tt.value, el.Attr[tt.key])
 			}
@@ -197,17 +179,13 @@ func TestPropertyHelpers(t *testing.T) {
 
 func TestDisabled(t *testing.T) {
 	el := &g.Element{TagName: "button"}
-	if err := gp.Disabled(true)(el); err != nil {
-		t.Fatal(err)
-	}
+	gp.Disabled(true)(el)
 	if el.Attr["disabled"] != "disabled" {
 		t.Error("expected disabled attribute when true")
 	}
 
 	el2 := &g.Element{TagName: "button"}
-	if err := gp.Disabled(false)(el2); err != nil {
-		t.Fatal(err)
-	}
+	gp.Disabled(false)(el2)
 	if el2.Attr != nil && el2.Attr["disabled"] != "" {
 		t.Error("expected no disabled attribute when false")
 	}
@@ -327,9 +305,7 @@ func TestField(t *testing.T) {
 		Error:       "Invalid email",
 	})
 
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if len(el.Children) == 0 {
 		t.Error("expected Field to produce children")
 	}
@@ -342,9 +318,7 @@ func TestFieldWithoutError(t *testing.T) {
 		Value: "John",
 	})
 
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if len(el.Children) == 0 {
 		t.Error("expected Field to produce children")
 	}
@@ -381,9 +355,7 @@ func TestErrors(t *testing.T) {
 func TestUploadBinding(t *testing.T) {
 	el := &g.Element{TagName: "input", Attr: make(g.AttrMap)}
 	fn := Upload("upload-avatar")
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if el.Attr["gerbera-upload"] != "upload-avatar" {
 		t.Errorf("expected gerbera-upload=upload-avatar, got %s", el.Attr["gerbera-upload"])
 	}
@@ -419,9 +391,7 @@ func TestWithMiddleware(t *testing.T) {
 func TestComponent(t *testing.T) {
 	el := &g.Element{TagName: "div", Children: make([]*g.Element, 0)}
 	fn := Component("chat", "/chat")
-	if err := fn(el); err != nil {
-		t.Fatal(err)
-	}
+	fn(el)
 	if len(el.Children) != 1 {
 		t.Fatalf("expected 1 child, got %d", len(el.Children))
 	}

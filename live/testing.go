@@ -30,11 +30,7 @@ func (tv *TestView) Mount(params Params) error {
 		return err
 	}
 	components := tv.View.Render()
-	tree, err := buildTree("en", "test-session", "", components)
-	if err != nil {
-		return err
-	}
-	tv.tree = tree
+	tv.tree = buildTree("en", "test-session", "", components)
 	tv.Rendered = true
 	return nil
 }
@@ -49,10 +45,7 @@ func (tv *TestView) SimulateEvent(event string, payload Payload) ([]diff.Patch, 
 	}
 
 	components := tv.View.Render()
-	newTree, err := buildTree("en", "test-session", "", components)
-	if err != nil {
-		return nil, err
-	}
+	newTree := buildTree("en", "test-session", "", components)
 
 	patches := diff.Diff(tv.tree, newTree)
 	tv.tree = newTree
@@ -72,10 +65,7 @@ func (tv *TestView) SimulateTick() ([]diff.Patch, error) {
 	}
 
 	components := tv.View.Render()
-	newTree, err := buildTree("en", "test-session", "", components)
-	if err != nil {
-		return nil, err
-	}
+	newTree := buildTree("en", "test-session", "", components)
 
 	patches := diff.Diff(tv.tree, newTree)
 	tv.tree = newTree
@@ -95,10 +85,7 @@ func (tv *TestView) SimulateInfo(msg any) ([]diff.Patch, error) {
 	}
 
 	components := tv.View.Render()
-	newTree, err := buildTree("en", "test-session", "", components)
-	if err != nil {
-		return nil, err
-	}
+	newTree := buildTree("en", "test-session", "", components)
 
 	patches := diff.Diff(tv.tree, newTree)
 	tv.tree = newTree
@@ -119,10 +106,7 @@ func (tv *TestView) SimulateParams(path string, params url.Values) ([]diff.Patch
 	}
 
 	components := tv.View.Render()
-	newTree, err := buildTree("en", "test-session", "", components)
-	if err != nil {
-		return nil, err
-	}
+	newTree := buildTree("en", "test-session", "", components)
 
 	patches := diff.Diff(tv.tree, newTree)
 	tv.tree = newTree

@@ -12,9 +12,7 @@ import (
 func buildTab(t *testing.T, cf gerbera.ComponentFunc) *gerbera.Element {
 	t.Helper()
 	parent := &gerbera.Element{TagName: "div", Children: make([]*gerbera.Element, 0)}
-	if err := cf(parent); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	cf(parent)
 	if len(parent.Children) == 0 {
 		t.Fatal("expected at least one child element")
 	}
@@ -211,9 +209,7 @@ func TestTabs_NegativeIndex(t *testing.T) {
 
 func TestTabsDefaultCSS(t *testing.T) {
 	parent := &gerbera.Element{TagName: "head", Children: make([]*gerbera.Element, 0)}
-	if err := TabsDefaultCSS()(parent); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	TabsDefaultCSS()(parent)
 	if len(parent.Children) == 0 {
 		t.Fatal("expected a child element")
 	}

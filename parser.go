@@ -1,10 +1,9 @@
 package gerbera
 
-func Parse(root *Element, fn ...ComponentFunc) (*Element, error) {
+// Parse executes ComponentFuncs on a root Element to build the element tree.
+func Parse(root *Element, fn ...ComponentFunc) *Element {
 	for _, f := range fn {
-		if err := f(root); err != nil {
-			return nil, err
-		}
+		f(root)
 	}
-	return root, nil
+	return root
 }
