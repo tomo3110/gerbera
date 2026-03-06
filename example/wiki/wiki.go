@@ -213,6 +213,12 @@ func listPage(pages []*Page) []g.ComponentFunc {
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value("ページ一覧")),
+			gd.P(
+				gd.A(
+					gp.Href("/edit/NewPage"),
+					gp.Value("+ 新規ページ作成"),
+				),
+			),
 			ge.If(len(list) > 0,
 				ge.Each(list, func(page g.ConvertToMap) g.ComponentFunc {
 					title := page.ToMap().Get("title").(string)
