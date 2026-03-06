@@ -102,18 +102,19 @@ func (v *SNSView) Mount(params gl.Params) error {
 	v.unreadMessages, _ = dbUnreadMessageCount(v.db, v.userID)
 
 	// Set initial page from URL path
-	v.page = pathToPage(params.Path)
+	r := matchRoute(params.Path)
+	v.page = r.page
 
 	// Load initial page data
-	return v.loadPageData(params)
+	return v.loadPageData(params, r.params)
 }
 
-func (v *SNSView) loadPageData(params gl.Params) error {
+func (v *SNSView) loadPageData(params gl.Params, pathParams gl.PathParams) error {
 	switch v.page {
 	case "home":
 		return v.loadTimeline()
 	case "profile":
-		idStr := params.Get("id")
+		idStr := pathParams.Get("id")
 		if idStr == "" {
 			return v.loadProfile(v.userID)
 		}
@@ -123,7 +124,7 @@ func (v *SNSView) loadPageData(params gl.Params) error {
 		}
 		return v.loadProfile(id)
 	case "post":
-		idStr := params.Get("id")
+		idStr := pathParams.Get("id")
 		if idStr == "" {
 			return nil
 		}
@@ -133,13 +134,24 @@ func (v *SNSView) loadPageData(params gl.Params) error {
 		}
 		return v.loadPostDetail(id)
 	case "messages":
+		idStr := pathParams.Get("id")
+		if idStr != "" {
+			id, err := strconv.ParseInt(idStr, 10, 64)
+			if err == nil && id > 0 {
+				return v.loadChat(id)
+			}
+		}
 		return v.loadConversations()
 	case "settings":
 		v.settingsDisplayName = v.user.DisplayName
 		v.settingsEmail = v.user.Email
 		v.settingsBio = v.user.Bio
 	case "search":
-		// empty initially
+		if kw := params.Get("keyword"); kw != "" {
+			v.searchQuery = kw
+			v.searchUsers, _ = dbSearchUsers(v.db, kw, 10)
+			v.searchPosts, _ = dbSearchPosts(v.db, kw, v.userID, 20)
+		}
 	}
 	return nil
 }
@@ -202,6 +214,9 @@ func (v *SNSView) loadConversations() error {
 }
 
 func (v *SNSView) loadChat(partnerID int64) error {
+	if partnerID == v.userID {
+		return v.loadConversations()
+	}
 	partner, err := dbGetUserByID(v.db, partnerID)
 	if err != nil {
 		return err
@@ -451,14 +466,16 @@ func (v *SNSView) HandleEvent(event string, payload gl.Payload) error {
 		if strings.TrimSpace(v.searchQuery) == "" {
 			v.searchUsers = nil
 			v.searchPosts = nil
+			v.ReplacePatch(v.buildPath())
 			return nil
 		}
 		v.searchUsers, _ = dbSearchUsers(v.db, v.searchQuery, 10)
 		v.searchPosts, _ = dbSearchPosts(v.db, v.searchQuery, v.userID, 20)
+		v.ReplacePatch(v.buildPath())
 
 	// Share
 	case "sharePost":
-		v.showToast("Share link: /post?id="+payload["value"], "info")
+		v.showToast("Share link: /post/"+payload["value"], "info")
 
 	// Delete post confirmation
 	case "confirmDeletePost":
@@ -571,7 +588,8 @@ func (v *SNSView) showToast(msg, variant string) {
 
 // HandleParams restores view state from URL path and query parameters (browser back/forward).
 func (v *SNSView) HandleParams(path string, params url.Values) error {
-	v.page = pathToPage(path)
+	r := matchRoute(path)
+	v.page = r.page
 	v.drawerOpen = false
 	v.toastVisible = false
 	v.confirmOpen = false
@@ -579,19 +597,19 @@ func (v *SNSView) HandleParams(path string, params url.Values) error {
 	case "home":
 		return v.loadTimeline()
 	case "profile":
-		if idStr := params.Get("id"); idStr != "" {
+		if idStr := r.params.Get("id"); idStr != "" {
 			id, _ := strconv.ParseInt(idStr, 10, 64)
 			return v.loadProfile(id)
 		}
 		return v.loadProfile(v.userID)
 	case "post":
-		if idStr := params.Get("id"); idStr != "" {
+		if idStr := r.params.Get("id"); idStr != "" {
 			id, _ := strconv.ParseInt(idStr, 10, 64)
 			return v.loadPostDetail(id)
 		}
 	case "messages":
-		if chatStr := params.Get("chat"); chatStr != "" {
-			id, _ := strconv.ParseInt(chatStr, 10, 64)
+		if idStr := r.params.Get("id"); idStr != "" {
+			id, _ := strconv.ParseInt(idStr, 10, 64)
 			return v.loadChat(id)
 		}
 		return v.loadConversations()
@@ -613,39 +631,69 @@ func (v *SNSView) HandleParams(path string, params url.Values) error {
 	return nil
 }
 
-// pathToPage converts a URL path to a page name.
-func pathToPage(path string) string {
-	p := strings.TrimPrefix(path, "/")
-	if p == "" {
-		return "home"
+// route holds the matched page and extracted path parameters.
+type route struct {
+	page   string
+	params gl.PathParams
+}
+
+// matchRoute matches a URL path to a page and extracts path parameters.
+func matchRoute(path string) route {
+	patterns := []struct {
+		pattern string
+		page    string
+	}{
+		{"/profile/:id", "profile"},
+		{"/post/:id", "post"},
+		{"/messages/:id", "messages"},
 	}
-	return p
+	for _, p := range patterns {
+		if params, ok := gl.MatchPath(p.pattern, path); ok {
+			return route{page: p.page, params: params}
+		}
+	}
+	// Static routes
+	static := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/")
+	switch static {
+	case "":
+		return route{page: "home"}
+	case "profile", "post", "messages", "search", "settings":
+		return route{page: static}
+	default:
+		return route{page: "home"}
+	}
 }
 
 // buildPath returns the URL path corresponding to the current view state.
 func (v *SNSView) buildPath() string {
-	base := "/"
-	if v.page != "" && v.page != "home" {
-		base = "/" + v.page
+	switch v.page {
+	case "profile":
+		if v.profileUser != nil && v.profileUser.ID != v.userID {
+			return "/profile/" + strconv.FormatInt(v.profileUser.ID, 10)
+		}
+		return "/profile"
+	case "post":
+		if v.detailPost != nil {
+			return "/post/" + strconv.FormatInt(v.detailPost.Post.ID, 10)
+		}
+		return "/post"
+	case "messages":
+		if v.chatPartnerID > 0 {
+			return "/messages/" + strconv.FormatInt(v.chatPartnerID, 10)
+		}
+		return "/messages"
+	case "search":
+		if v.searchQuery != "" {
+			q := url.Values{}
+			q.Set("keyword", v.searchQuery)
+			return "/search?" + q.Encode()
+		}
+		return "/search"
+	case "home", "":
+		return "/"
+	default:
+		return "/" + v.page
 	}
-
-	q := url.Values{}
-	if v.page == "profile" && v.profileUser != nil && v.profileUser.ID != v.userID {
-		q.Set("id", strconv.FormatInt(v.profileUser.ID, 10))
-	}
-	if v.page == "post" && v.detailPost != nil {
-		q.Set("id", strconv.FormatInt(v.detailPost.Post.ID, 10))
-	}
-	if v.page == "messages" && v.chatPartnerID > 0 {
-		q.Set("chat", strconv.FormatInt(v.chatPartnerID, 10))
-	}
-	if v.page == "search" && v.searchQuery != "" {
-		q.Set("keyword", v.searchQuery)
-	}
-	if len(q) == 0 {
-		return base
-	}
-	return base + "?" + q.Encode()
 }
 
 func (v *SNSView) refreshCurrentPosts() {
