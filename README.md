@@ -2,7 +2,7 @@
 
 A Go HTML template engine that uses functional composition instead of traditional template files.
 
-HTML is built programmatically by composing `ComponentFunc` functions (`func(*Element) error`), providing type safety and the full power of Go at template construction time.
+HTML is built programmatically by composing `ComponentFunc` functions (`func(Node)`), providing type safety and the full power of Go at template construction time.
 
 [日本語版 README はこちら](README.ja.md)
 
@@ -26,7 +26,7 @@ HTML is built programmatically by composing `ComponentFunc` functions (`func(*El
 go get github.com/tomo3110/gerbera
 ```
 
-### Hello World
+### Static Page (Handler)
 
 ```go
 package main
@@ -41,15 +41,31 @@ import (
 )
 
 func main() {
-	mux := g.NewServeMux(
+	mux := http.NewServeMux()
+	mux.Handle("GET /", g.Handler(
 		gd.Head(gd.Title("Hello Gerbera")),
 		gd.Body(
 			gd.H1(gp.Value("Hello, World!")),
 			gd.P(gp.Value("Built with Gerbera")),
 		),
-	)
+	))
 	log.Fatal(http.ListenAndServe(":8800", mux))
 }
+```
+
+### Dynamic Page (HandlerFunc)
+
+```go
+mux.Handle("GET /greet", g.HandlerFunc(func(r *http.Request) []g.ComponentFunc {
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		name = "World"
+	}
+	return []g.ComponentFunc{
+		gd.Head(gd.Title("Greeting")),
+		gd.Body(gd.H1(gp.Value("Hello, " + name + "!"))),
+	}
+}))
 ```
 
 ### LiveView Counter
@@ -119,11 +135,11 @@ Browser click → WebSocket → HandleEvent() → Render() → Diff() → DOM pa
 
 ```
 gerbera/
-├── common.go          # ComponentFunc type, Tag(), Literal(), ExecuteTemplate()
-├── element.go         # Element struct (TagName, ClassNames, Attr, Children, Value)
+├── common.go          # ComponentFunc type (func(Node)), Tag(), Literal(), ExecuteTemplate()
+├── element.go         # Node interface, Element struct (TagName, Key, ClassNames, Attr, Children, Value)
 ├── template.go        # Template: mount/render orchestration, io.Reader
 ├── render.go          # Recursive HTML rendering
-├── server.go          # NewServeMux() HTTP helper
+├── server.go          # Handler(), HandlerFunc(), NewServeMux() (deprecated)
 ├── map.go             # ConvertToMap interface, Map type
 │
 ├── dom/               # HTML element wrappers (H1, Div, Body, Span, Details, etc.)
@@ -154,15 +170,28 @@ gerbera/
     ├── admin/         # LiveView admin dashboard
     ├── catalog/       # Interactive UI component catalog
     ├── auth/          # Session-based authentication with CSRF
-    └── chat/          # Multi-user real-time chat (InfoReceiver)
+    ├── chat/          # Multi-user real-time chat (InfoReceiver)
+    └── sns/           # Twitter clone with MySQL (full-stack example)
 ```
 
 ### Core Concepts
 
+**Node** — The abstraction over HTML elements. All property setters and DOM helpers operate on `Node`:
+
+```go
+type Node interface {
+    AppendElement(tag string) Node
+    SetAttribute(key, value string)
+    AddClass(name string)
+    SetText(text string)
+    SetKey(key string)
+}
+```
+
 **ComponentFunc** — The fundamental building block. Every DOM helper, attribute setter, and control flow function returns `ComponentFunc`:
 
 ```go
-type ComponentFunc func(*Element) error
+type ComponentFunc func(Node)
 ```
 
 **Tag()** — Universal element factory. All `dom/` functions are thin wrappers around `Tag()`:
@@ -171,21 +200,24 @@ type ComponentFunc func(*Element) error
 gd.Div(children...)  // equivalent to g.Tag("div", children...)
 ```
 
-**Skip()** — Returns a no-op `ComponentFunc` that renders nothing. Useful as a placeholder or default:
+**Handler / HandlerFunc** — HTTP handlers for static and dynamic pages:
 
 ```go
-g.Skip()  // renders nothing
+// Static: components fixed at creation time
+mux.Handle("GET /about", g.Handler(aboutPage()...))
+
+// Dynamic: components built per-request
+mux.Handle("GET /users/{id}", g.HandlerFunc(func(r *http.Request) []g.ComponentFunc {
+    id := r.PathValue("id")
+    return userPage(id)
+}))
 ```
 
-**HandlerFunc()** — Creates an `http.HandlerFunc` that generates pages dynamically based on the request:
+**LiveMount** — Embeds a LiveView inside an SSR page:
 
 ```go
-http.HandleFunc("/", g.HandlerFunc(func(r *http.Request) []g.ComponentFunc {
-    return []g.ComponentFunc{
-        gd.Head(gd.Title("Dynamic Page")),
-        gd.Body(gd.H1(gp.Value("Hello, " + r.URL.Query().Get("name")))),
-    }
-}))
+gl.LiveMount("/admin/notifications")               // basic
+gl.LiveMount("/chat", gl.WithMountID("chat-panel")) // with custom ID
 ```
 
 **Functional composition** — Components compose via variadic `children ...ComponentFunc` parameters:
@@ -579,6 +611,7 @@ Each example includes bilingual tutorials (`TUTORIAL.md` / `TUTORIAL.ja.md`).
 | [catalog](example/catalog/) | Interactive UI component catalog | :8900 | `go run example/catalog/catalog.go` |
 | [auth](example/auth/) | Session auth with CSRF | :8895 | `go run example/auth/auth.go` |
 | [chat](example/chat/) | Multi-user real-time chat | :8920 | `go run example/chat/chat.go` |
+| [sns](example/sns/) | Twitter clone with MySQL | :8930 | `cd example/sns && docker compose up` |
 
 ## Development
 

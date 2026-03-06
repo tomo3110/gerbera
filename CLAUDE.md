@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Gerbera is a Go HTML template engine that uses functional composition instead of traditional template files. HTML is built programmatically by composing `ComponentFunc` functions (`func(*Element) error`).
+Gerbera is a Go HTML template engine that uses functional composition instead of traditional template files. HTML is built programmatically by composing `ComponentFunc` functions (`func(Node)`).
 
 ## Build & Test Commands
 
@@ -50,12 +50,12 @@ External dependencies: `github.com/gorilla/websocket` (only used by `live/` pack
 
 ### Core types and files
 
-- **`common.go`** — `ComponentFunc` type (`func(*Element) error`), `Tag()` factory, `Literal()`, `ExecuteTemplate()`
-- **`element.go`** — `Element` struct (TagName, ClassNames, Attr, Children, Value) with `AppendTo()`
+- **`common.go`** — `ComponentFunc` type (`func(Node)`), `Tag()` factory, `Literal()`, `ExecuteTemplate()`
+- **`element.go`** — `Node` interface, `Element` struct (TagName, Key, ClassNames, Attr, Children, Value)
 - **`template.go`** — `Template` struct that orchestrates mount/render, implements `io.Reader`
 - **`render.go`** — Recursive HTML rendering with `sync.Pool` `bufio.Writer`, zero-allocation core path, DOCTYPE, void element handling
 - **`parser.go`** — `Parse()` function for executing `ComponentFunc` tree
-- **`server.go`** — `NewServeMux()` helper for HTTP serving (default lang "ja")
+- **`server.go`** — `Handler()`, `HandlerFunc()` for HTTP serving; `NewServeMux()` (deprecated, default lang "ja")
 - **`benchmark_test.go`** — Performance benchmarks for Render, Parse, and ExecuteTemplate pipelines
 
 ### Sub-packages
@@ -66,7 +66,7 @@ External dependencies: `github.com/gorilla/websocket` (only used by `live/` pack
 - **`styles/`** — `Style()`, `CSS()`, `ScopedCSS()`, `StyleIf()` for CSS handling
 - **`components/`** — Pre-built components (Bootstrap CDN, Materialize CSS CDN, `Tabs()` accessible tab component)
 - **`diff/`** — Element tree diffing: `Diff()` compares two `*Element` trees and returns `[]Patch`; `RenderFragment()` for HTML fragments without DOCTYPE
-- **`live/`** — Phoenix LiveView-style real-time updates: `View` interface, `Handler()`, WebSocket event loop, session management, client JS (`gerbera.js` via `go:embed`), debug panel (`WithDebug()`, `gerbera_debug.js`), form utilities (`Field()`, `SelectField()`), upload support (`UploadHandler`), JS commands (`CommandQueue`), testing (`TestView`)
+- **`live/`** — Phoenix LiveView-style real-time updates: `View` interface, `Handler()`, `Transport` interface, `ViewLoop()`, `LiveMount()`, WebSocket event loop, session management, client JS (`gerbera.js` via `go:embed`), debug panel (`WithDebug()`, `gerbera_debug.js`), form utilities (`Field()`, `SelectField()`), upload support (`UploadHandler`), JS commands (`CommandQueue`), testing (`TestView`, `TestTransport`)
 - **`ui/`** — Pre-built UI component library with CSS theme system: layout (`AdminShell`, `Grid`, `Stack`), data display (`Card`, `Badge`, `StatCard`, `StyledTable`), forms (`FormGroup`, `FormInput`, `FormSelect`), interactive widgets (`Calendar`, `NumberInput`, `Slider`, `Accordion`, `Pagination`, etc.) with optional event fields in Opts structs for LiveView integration
 - **`session/`** — HTTP session management: `Session` struct, `Store` interface, `MemoryStore` (in-memory with HMAC-SHA256 cookie signing and background GC), CSRF token helpers, `Middleware()` for automatic session loading/saving, `RequireKey()` auth guard
 - **`ui/live/`** — LiveView-only UI components requiring WebSocket: `Modal`, `Toast`, `DataTable`, `Dropdown`, `Confirm`, `Tabs`, `Drawer`, `SearchSelect`
