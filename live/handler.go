@@ -233,7 +233,7 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 // renderAndDiff renders the view and computes patches against the stored tree.
 // Must be called with sess.mu held.
 // When debug is true, it also marshals the View state for the debug panel.
-func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand, json.RawMessage) {
+func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []JSCommand, json.RawMessage) {
 	components := sess.View.Render()
 	components = appendScriptComponents(components, cfg.debug)
 	lang := ""
@@ -246,7 +246,7 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []jsCommand
 	sess.tree = newTree
 
 	// Collect JS commands if view implements JSCommander
-	var cmds []jsCommand
+	var cmds []JSCommand
 	if jc, ok := sess.View.(JSCommander); ok {
 		cmds = jc.DrainCommands()
 	}

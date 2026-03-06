@@ -81,7 +81,7 @@ func TestWSTransportSendWithJSCommands(t *testing.T) {
 	patches := []diff.Patch{
 		{Op: diff.OpReplace, Path: []int{0}, Value: "x"},
 	}
-	cmds := []jsCommand{
+	cmds := []JSCommand{
 		{Cmd: "focus", Target: "#input"},
 	}
 
