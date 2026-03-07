@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	g "github.com/tomo3110/gerbera"
+	_ "github.com/tomo3110/gerbera/assets"
 	gl "github.com/tomo3110/gerbera/live"
 	"github.com/tomo3110/gerbera/session"
 )
@@ -21,7 +24,6 @@ func main() {
 	debug := flag.Bool("debug", false, "enable debug panel")
 	flag.Parse()
 
-	// Environment variable overrides flag (useful for Docker Compose)
 	if envDSN := os.Getenv("DATABASE_DSN"); envDSN != "" {
 		*dsn = envDSN
 	}
@@ -47,7 +49,6 @@ func main() {
 	sessionMW := session.Middleware(store)
 	authGuard := session.RequireKey("user_id", "/login")
 
-	// Ensure upload directory exists
 	if err := os.MkdirAll("uploads/avatars", 0755); err != nil {
 		log.Fatalf("failed to create upload directory: %v", err)
 	}
@@ -57,7 +58,7 @@ func main() {
 	// Static file serving for avatars
 	mux.Handle("GET /avatars/", http.StripPrefix("/avatars/", http.FileServer(http.Dir("uploads/avatars"))))
 
-	// Auth pages — redirect if already logged in, otherwise render SSR
+	// Auth pages
 	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		if sess := session.FromContext(r.Context()); sess != nil {
 			if _, ok := sess.Get("user_id").(int64); ok {
@@ -67,9 +68,7 @@ func main() {
 		}
 		g.Handler(loginPage(r)...).ServeHTTP(w, r)
 	})
-
 	mux.HandleFunc("POST /login", loginPostHandler(db))
-
 	mux.HandleFunc("GET /register", func(w http.ResponseWriter, r *http.Request) {
 		if sess := session.FromContext(r.Context()); sess != nil {
 			if _, ok := sess.Get("user_id").(int64); ok {
@@ -79,11 +78,10 @@ func main() {
 		}
 		g.Handler(registerPage(r)...).ServeHTTP(w, r)
 	})
-
 	mux.HandleFunc("POST /register", registerPostHandler(db))
 	mux.HandleFunc("/logout", logoutHandler(store))
 
-	// LiveView route (protected)
+	// LiveView options
 	liveOpts := []gl.Option{
 		gl.WithSessionStore(store),
 	}
@@ -91,15 +89,104 @@ func main() {
 		liveOpts = append(liveOpts, gl.WithDebug())
 	}
 
-	mux.Handle("/", authGuard(gl.Handler(func(_ context.Context) gl.View {
-		return &SNSView{
-			db:  db,
-			hub: hub,
+	// --- SSR pages (render layout shell with LiveMount) ---
+
+	mux.Handle("GET /{$}", authGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		badges := fetchBadgeCounts(db, r)
+		g.Handler(snsPage("Timeline", "home", "/live/timeline", badges)...).ServeHTTP(w, r)
+	})))
+
+	mux.Handle("GET /profile", authGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		badges := fetchBadgeCounts(db, r)
+		g.Handler(snsPage("Profile", "profile", "/live/profile", badges)...).ServeHTTP(w, r)
+	})))
+
+	mux.Handle("GET /profile/{id}", authGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		badges := fetchBadgeCounts(db, r)
+		id := r.PathValue("id")
+		g.Handler(snsPage("Profile", "profile", "/live/profile?id="+id, badges)...).ServeHTTP(w, r)
+	})))
+
+	mux.Handle("GET /post/{id}", authGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		badges := fetchBadgeCounts(db, r)
+		id := r.PathValue("id")
+		g.Handler(snsPage("Post", "post", "/live/post?id="+id, badges)...).ServeHTTP(w, r)
+	})))
+
+	mux.Handle("GET /messages", authGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		badges := fetchBadgeCounts(db, r)
+		g.Handler(snsPage("Messages", "messages", "/live/messages", badges)...).ServeHTTP(w, r)
+	})))
+
+	mux.Handle("GET /messages/{id}", authGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		badges := fetchBadgeCounts(db, r)
+		id := r.PathValue("id")
+		g.Handler(snsPage("Messages", "messages", "/live/messages?id="+id, badges)...).ServeHTTP(w, r)
+	})))
+
+	mux.Handle("GET /search", authGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		badges := fetchBadgeCounts(db, r)
+		endpoint := "/live/search"
+		if kw := r.URL.Query().Get("keyword"); kw != "" {
+			endpoint += "?keyword=" + kw
 		}
+		g.Handler(snsPage("Search", "search", endpoint, badges)...).ServeHTTP(w, r)
+	})))
+
+	mux.Handle("GET /settings", authGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		badges := fetchBadgeCounts(db, r)
+		g.Handler(snsPage("Settings", "settings", "/live/settings", badges)...).ServeHTTP(w, r)
+	})))
+
+	// --- LiveView endpoints ---
+
+	mux.Handle("/live/timeline", authGuard(gl.Handler(func(_ context.Context) gl.View {
+		return NewTimelineView(db, hub)
+	}, liveOpts...)))
+
+	mux.Handle("/live/profile", authGuard(gl.Handler(func(_ context.Context) gl.View {
+		return NewProfileView(db, hub)
+	}, liveOpts...)))
+
+	mux.Handle("/live/post", authGuard(gl.Handler(func(_ context.Context) gl.View {
+		return NewPostDetailView(db, hub)
+	}, liveOpts...)))
+
+	mux.Handle("/live/messages", authGuard(gl.Handler(func(_ context.Context) gl.View {
+		return NewMessagesView(db, hub)
+	}, liveOpts...)))
+
+	mux.Handle("/live/search", authGuard(gl.Handler(func(_ context.Context) gl.View {
+		return NewSearchView(db, hub)
+	}, liveOpts...)))
+
+	mux.Handle("/live/settings", authGuard(gl.Handler(func(_ context.Context) gl.View {
+		return NewSettingsView(db, hub)
 	}, liveOpts...)))
 
 	handler := sessionMW(mux)
 
 	log.Printf("SNS running on http://localhost%s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, handler))
+	log.Fatal(http.ListenAndServe(*addr, g.Serve(handler)))
+}
+
+// fetchBadgeCounts retrieves notification and message badge counts for the current user.
+func fetchBadgeCounts(db *sql.DB, r *http.Request) badgeCounts {
+	sess := session.FromContext(r.Context())
+	if sess == nil {
+		return badgeCounts{}
+	}
+	uid, ok := sess.Get("user_id").(int64)
+	if !ok {
+		return badgeCounts{}
+	}
+	notif, _ := dbUnreadNotificationCount(db, uid)
+	msgs, _ := dbUnreadMessageCount(db, uid)
+	return badgeCounts{Notifications: notif, Messages: msgs}
+}
+
+// parseID parses a string to int64, returning 0 on failure.
+func parseID(s string) int64 {
+	id, _ := strconv.ParseInt(s, 10, 64)
+	return id
 }

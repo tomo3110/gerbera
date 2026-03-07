@@ -13,8 +13,6 @@ import (
 )
 
 // iconHeart returns an inline SVG heart icon wrapped in a span.
-// Using gd.Span wrapper ensures the button's Element tree children match the browser DOM
-// (g.Literal sets parent.Value, which creates phantom DOM elements not tracked by the diff engine).
 func iconHeart(filled bool) g.ComponentFunc {
 	if filled {
 		return gd.Span(g.Literal(`<svg class="icon-heart" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`))
@@ -58,6 +56,8 @@ func formatTimeAgo(t time.Time) string {
 }
 
 // postCard renders a single post card with actions.
+// Navigation to post detail and profile uses <a href> links (full page load).
+// Like/retweet/share actions are LiveView events handled by the enclosing View.
 func postCard(p PostWithMeta) g.ComponentFunc {
 	postIDStr := fmt.Sprintf("%d", p.Post.ID)
 	authorIDStr := fmt.Sprintf("%d", p.Author.ID)
@@ -78,16 +78,16 @@ func postCard(p PostWithMeta) g.ComponentFunc {
 		gd.Div(
 			gp.Class("post-header"),
 			avatar,
-			gd.Span(gp.Class("post-author"),
-				gl.Click("viewProfile"), gl.ClickValue(authorIDStr),
+			gd.A(gp.Class("post-author"),
+				gp.Attr("href", "/profile/"+authorIDStr),
 				gp.Value(p.Author.DisplayName),
 			),
 			gd.Span(gp.Class("post-username"), gp.Value("@"+p.Author.Username)),
 			gd.Span(gp.Class("post-time"), gp.Value(formatTimeAgo(p.Post.CreatedAt))),
 		),
-		gd.Div(
+		gd.A(
 			gp.Class("post-content"),
-			gl.Click("viewPost"), gl.ClickValue(postIDStr),
+			gp.Attr("href", "/post/"+postIDStr),
 			gp.Value(p.Post.Content),
 		),
 		expr.If(p.Post.ImagePath != "",
@@ -107,9 +107,9 @@ func postCard(p PostWithMeta) g.ComponentFunc {
 				iconRetweet(),
 				gd.Span(gp.Value(fmt.Sprintf("%d", p.RetweetCount))),
 			),
-			gd.Button(
+			gd.A(
 				gp.Class("post-action-btn"),
-				gl.Click("viewPost"), gl.ClickValue(postIDStr),
+				gp.Attr("href", "/post/"+postIDStr),
 				iconComment(),
 				gd.Span(gp.Value(fmt.Sprintf("%d", p.CommentCount))),
 			),
@@ -132,27 +132,6 @@ func avatarComponent(u User) g.ComponentFunc {
 		name = u.Username
 	}
 	return gu.LetterAvatar(name, gu.AvatarOpts{Size: "sm"})
-}
-
-// navLink renders a sidebar navigation link with optional badge.
-func navLink(icon, label, page string, active bool, badgeCount int) g.ComponentFunc {
-	cls := "sns-nav-link"
-	if active {
-		cls = "sns-nav-link active"
-	}
-	var children g.Components
-	children = append(children,
-		gp.Class(cls),
-		gl.Click("nav"), gl.ClickValue(page),
-		gu.Icon(icon, ""),
-		gd.Span(gp.Value(label)),
-	)
-	if badgeCount > 0 {
-		children = append(children,
-			gd.Span(gp.Class("sns-nav-badge"), gp.Value(fmt.Sprintf("%d", badgeCount))),
-		)
-	}
-	return gd.Button(children...)
 }
 
 // composeBox renders the post compose form.
@@ -186,4 +165,28 @@ func composeBox(draft string, charCount int) g.ComponentFunc {
 			),
 		),
 	)
+}
+
+// renderSearchUserItem renders a search result user item with a link to their profile.
+func renderSearchUserItem(u User) g.ComponentFunc {
+	avatar := avatarComponent(u)
+	return gd.A(
+		gp.Class("search-user-item"),
+		gp.Attr("href", fmt.Sprintf("/profile/%d", u.ID)),
+		avatar,
+		gd.Div(
+			gp.Class("search-user-info"),
+			gd.Strong(gp.Value(u.DisplayName)),
+			gd.Span(gp.Value("@"+u.Username)),
+		),
+	)
+}
+
+// truncate truncates a string to maxLen runes with "..." suffix.
+func truncate(s string, maxLen int) string {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen]) + "..."
 }
