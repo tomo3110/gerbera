@@ -12,6 +12,7 @@ import (
 	g "github.com/tomo3110/gerbera"
 	_ "github.com/tomo3110/gerbera/assets"
 	gd "github.com/tomo3110/gerbera/dom"
+	"github.com/tomo3110/gerbera/expr"
 	gl "github.com/tomo3110/gerbera/live"
 	gp "github.com/tomo3110/gerbera/property"
 	gu "github.com/tomo3110/gerbera/ui"
@@ -76,10 +77,78 @@ func userRows() [][]string {
 }
 
 // ---------------------------------------------------------------------------
-// SSR Layout — shared shell rendered on each page load
+// AdminView — single LiveView managing all pages
 // ---------------------------------------------------------------------------
 
-func adminPage(page string, liveEndpoint string) g.Components {
+type AdminView struct {
+	Page string
+
+	// Dashboard state
+	CalYear     int
+	CalMonth    time.Month
+	CalSelected *time.Time
+
+	// Users state
+	TablePage    int
+	SortCol      string
+	SortDir      string
+	ModalOpen    bool
+	SelectedUser int
+	ConfirmOpen  bool
+	DeleteTarget int
+	ToastVisible bool
+	ToastMessage string
+	ToastVariant string
+
+	// Messages state
+	ChatMessages []gu.ChatMessage
+	ChatDraft    string
+
+	// Settings state
+	ItemsPerPage int
+	NotifyFreq   int
+}
+
+func (v *AdminView) Mount(_ gl.Params) error {
+	v.Page = "dashboard"
+	v.initDashboard()
+	v.initUsers()
+	v.initMessages()
+	v.initSettings()
+	return nil
+}
+
+func (v *AdminView) initDashboard() {
+	now := time.Now()
+	v.CalYear = now.Year()
+	v.CalMonth = now.Month()
+}
+
+func (v *AdminView) initUsers() {
+	v.SortCol = "name"
+	v.SortDir = "asc"
+	v.SelectedUser = -1
+	v.DeleteTarget = -1
+}
+
+func (v *AdminView) initMessages() {
+	v.ChatMessages = []gu.ChatMessage{
+		{Author: "System", Content: "Welcome to Admin Messages.", Timestamp: "09:00", Sent: false},
+		{Author: "Alice Johnson", Content: "The new user report is ready for review.", Timestamp: "09:15", Sent: false, Avatar: "A"},
+		{Content: "Thanks, I'll take a look now.", Timestamp: "09:16", Sent: true},
+	}
+}
+
+func (v *AdminView) initSettings() {
+	v.ItemsPerPage = 10
+	v.NotifyFreq = 30
+}
+
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
+
+func (v *AdminView) Render() g.Components {
 	return g.Components{
 		gd.Head(
 			gd.Title("Admin Panel"),
@@ -87,133 +156,85 @@ func adminPage(page string, liveEndpoint string) g.Components {
 		),
 		gd.Body(
 			gu.AdminShell(
-				sidebar(page),
+				v.sidebar(),
 				gd.Div(gp.Class("g-page-body"),
-					gl.LiveMount(liveEndpoint),
+					expr.If(v.Page == "dashboard", v.renderDashboard()),
+					expr.If(v.Page == "users", v.renderUsers()),
+					expr.If(v.Page == "messages", v.renderMessages()),
+					expr.If(v.Page == "settings", v.renderSettings()),
 				),
 			),
 		),
 	}
 }
 
-func sidebar(active string) g.ComponentFunc {
+func (v *AdminView) sidebar() g.ComponentFunc {
 	return gu.Sidebar(
 		gu.SidebarHeader("Admin Panel"),
-		gu.SidebarLink("/admin", "Dashboard", active == "dashboard"),
-		gu.SidebarLink("/admin/users", "Users", active == "users"),
-		gu.SidebarLink("/admin/messages", "Messages", active == "messages"),
+		gu.SidebarLink("#", "Dashboard", v.Page == "dashboard", gl.Click("nav"), gl.ClickValue("dashboard")),
+		gu.SidebarLink("#", "Users", v.Page == "users", gl.Click("nav"), gl.ClickValue("users")),
+		gu.SidebarLink("#", "Messages", v.Page == "messages", gl.Click("nav"), gl.ClickValue("messages")),
 		gu.SidebarDivider(),
-		gu.SidebarLink("/admin/settings", "Settings", active == "settings"),
+		gu.SidebarLink("#", "Settings", v.Page == "settings", gl.Click("nav"), gl.ClickValue("settings")),
 	)
 }
 
 // ---------------------------------------------------------------------------
-// DashboardView — stats, recent activity, calendar
+// Dashboard page
 // ---------------------------------------------------------------------------
 
-type DashboardView struct {
-	CalYear     int
-	CalMonth    time.Month
-	CalSelected *time.Time
-}
-
-func (v *DashboardView) Mount(_ gl.Params) error {
-	now := time.Now()
-	v.CalYear = now.Year()
-	v.CalMonth = now.Month()
-	return nil
-}
-
-func (v *DashboardView) Render() g.Components {
-	return g.Components{
-		gd.Body(
-			gu.Stack(
-				gu.PageHeader("Dashboard",
-					gu.Breadcrumb(gu.BreadcrumbItem{Label: "Dashboard"}),
-				),
-				gu.Grid(gu.GridCols4,
-					gu.StatCard("Total Users", fmt.Sprintf("%d", len(users))),
-					gu.StatCard("Active Users", fmt.Sprintf("%d", countActive())),
-					gu.StatCard("Admins", fmt.Sprintf("%d", countByRole("Admin"))),
-					gu.StatCard("Editors", fmt.Sprintf("%d", countByRole("Editor"))),
-				),
-				gu.Grid(gu.GridCols2,
-					gu.Card(
-						gu.CardHeader("Recent Activity"),
-						gu.StyledTable(
-							gu.THead("User", "Action", "Time"),
-							gd.Tbody(
-								activityRow("Alice Johnson", "Updated profile", "2 min ago"),
-								activityRow("Bob Smith", "Uploaded document", "15 min ago"),
-								activityRow("Diana Prince", "Created post", "1 hour ago"),
-								activityRow("Frank Castle", "Deleted comment", "3 hours ago"),
-								activityRow("Grace Hopper", "Logged in", "5 hours ago"),
-							),
+func (v *AdminView) renderDashboard() g.ComponentFunc {
+	return func(n g.Node) {
+		gu.Stack(
+			gu.PageHeader("Dashboard",
+				gu.Breadcrumb(gu.BreadcrumbItem{Label: "Dashboard"}),
+			),
+			gu.Grid(gu.GridCols4,
+				gu.StatCard("Total Users", fmt.Sprintf("%d", len(users))),
+				gu.StatCard("Active Users", fmt.Sprintf("%d", countActive())),
+				gu.StatCard("Admins", fmt.Sprintf("%d", countByRole("Admin"))),
+				gu.StatCard("Editors", fmt.Sprintf("%d", countByRole("Editor"))),
+			),
+			gu.Grid(gu.GridCols2,
+				gu.Card(
+					gu.CardHeader("Recent Activity"),
+					gu.StyledTable(
+						gu.THead("User", "Action", "Time"),
+						gd.Tbody(
+							activityRow("Alice Johnson", "Updated profile", "2 min ago"),
+							activityRow("Bob Smith", "Uploaded document", "15 min ago"),
+							activityRow("Diana Prince", "Created post", "1 hour ago"),
+							activityRow("Frank Castle", "Deleted comment", "3 hours ago"),
+							activityRow("Grace Hopper", "Logged in", "5 hours ago"),
 						),
 					),
-					gu.Card(
-						gu.CardHeader("Calendar"),
-						gd.Div(gp.Class("g-page-body"),
-							gu.Calendar(gu.CalendarOpts{
-								Year:             v.CalYear,
-								Month:            v.CalMonth,
-								Selected:         v.CalSelected,
-								Today:            time.Now(),
-								SelectEvent:      "calSelect",
-								PrevMonthEvent:   "calPrev",
-								NextMonthEvent:   "calNext",
-								MonthChangeEvent: "calMonthChange",
-								YearChangeEvent:  "calYearChange",
-							}),
-							func(n g.Node) {
-								if v.CalSelected != nil {
-									gd.Div(gp.Attr("style", "margin-top:8px"),
-										gu.Badge(v.CalSelected.Format("2006-01-02"), "dark"),
-									)(n)
-								}
-							},
-						),
+				),
+				gu.Card(
+					gu.CardHeader("Calendar"),
+					gd.Div(gp.Class("g-page-body"),
+						gu.Calendar(gu.CalendarOpts{
+							Year:             v.CalYear,
+							Month:            v.CalMonth,
+							Selected:         v.CalSelected,
+							Today:            time.Now(),
+							SelectEvent:      "calSelect",
+							PrevMonthEvent:   "calPrev",
+							NextMonthEvent:   "calNext",
+							MonthChangeEvent: "calMonthChange",
+							YearChangeEvent:  "calYearChange",
+						}),
+						func(n g.Node) {
+							if v.CalSelected != nil {
+								gd.Div(gp.Attr("style", "margin-top:8px"),
+									gu.Badge(v.CalSelected.Format("2006-01-02"), "dark"),
+								)(n)
+							}
+						},
 					),
 				),
 			),
-		),
+		)(n)
 	}
-}
-
-func (v *DashboardView) HandleEvent(event string, payload gl.Payload) error {
-	switch event {
-	case "calSelect":
-		if dateStr := payload["value"]; dateStr != "" {
-			if t, err := time.Parse("2006-01-02", dateStr); err == nil {
-				v.CalSelected = &t
-			}
-		}
-	case "calPrev":
-		v.CalMonth--
-		if v.CalMonth < time.January {
-			v.CalMonth = time.December
-			v.CalYear--
-		}
-	case "calNext":
-		v.CalMonth++
-		if v.CalMonth > time.December {
-			v.CalMonth = time.January
-			v.CalYear++
-		}
-	case "calMonthChange":
-		var m int
-		fmt.Sscanf(payload["value"], "%d", &m)
-		if m >= 1 && m <= 12 {
-			v.CalMonth = time.Month(m)
-		}
-	case "calYearChange":
-		var y int
-		fmt.Sscanf(payload["value"], "%d", &y)
-		if y > 0 {
-			v.CalYear = y
-		}
-	}
-	return nil
 }
 
 func activityRow(name, action, timeAgo string) g.ComponentFunc {
@@ -225,45 +246,24 @@ func activityRow(name, action, timeAgo string) g.ComponentFunc {
 }
 
 // ---------------------------------------------------------------------------
-// UsersView — data table, modal, confirm dialog, toast
+// Users page
 // ---------------------------------------------------------------------------
 
-type UsersView struct {
-	TablePage    int
-	SortCol      string
-	SortDir      string
-	ModalOpen    bool
-	SelectedUser int
-	ConfirmOpen  bool
-	DeleteTarget int
-	ToastVisible bool
-	ToastMessage string
-	ToastVariant string
-}
+func (v *AdminView) renderUsers() g.ComponentFunc {
+	return func(n g.Node) {
+		rows := userRows()
+		pageSize := 8
+		start := v.TablePage * pageSize
+		end := start + pageSize
+		if end > len(rows) {
+			end = len(rows)
+		}
+		pageRows := rows[start:end]
 
-func (v *UsersView) Mount(_ gl.Params) error {
-	v.SortCol = "name"
-	v.SortDir = "asc"
-	v.SelectedUser = -1
-	v.DeleteTarget = -1
-	return nil
-}
-
-func (v *UsersView) Render() g.Components {
-	rows := userRows()
-	pageSize := 8
-	start := v.TablePage * pageSize
-	end := start + pageSize
-	if end > len(rows) {
-		end = len(rows)
-	}
-	pageRows := rows[start:end]
-
-	return g.Components{
-		gd.Body(
+		gd.Div(
 			gu.PageHeader("User Management",
 				gu.Breadcrumb(
-					gu.BreadcrumbItem{Label: "Dashboard", Href: "/admin"},
+					gu.BreadcrumbItem{Label: "Dashboard"},
 					gu.BreadcrumbItem{Label: "Users"},
 				),
 			),
@@ -289,45 +289,8 @@ func (v *UsersView) Render() g.Components {
 				"Are you sure you want to delete this user? This action cannot be undone.",
 				"doDelete", "cancelDelete"),
 			gul.Toast(v.ToastVisible, v.ToastMessage, v.ToastVariant, "dismissToast"),
-		),
+		)(n)
 	}
-}
-
-func (v *UsersView) HandleEvent(event string, payload gl.Payload) error {
-	switch event {
-	case "sort":
-		col := payload["value"]
-		if v.SortCol == col {
-			if v.SortDir == "asc" {
-				v.SortDir = "desc"
-			} else {
-				v.SortDir = "asc"
-			}
-		} else {
-			v.SortCol = col
-			v.SortDir = "asc"
-		}
-	case "userPage":
-		fmt.Sscanf(payload["value"], "%d", &v.TablePage)
-	case "viewUser":
-		fmt.Sscanf(payload["value"], "%d", &v.SelectedUser)
-		v.ModalOpen = true
-	case "closeUserModal":
-		v.ModalOpen = false
-	case "confirmDeleteUser":
-		fmt.Sscanf(payload["value"], "%d", &v.DeleteTarget)
-		v.ConfirmOpen = true
-	case "doDelete":
-		v.ConfirmOpen = false
-		v.ToastVisible = true
-		v.ToastMessage = "User deleted successfully."
-		v.ToastVariant = "success"
-	case "cancelDelete":
-		v.ConfirmOpen = false
-	case "dismissToast":
-		v.ToastVisible = false
-	}
-	return nil
 }
 
 func renderUserModal(open bool, idx int) g.ComponentFunc {
@@ -369,34 +332,20 @@ func statusBadge(status string) g.ComponentFunc {
 }
 
 // ---------------------------------------------------------------------------
-// MessagesView — chat
+// Messages page
 // ---------------------------------------------------------------------------
 
-type MessagesView struct {
-	ChatMessages []gu.ChatMessage
-	ChatDraft    string
-}
+func (v *AdminView) renderMessages() g.ComponentFunc {
+	return func(n g.Node) {
+		var msgViews g.Components
+		for _, m := range v.ChatMessages {
+			msgViews = append(msgViews, gu.ChatMessageView(m))
+		}
 
-func (v *MessagesView) Mount(_ gl.Params) error {
-	v.ChatMessages = []gu.ChatMessage{
-		{Author: "System", Content: "Welcome to Admin Messages.", Timestamp: "09:00", Sent: false},
-		{Author: "Alice Johnson", Content: "The new user report is ready for review.", Timestamp: "09:15", Sent: false, Avatar: "A"},
-		{Content: "Thanks, I'll take a look now.", Timestamp: "09:16", Sent: true},
-	}
-	return nil
-}
-
-func (v *MessagesView) Render() g.Components {
-	var msgViews g.Components
-	for _, m := range v.ChatMessages {
-		msgViews = append(msgViews, gu.ChatMessageView(m))
-	}
-
-	return g.Components{
-		gd.Body(
+		gd.Div(
 			gu.PageHeader("Messages",
 				gu.Breadcrumb(
-					gu.BreadcrumbItem{Label: "Dashboard", Href: "/admin"},
+					gu.BreadcrumbItem{Label: "Dashboard"},
 					gu.BreadcrumbItem{Label: "Messages"},
 				),
 			),
@@ -414,12 +363,148 @@ func (v *MessagesView) Render() g.Components {
 					}),
 				),
 			),
-		),
+		)(n)
 	}
 }
 
-func (v *MessagesView) HandleEvent(event string, payload gl.Payload) error {
+// ---------------------------------------------------------------------------
+// Settings page
+// ---------------------------------------------------------------------------
+
+func (v *AdminView) renderSettings() g.ComponentFunc {
+	return func(n g.Node) {
+		min0, max100 := 0, 100
+		min5, max50 := 5, 50
+
+		gu.Stack(
+			gu.PageHeader("Settings",
+				gu.Breadcrumb(
+					gu.BreadcrumbItem{Label: "Dashboard"},
+					gu.BreadcrumbItem{Label: "Settings"},
+				),
+			),
+			gu.Card(
+				gu.CardHeader("General Settings"),
+				gd.Div(gp.Class("g-page-body"),
+					gu.FormGroup(
+						gu.FormLabel("Site Name", "site-name"),
+						gu.FormInput("site-name", gp.ID("site-name"), gp.Attr("value", "My Admin Panel")),
+					),
+					gu.FormGroup(
+						gu.FormLabel("Language", "lang"),
+						gu.FormSelect("lang", []gu.FormOption{
+							{Value: "ja", Label: "Japanese"},
+							{Value: "en", Label: "English"},
+						}, gp.ID("lang")),
+					),
+					gu.Button("Save", gu.ButtonPrimary),
+				),
+			),
+			gu.Card(
+				gu.CardHeader("Display Settings"),
+				gd.Div(gp.Class("g-page-body"),
+					gu.FormGroup(
+						gu.FormLabel("Items per page", "items-per-page"),
+						gu.NumberInput("items-per-page", v.ItemsPerPage, gu.NumberInputOpts{
+							Min:            &min5,
+							Max:            &max50,
+							Step:           5,
+							IncrementEvent: "settingsItemsInc",
+							DecrementEvent: "settingsItemsDec",
+						}),
+					),
+					gu.FormGroup(
+						gu.FormLabel("Notification frequency (minutes)", "notify-freq"),
+						gu.Slider("notify-freq", v.NotifyFreq, gu.SliderOpts{
+							Min:        min0,
+							Max:        max100,
+							Step:       5,
+							Label:      "Frequency",
+							InputEvent: "settingsNotifyFreq",
+						}),
+					),
+				),
+			),
+		)(n)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// HandleEvent — all events for all pages
+// ---------------------------------------------------------------------------
+
+func (v *AdminView) HandleEvent(event string, payload gl.Payload) error {
 	switch event {
+	// Navigation
+	case "nav":
+		v.Page = payload["value"]
+
+	// Dashboard — calendar
+	case "calSelect":
+		if dateStr := payload["value"]; dateStr != "" {
+			if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+				v.CalSelected = &t
+			}
+		}
+	case "calPrev":
+		v.CalMonth--
+		if v.CalMonth < time.January {
+			v.CalMonth = time.December
+			v.CalYear--
+		}
+	case "calNext":
+		v.CalMonth++
+		if v.CalMonth > time.December {
+			v.CalMonth = time.January
+			v.CalYear++
+		}
+	case "calMonthChange":
+		var m int
+		fmt.Sscanf(payload["value"], "%d", &m)
+		if m >= 1 && m <= 12 {
+			v.CalMonth = time.Month(m)
+		}
+	case "calYearChange":
+		var y int
+		fmt.Sscanf(payload["value"], "%d", &y)
+		if y > 0 {
+			v.CalYear = y
+		}
+
+	// Users — table, modal, confirm, toast
+	case "sort":
+		col := payload["value"]
+		if v.SortCol == col {
+			if v.SortDir == "asc" {
+				v.SortDir = "desc"
+			} else {
+				v.SortDir = "asc"
+			}
+		} else {
+			v.SortCol = col
+			v.SortDir = "asc"
+		}
+	case "userPage":
+		fmt.Sscanf(payload["value"], "%d", &v.TablePage)
+	case "viewUser":
+		fmt.Sscanf(payload["value"], "%d", &v.SelectedUser)
+		v.ModalOpen = true
+	case "closeUserModal":
+		v.ModalOpen = false
+	case "confirmDeleteUser":
+		fmt.Sscanf(payload["value"], "%d", &v.DeleteTarget)
+		v.ConfirmOpen = true
+	case "doDelete":
+		v.ConfirmOpen = false
+		v.ToastVisible = true
+		v.ToastMessage = "User deleted successfully."
+		v.ToastVariant = "success"
+	case "cancelDelete":
+		v.ConfirmOpen = false
+	case "dismissToast":
+		v.ToastVisible = false
+
+	// Messages — chat
 	case "chatInput":
 		v.ChatDraft = payload["value"]
 	case "chatSend", "chatKeydown":
@@ -434,87 +519,8 @@ func (v *MessagesView) HandleEvent(event string, payload gl.Payload) error {
 			})
 			v.ChatDraft = ""
 		}
-	}
-	return nil
-}
 
-// ---------------------------------------------------------------------------
-// SettingsView — form inputs, number input, slider
-// ---------------------------------------------------------------------------
-
-type SettingsView struct {
-	ItemsPerPage int
-	NotifyFreq   int
-}
-
-func (v *SettingsView) Mount(_ gl.Params) error {
-	v.ItemsPerPage = 10
-	v.NotifyFreq = 30
-	return nil
-}
-
-func (v *SettingsView) Render() g.Components {
-	min0, max100 := 0, 100
-	min5, max50 := 5, 50
-
-	return g.Components{
-		gd.Body(
-			gu.PageHeader("Settings",
-				gu.Breadcrumb(
-					gu.BreadcrumbItem{Label: "Dashboard", Href: "/admin"},
-					gu.BreadcrumbItem{Label: "Settings"},
-				),
-			),
-			gu.Stack(
-				gu.Card(
-					gu.CardHeader("General Settings"),
-					gd.Div(gp.Class("g-page-body"),
-						gu.FormGroup(
-							gu.FormLabel("Site Name", "site-name"),
-							gu.FormInput("site-name", gp.ID("site-name"), gp.Attr("value", "My Admin Panel")),
-						),
-						gu.FormGroup(
-							gu.FormLabel("Language", "lang"),
-							gu.FormSelect("lang", []gu.FormOption{
-								{Value: "ja", Label: "Japanese"},
-								{Value: "en", Label: "English"},
-							}, gp.ID("lang")),
-						),
-						gu.Button("Save", gu.ButtonPrimary),
-					),
-				),
-				gu.Card(
-					gu.CardHeader("Display Settings"),
-					gd.Div(gp.Class("g-page-body"),
-						gu.FormGroup(
-							gu.FormLabel("Items per page", "items-per-page"),
-							gu.NumberInput("items-per-page", v.ItemsPerPage, gu.NumberInputOpts{
-								Min:            &min5,
-								Max:            &max50,
-								Step:           5,
-								IncrementEvent: "settingsItemsInc",
-								DecrementEvent: "settingsItemsDec",
-							}),
-						),
-						gu.FormGroup(
-							gu.FormLabel("Notification frequency (minutes)", "notify-freq"),
-							gu.Slider("notify-freq", v.NotifyFreq, gu.SliderOpts{
-								Min:        min0,
-								Max:        max100,
-								Step:       5,
-								Label:      "Frequency",
-								InputEvent: "settingsNotifyFreq",
-							}),
-						),
-					),
-				),
-			),
-		),
-	}
-}
-
-func (v *SettingsView) HandleEvent(event string, payload gl.Payload) error {
-	switch event {
+	// Settings
 	case "settingsItemsInc":
 		v.ItemsPerPage += 5
 		if v.ItemsPerPage > 50 {
@@ -532,7 +538,7 @@ func (v *SettingsView) HandleEvent(event string, payload gl.Payload) error {
 }
 
 // ---------------------------------------------------------------------------
-// main — SSR pages + LiveMount endpoints
+// main
 // ---------------------------------------------------------------------------
 
 func main() {
@@ -546,23 +552,9 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-
-	// SSR pages — each embeds a LiveMount for its interactive section
-	mux.Handle("GET /admin", g.Handler(adminPage("dashboard", "/admin/live/dashboard")...))
-	mux.Handle("GET /admin/users", g.Handler(adminPage("users", "/admin/live/users")...))
-	mux.Handle("GET /admin/messages", g.Handler(adminPage("messages", "/admin/live/messages")...))
-	mux.Handle("GET /admin/settings", g.Handler(adminPage("settings", "/admin/live/settings")...))
-
-	// LiveView endpoints for LiveMount
-	mux.Handle("/admin/live/dashboard", gl.Handler(func(_ context.Context) gl.View { return &DashboardView{} }, opts...))
-	mux.Handle("/admin/live/users", gl.Handler(func(_ context.Context) gl.View { return &UsersView{} }, opts...))
-	mux.Handle("/admin/live/messages", gl.Handler(func(_ context.Context) gl.View { return &MessagesView{} }, opts...))
-	mux.Handle("/admin/live/settings", gl.Handler(func(_ context.Context) gl.View { return &SettingsView{} }, opts...))
-
-	// Redirect root to /admin
-	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin", http.StatusFound)
-	})
+	mux.Handle("/", gl.Handler(func(_ context.Context) gl.View {
+		return &AdminView{}
+	}, opts...))
 
 	log.Printf("admin running on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, g.Serve(mux)))
