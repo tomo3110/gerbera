@@ -3,6 +3,7 @@ package gerbera
 import (
 	"sort"
 	"strings"
+	"sync"
 )
 
 // Attribute represents a key-value attribute pair on a Node.
@@ -33,6 +34,16 @@ type Node interface {
 	// SetKey sets the reconciliation key for diffing.
 	SetKey(key string)
 
+	// --- Metadata (shared across tree) ---
+
+	// SetMeta sets tree-wide metadata under the given key.
+	// All nodes in the same tree share the same metadata store,
+	// so SetMeta called on any node is visible from any other node.
+	SetMeta(key string, val any)
+
+	// Meta returns the metadata value for the given key, or nil if not set.
+	Meta(key string) any
+
 	// --- Read (used by diff) ---
 
 	// Tag returns the tag name of this node.
@@ -51,6 +62,12 @@ type Node interface {
 	Children() []Node
 }
 
+// renderMeta is a tree-wide metadata store shared by all nodes in the same tree.
+type renderMeta struct {
+	mu   sync.Mutex
+	data map[string]any
+}
+
 // Element is the default implementation of Node.
 // It represents an HTML element in the tree.
 type Element struct {
@@ -60,10 +77,11 @@ type Element struct {
 	Attr       AttrMap
 	ChildElems []*Element
 	Value      string
+	meta       *renderMeta
 }
 
 func (el *Element) AppendElement(tag string) Node {
-	child := &Element{TagName: tag}
+	child := &Element{TagName: tag, meta: el.ensureMeta()}
 	el.ChildElems = append(el.ChildElems, child)
 	return child
 }
@@ -92,6 +110,27 @@ func (el *Element) SetText(text string) {
 
 func (el *Element) SetKey(key string) {
 	el.Key = key
+}
+
+func (el *Element) ensureMeta() *renderMeta {
+	if el.meta == nil {
+		el.meta = &renderMeta{data: map[string]any{}}
+	}
+	return el.meta
+}
+
+func (el *Element) SetMeta(key string, val any) {
+	m := el.ensureMeta()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.data[key] = val
+}
+
+func (el *Element) Meta(key string) any {
+	m := el.ensureMeta()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.data[key]
 }
 
 // --- Read methods ---

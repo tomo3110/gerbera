@@ -1,7 +1,10 @@
 package live
 
 import (
+	"net/url"
+
 	"github.com/tomo3110/gerbera"
+	"github.com/tomo3110/gerbera/assets"
 	"github.com/tomo3110/gerbera/property"
 )
 
@@ -79,6 +82,10 @@ func LiveMount(path string, opts ...MountOption) gerbera.ComponentFunc {
 		property.Attr("gerbera-live", path),
 		property.Attr("gerbera-live-id", generateID()),
 		func(n gerbera.Node) {
+			// Register gerbera.js for automatic injection (deduplicated)
+			jsURL, _ := url.Parse(assets.JSPath())
+			assets.RequireScript(n, jsURL)
+
 			for _, opt := range opts {
 				opt(n)
 			}

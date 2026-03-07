@@ -30,6 +30,7 @@ func (t *Template) init() {
 	t.el.Attr = AttrMap{"lang": lang}
 	t.el.ClassNames = nil
 	t.el.ChildElems = nil
+	t.el.meta = &renderMeta{data: map[string]any{}}
 	if t.buf == nil {
 		t.buf = bufPool.Get().(*bytes.Buffer)
 	}
