@@ -14,7 +14,7 @@ type Session struct {
 	ID        string
 	CSRFToken string
 	View      View
-	tree      *gerbera.Element
+	tree      gerbera.Node
 	lastSeen  time.Time
 	mu        sync.Mutex
 	infoCh    chan any // channel for HandleInfo messages

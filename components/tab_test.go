@@ -11,12 +11,12 @@ import (
 // helper builds a parent element and applies the ComponentFunc.
 func buildTab(t *testing.T, cf gerbera.ComponentFunc) *gerbera.Element {
 	t.Helper()
-	parent := &gerbera.Element{TagName: "div", Children: make([]*gerbera.Element, 0)}
+	parent := &gerbera.Element{TagName: "div", ChildElems: make([]*gerbera.Element, 0)}
 	cf(parent)
-	if len(parent.Children) == 0 {
+	if len(parent.ChildElems) == 0 {
 		t.Fatal("expected at least one child element")
 	}
-	return parent.Children[0]
+	return parent.ChildElems[0]
 }
 
 func TestTabs_Structure(t *testing.T) {
@@ -38,20 +38,20 @@ func TestTabs_Structure(t *testing.T) {
 	}
 
 	// Should have 3 children: tablist + 2 panels
-	if len(wrapper.Children) != 3 {
-		t.Fatalf("wrapper children: got %d, want 3", len(wrapper.Children))
+	if len(wrapper.ChildElems) != 3 {
+		t.Fatalf("wrapper children: got %d, want 3", len(wrapper.ChildElems))
 	}
 
-	tablist := wrapper.Children[0]
+	tablist := wrapper.ChildElems[0]
 	if tablist.Attr["role"] != "tablist" {
 		t.Errorf("tablist role: got %q, want %q", tablist.Attr["role"], "tablist")
 	}
 
 	// Tablist should have 2 buttons
-	if len(tablist.Children) != 2 {
-		t.Fatalf("tablist children: got %d, want 2", len(tablist.Children))
+	if len(tablist.ChildElems) != 2 {
+		t.Fatalf("tablist children: got %d, want 2", len(tablist.ChildElems))
 	}
-	for _, btn := range tablist.Children {
+	for _, btn := range tablist.ChildElems {
 		if btn.TagName != "button" {
 			t.Errorf("tab button tag: got %q, want %q", btn.TagName, "button")
 		}
@@ -69,10 +69,10 @@ func TestTabs_ActiveTab(t *testing.T) {
 	}
 	wrapper := buildTab(t, Tabs("t", 1, tabs))
 
-	tablist := wrapper.Children[0]
+	tablist := wrapper.ChildElems[0]
 
 	// Check aria-selected
-	for i, btn := range tablist.Children {
+	for i, btn := range tablist.ChildElems {
 		got := btn.Attr["aria-selected"]
 		if i == 1 {
 			if got != "true" {
@@ -99,7 +99,7 @@ func TestTabs_ActiveTab(t *testing.T) {
 
 	// Check panels: only activeIndex=1 should not have hidden
 	for i := 0; i < 3; i++ {
-		panel := wrapper.Children[i+1] // panels start after tablist
+		panel := wrapper.ChildElems[i+1] // panels start after tablist
 		_, hasHidden := panel.Attr["hidden"]
 		if i == 1 {
 			if hasHidden {
@@ -120,10 +120,10 @@ func TestTabs_AriaLinks(t *testing.T) {
 	}
 	wrapper := buildTab(t, Tabs("my-tabs", 0, tabs))
 
-	tablist := wrapper.Children[0]
+	tablist := wrapper.ChildElems[0]
 	for i := 0; i < 2; i++ {
-		btn := tablist.Children[i]
-		panel := wrapper.Children[i+1]
+		btn := tablist.ChildElems[i]
+		panel := wrapper.ChildElems[i+1]
 
 		expectedTabID := "my-tabs-tab-" + string(rune('0'+i))
 		expectedPanelID := "my-tabs-panel-" + string(rune('0'+i))
@@ -156,7 +156,7 @@ func TestTabs_ButtonAttrs(t *testing.T) {
 	}
 	wrapper := buildTab(t, Tabs("btn-test", 0, tabs))
 
-	btn := wrapper.Children[0].Children[0]
+	btn := wrapper.ChildElems[0].ChildElems[0]
 	if btn.Attr["gerbera-click"] != "switch-tab" {
 		t.Errorf("button gerbera-click: got %q, want %q", btn.Attr["gerbera-click"], "switch-tab")
 	}
@@ -172,8 +172,8 @@ func TestTabs_EmptyTabs(t *testing.T) {
 		t.Errorf("wrapper tag: got %q, want %q", wrapper.TagName, "div")
 	}
 	// Only tablist child, no panels
-	if len(wrapper.Children) != 1 {
-		t.Errorf("wrapper children: got %d, want 1 (just tablist)", len(wrapper.Children))
+	if len(wrapper.ChildElems) != 1 {
+		t.Errorf("wrapper children: got %d, want 1 (just tablist)", len(wrapper.ChildElems))
 	}
 }
 
@@ -183,13 +183,13 @@ func TestTabs_OutOfRangeIndex(t *testing.T) {
 	}
 	// activeIndex=5 is out of range — should not panic, all panels hidden
 	wrapper := buildTab(t, Tabs("oor", 5, tabs))
-	panel := wrapper.Children[1]
+	panel := wrapper.ChildElems[1]
 	if _, hasHidden := panel.Attr["hidden"]; !hasHidden {
 		t.Error("panel should have hidden attribute when activeIndex is out of range")
 	}
 
 	// Button should not be marked active
-	btn := wrapper.Children[0].Children[0]
+	btn := wrapper.ChildElems[0].ChildElems[0]
 	if btn.Attr["aria-selected"] != "false" {
 		t.Errorf("button aria-selected: got %q, want %q", btn.Attr["aria-selected"], "false")
 	}
@@ -201,19 +201,19 @@ func TestTabs_NegativeIndex(t *testing.T) {
 	}
 	// Should not panic with negative index
 	wrapper := buildTab(t, Tabs("neg", -1, tabs))
-	panel := wrapper.Children[1]
+	panel := wrapper.ChildElems[1]
 	if _, hasHidden := panel.Attr["hidden"]; !hasHidden {
 		t.Error("panel should have hidden attribute when activeIndex is negative")
 	}
 }
 
 func TestTabsDefaultCSS(t *testing.T) {
-	parent := &gerbera.Element{TagName: "head", Children: make([]*gerbera.Element, 0)}
+	parent := &gerbera.Element{TagName: "head", ChildElems: make([]*gerbera.Element, 0)}
 	TabsDefaultCSS()(parent)
-	if len(parent.Children) == 0 {
+	if len(parent.ChildElems) == 0 {
 		t.Fatal("expected a child element")
 	}
-	style := parent.Children[0]
+	style := parent.ChildElems[0]
 	if style.TagName != "style" {
 		t.Errorf("tag: got %q, want %q", style.TagName, "style")
 	}
@@ -238,7 +238,7 @@ func TestTabs_NilContent(t *testing.T) {
 	}
 	// Should not panic with nil Content
 	wrapper := buildTab(t, Tabs("nil-content", 0, tabs))
-	panel := wrapper.Children[1]
+	panel := wrapper.ChildElems[1]
 	if panel.Attr["role"] != "tabpanel" {
 		t.Errorf("panel role: got %q, want %q", panel.Attr["role"], "tabpanel")
 	}

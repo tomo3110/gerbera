@@ -13,12 +13,12 @@ const (
 	DefaultTailwindVersion    = "4"
 )
 
-// ensureDefaults inspects parent.Children for charset and viewport meta tags,
+// ensureDefaults inspects parent.ChildElems for charset and viewport meta tags,
 // adding any that are missing. charset is prepended; viewport is appended.
 func ensureDefaults(parent *gerbera.Element) {
 	hasCharset := false
 	hasViewport := false
-	for _, child := range parent.Children {
+	for _, child := range parent.ChildElems {
 		if child.TagName != "meta" {
 			continue
 		}
@@ -34,7 +34,7 @@ func ensureDefaults(parent *gerbera.Element) {
 			TagName: "meta",
 			Attr:    gerbera.AttrMap{"charset": "utf-8"},
 		}
-		parent.Children = append([]*gerbera.Element{meta}, parent.Children...)
+		parent.ChildElems = append([]*gerbera.Element{meta}, parent.ChildElems...)
 	}
 	if !hasViewport {
 		meta := &gerbera.Element{
@@ -44,7 +44,7 @@ func ensureDefaults(parent *gerbera.Element) {
 				"content": "width=device-width, initial-scale=1",
 			},
 		}
-		parent.Children = append(parent.Children, meta)
+		parent.ChildElems = append(parent.ChildElems, meta)
 	}
 }
 
@@ -87,7 +87,7 @@ func BootstrapCSS(version ...string) gerbera.ComponentFunc {
 			scriptAttr["integrity"] = "sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
 			scriptAttr["crossorigin"] = "anonymous"
 		}
-		parent.Children = append(parent.Children,
+		parent.ChildElems = append(parent.ChildElems,
 			&gerbera.Element{TagName: "link", Attr: linkAttr},
 			&gerbera.Element{TagName: "script", Attr: scriptAttr},
 		)
@@ -108,7 +108,7 @@ func MaterializeCSS(version ...string) gerbera.ComponentFunc {
 			return
 		}
 		ensureDefaults(parent)
-		parent.Children = append(parent.Children,
+		parent.ChildElems = append(parent.ChildElems,
 			&gerbera.Element{
 				TagName: "link",
 				Attr: gerbera.AttrMap{
@@ -140,7 +140,7 @@ func TailwindCSS(version ...string) gerbera.ComponentFunc {
 			return
 		}
 		ensureDefaults(parent)
-		parent.Children = append(parent.Children,
+		parent.ChildElems = append(parent.ChildElems,
 			&gerbera.Element{
 				TagName: "script",
 				Attr: gerbera.AttrMap{

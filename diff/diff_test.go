@@ -10,7 +10,7 @@ func el(tag string, value string, children ...*gerbera.Element) *gerbera.Element
 	return &gerbera.Element{
 		TagName:    tag,
 		Value:      value,
-		Children:   children,
+		ChildElems:   children,
 		ClassNames: make(gerbera.ClassMap),
 		Attr:       make(gerbera.AttrMap),
 	}
@@ -21,7 +21,7 @@ func elWithAttr(tag string, attr gerbera.AttrMap) *gerbera.Element {
 		TagName:    tag,
 		Attr:       attr,
 		ClassNames: make(gerbera.ClassMap),
-		Children:   []*gerbera.Element{},
+		ChildElems:   []*gerbera.Element{},
 	}
 }
 
@@ -34,7 +34,7 @@ func elWithClass(tag string, classes ...string) *gerbera.Element {
 		TagName:    tag,
 		ClassNames: cm,
 		Attr:       make(gerbera.AttrMap),
-		Children:   []*gerbera.Element{},
+		ChildElems:   []*gerbera.Element{},
 	}
 }
 
@@ -254,7 +254,7 @@ func elWithKey(tag, key, value string, children ...*gerbera.Element) *gerbera.El
 		TagName:    tag,
 		Key:        key,
 		Value:      value,
-		Children:   children,
+		ChildElems:   children,
 		ClassNames: make(gerbera.ClassMap),
 		Attr:       make(gerbera.AttrMap),
 	}
@@ -299,6 +299,127 @@ func TestDiffKeyOneEmpty(t *testing.T) {
 	}
 	if patches[0].Op != OpReplace {
 		t.Errorf("expected OpReplace when one side has key and other doesn't, got %s", patches[0].Op)
+	}
+}
+
+// --- TestNode: lightweight Node implementation for platform-independent diff testing ---
+
+type testNode struct {
+	tag      string
+	key      string
+	text     string
+	attrs    []gerbera.Attribute
+	children []*testNode
+}
+
+func (n *testNode) AppendElement(tag string) gerbera.Node {
+	child := &testNode{tag: tag}
+	n.children = append(n.children, child)
+	return child
+}
+func (n *testNode) SetAttribute(key, value string) {
+	n.attrs = append(n.attrs, gerbera.Attribute{Key: key, Value: value})
+}
+func (n *testNode) AddClass(name string)  {}
+func (n *testNode) SetText(text string)   { n.text = text }
+func (n *testNode) SetKey(key string)     { n.key = key }
+func (n *testNode) Tag() string           { return n.tag }
+func (n *testNode) NodeKey() string       { return n.key }
+func (n *testNode) Text() string          { return n.text }
+func (n *testNode) Attributes() []gerbera.Attribute { return n.attrs }
+func (n *testNode) Children() []gerbera.Node {
+	nodes := make([]gerbera.Node, len(n.children))
+	for i, c := range n.children {
+		nodes[i] = c
+	}
+	return nodes
+}
+
+func tn(tag, text string, children ...*testNode) *testNode {
+	return &testNode{tag: tag, text: text, children: children}
+}
+
+func tnWithAttr(tag string, attrs ...gerbera.Attribute) *testNode {
+	return &testNode{tag: tag, attrs: attrs}
+}
+
+// TestDiffWithTestNode verifies that diff works with a non-Element Node implementation.
+func TestDiffWithTestNode(t *testing.T) {
+	old := tn("box", "hello")
+	new := tn("box", "world")
+
+	patches := Diff(old, new)
+	if len(patches) != 1 {
+		t.Fatalf("expected 1 patch, got %d", len(patches))
+	}
+	if patches[0].Op != OpSetText {
+		t.Errorf("expected OpSetText, got %s", patches[0].Op)
+	}
+	if patches[0].Value != "world" {
+		t.Errorf("expected 'world', got '%s'", patches[0].Value)
+	}
+}
+
+// TestDiffTestNodeReplace verifies tag-change detection on a custom Node.
+func TestDiffTestNodeReplace(t *testing.T) {
+	old := tn("box", "")
+	new := tn("panel", "text")
+
+	patches := Diff(old, new)
+	if len(patches) != 1 {
+		t.Fatalf("expected 1 patch, got %d", len(patches))
+	}
+	if patches[0].Op != OpReplace {
+		t.Errorf("expected OpReplace, got %s", patches[0].Op)
+	}
+}
+
+// TestDiffTestNodeAttributes verifies attribute comparison on a custom Node.
+func TestDiffTestNodeAttributes(t *testing.T) {
+	old := tnWithAttr("box", gerbera.Attribute{Key: "color", Value: "red"})
+	new := tnWithAttr("box", gerbera.Attribute{Key: "color", Value: "blue"})
+
+	patches := Diff(old, new)
+	found := false
+	for _, p := range patches {
+		if p.Op == OpSetAttr && p.Key == "color" && p.Value == "blue" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected OpSetAttr patch for color=blue")
+	}
+}
+
+// TestDiffTestNodeChildren verifies child-node comparison on a custom Node.
+func TestDiffTestNodeChildren(t *testing.T) {
+	old := tn("container", "", tn("item", "a"))
+	new := tn("container", "", tn("item", "a"), tn("item", "b"))
+
+	patches := Diff(old, new)
+	found := false
+	for _, p := range patches {
+		if p.Op == OpInsert && p.Index == 1 {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected OpInsert patch at index 1")
+	}
+}
+
+// TestDiffMixedNodeTypes verifies that diff works when comparing
+// Element against TestNode (both implement Node).
+func TestDiffMixedNodeTypes(t *testing.T) {
+	old := tn("div", "hello")
+	new := el("div", "world")
+
+	patches := Diff(old, new)
+	if len(patches) != 1 {
+		t.Fatalf("expected 1 patch, got %d", len(patches))
+	}
+	if patches[0].Op != OpSetText {
+		t.Errorf("expected OpSetText, got %s", patches[0].Op)
 	}
 }
 

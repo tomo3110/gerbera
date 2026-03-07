@@ -11,7 +11,7 @@ import (
 // without a real WebSocket connection.
 type TestView struct {
 	View     View
-	tree     *gerbera.Element
+	tree     gerbera.Node
 	Patches  []diff.Patch
 	Rendered bool
 }

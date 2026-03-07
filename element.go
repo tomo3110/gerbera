@@ -1,8 +1,22 @@
 package gerbera
 
-// Node is the interface for building HTML element trees.
-// ComponentFuncs operate on Nodes to add children, attributes, and text.
+import (
+	"sort"
+	"strings"
+)
+
+// Attribute represents a key-value attribute pair on a Node.
+type Attribute struct {
+	Key   string
+	Value string
+}
+
+// Node is the interface for building and reading HTML element trees.
+// Write methods are used by ComponentFuncs to construct trees.
+// Read methods are used by diff to compare trees in a platform-independent way.
 type Node interface {
+	// --- Write (used by ComponentFunc) ---
+
 	// AppendElement adds a child element with the given tag name and returns it.
 	// The returned Node can be further modified by ComponentFuncs.
 	AppendElement(tag string) Node
@@ -18,6 +32,23 @@ type Node interface {
 
 	// SetKey sets the reconciliation key for diffing.
 	SetKey(key string)
+
+	// --- Read (used by diff) ---
+
+	// Tag returns the tag name of this node.
+	Tag() string
+
+	// NodeKey returns the reconciliation key for this node.
+	NodeKey() string
+
+	// Attributes returns all attributes of this node, including the class attribute.
+	Attributes() []Attribute
+
+	// Text returns the text content of this node.
+	Text() string
+
+	// Children returns the child nodes of this node.
+	Children() []Node
 }
 
 // Element is the default implementation of Node.
@@ -27,13 +58,13 @@ type Element struct {
 	Key        string
 	ClassNames ClassMap
 	Attr       AttrMap
-	Children   []*Element
+	ChildElems []*Element
 	Value      string
 }
 
 func (el *Element) AppendElement(tag string) Node {
 	child := &Element{TagName: tag}
-	el.Children = append(el.Children, child)
+	el.ChildElems = append(el.ChildElems, child)
 	return child
 }
 
@@ -61,5 +92,55 @@ func (el *Element) SetText(text string) {
 
 func (el *Element) SetKey(key string) {
 	el.Key = key
+}
+
+// --- Read methods ---
+
+func (el *Element) Tag() string {
+	return el.TagName
+}
+
+func (el *Element) NodeKey() string {
+	return el.Key
+}
+
+func (el *Element) Attributes() []Attribute {
+	var attrs []Attribute
+
+	// Include class attribute from ClassNames
+	if len(el.ClassNames) > 0 {
+		names := make([]string, 0, len(el.ClassNames))
+		for name := range el.ClassNames {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		attrs = append(attrs, Attribute{Key: "class", Value: strings.Join(names, " ")})
+	}
+
+	// Include regular attributes in sorted order for deterministic output
+	if len(el.Attr) > 0 {
+		keys := make([]string, 0, len(el.Attr))
+		for k := range el.Attr {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			attrs = append(attrs, Attribute{Key: k, Value: el.Attr[k]})
+		}
+	}
+
+	return attrs
+}
+
+func (el *Element) Text() string {
+	return el.Value
+}
+
+func (el *Element) Children() []Node {
+	nodes := make([]Node, len(el.ChildElems))
+	for i, c := range el.ChildElems {
+		nodes[i] = c
+	}
+	return nodes
 }
 

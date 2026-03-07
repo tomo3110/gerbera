@@ -19,7 +19,7 @@ func buildHead(t *testing.T, children ...gerbera.ComponentFunc) *gerbera.Element
 
 // hasChild returns true if parent has a child matching tagName with all specified attrs.
 func hasChild(parent *gerbera.Element, tagName string, attrs map[string]string) bool {
-	for _, child := range parent.Children {
+	for _, child := range parent.ChildElems {
 		if child.TagName != tagName {
 			continue
 		}
@@ -40,7 +40,7 @@ func hasChild(parent *gerbera.Element, tagName string, attrs map[string]string) 
 // countChildren counts children matching tagName and the given attrs.
 func countChildren(parent *gerbera.Element, tagName string, attrs map[string]string) int {
 	count := 0
-	for _, child := range parent.Children {
+	for _, child := range parent.ChildElems {
 		if child.TagName != tagName {
 			continue
 		}
@@ -141,7 +141,7 @@ func TestEnsureDefaults_NoDoubleCharset(t *testing.T) {
 	}
 	head := &gerbera.Element{
 		TagName:  "head",
-		Children: []*gerbera.Element{charsetMeta},
+		ChildElems: []*gerbera.Element{charsetMeta},
 	}
 	BootstrapCSS()(head)
 	count := countChildren(head, "meta", map[string]string{"charset": "utf-8"})
@@ -161,7 +161,7 @@ func TestEnsureDefaults_NoDoubleViewport(t *testing.T) {
 	}
 	head := &gerbera.Element{
 		TagName:  "head",
-		Children: []*gerbera.Element{viewportMeta},
+		ChildElems: []*gerbera.Element{viewportMeta},
 	}
 	MaterializeCSS()(head)
 	count := countChildren(head, "meta", map[string]string{"name": "viewport"})
@@ -184,12 +184,12 @@ func TestEnsureDefaults_BothPresent(t *testing.T) {
 	}
 	head := &gerbera.Element{
 		TagName:  "head",
-		Children: []*gerbera.Element{charsetMeta, viewportMeta},
+		ChildElems: []*gerbera.Element{charsetMeta, viewportMeta},
 	}
-	before := len(head.Children)
+	before := len(head.ChildElems)
 	TailwindCSS()(head)
 	// Should only have added the Tailwind script (no new meta tags)
-	added := len(head.Children) - before
+	added := len(head.ChildElems) - before
 	if added != 1 {
 		t.Errorf("expected 1 new child (script), got %d", added)
 	}
@@ -200,11 +200,11 @@ func TestBootstrapCSS_CharsetPrepended(t *testing.T) {
 	title := &gerbera.Element{TagName: "title", Value: "Test"}
 	head := &gerbera.Element{
 		TagName:  "head",
-		Children: []*gerbera.Element{title},
+		ChildElems: []*gerbera.Element{title},
 	}
 	BootstrapCSS()(head)
 	// charset should be the first child
-	first := head.Children[0]
+	first := head.ChildElems[0]
 	if first.TagName != "meta" || first.Attr["charset"] != "utf-8" {
 		t.Errorf("first child should be charset meta, got %s with attr %v", first.TagName, first.Attr)
 	}
@@ -227,7 +227,7 @@ func TestBootstrapCSS_CustomVersion(t *testing.T) {
 		t.Error("missing Bootstrap 5.2.0 JS script")
 	}
 	// SRI hash should NOT be present for custom version
-	for _, child := range head.Children {
+	for _, child := range head.ChildElems {
 		if child.TagName == "link" || child.TagName == "script" {
 			if _, ok := child.Attr["integrity"]; ok {
 				t.Errorf("integrity attribute should not be present for custom version on %s", child.TagName)
@@ -270,7 +270,7 @@ func TestBootstrapCSS_IntegrationWithRender(t *testing.T) {
 
 	// Simulate dom.Title("My Page") — Tag("title", Value("My Page"))
 	titleEl := &gerbera.Element{TagName: "title", Value: "My Page"}
-	head.Children = append(head.Children, titleEl)
+	head.ChildElems = append(head.ChildElems, titleEl)
 
 	BootstrapCSS()(head)
 

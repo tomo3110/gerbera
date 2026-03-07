@@ -1,7 +1,6 @@
 package diff
 
 import (
-	"sort"
 	"strings"
 
 	"github.com/tomo3110/gerbera"
@@ -12,12 +11,12 @@ type OpType string
 
 const (
 	OpSetText    OpType = "text"    // change text content (Value)
-	OpSetHTML    OpType = "html"   // set innerHTML (raw HTML content)
+	OpSetHTML    OpType = "html"    // set innerHTML (raw HTML content)
 	OpSetAttr    OpType = "attr"    // add/change attribute
-	OpRemoveAttr OpType = "rattr"  // remove attribute
-	OpSetClass   OpType = "class"  // change class attribute
-	OpInsert     OpType = "insert" // insert child node
-	OpRemove     OpType = "remove" // remove child node
+	OpRemoveAttr OpType = "rattr"   // remove attribute
+	OpSetClass   OpType = "class"   // change class attribute
+	OpInsert     OpType = "insert"  // insert child node
+	OpRemove     OpType = "remove"  // remove child node
 	OpReplace    OpType = "replace" // replace entire node
 )
 
@@ -31,18 +30,19 @@ type Patch struct {
 	HTML  string `json:"html,omitempty"`
 }
 
-// Diff compares two Element trees and returns the list of patches
-// needed to transform oldEl into newEl.
-func Diff(oldEl, newEl *gerbera.Element) []Patch {
+// Diff compares two Node trees and returns the list of patches
+// needed to transform oldNode into newNode.
+// Operates on the Node interface, making it platform-independent.
+func Diff(oldNode, newNode gerbera.Node) []Patch {
 	var patches []Patch
-	diffRecursive(oldEl, newEl, nil, &patches)
+	diffRecursive(oldNode, newNode, nil, &patches)
 	return patches
 }
 
-func diffRecursive(oldEl, newEl *gerbera.Element, path []int, patches *[]Patch) {
+func diffRecursive(oldNode, newNode gerbera.Node, path []int, patches *[]Patch) {
 	// Different tag → replace the entire subtree
-	if oldEl.TagName != newEl.TagName {
-		html, _ := RenderFragment(newEl)
+	if oldNode.Tag() != newNode.Tag() {
+		html, _ := RenderFragment(newNode)
 		*patches = append(*patches, Patch{
 			Op:   OpReplace,
 			Path: copyPath(path),
@@ -52,8 +52,8 @@ func diffRecursive(oldEl, newEl *gerbera.Element, path []int, patches *[]Patch) 
 	}
 
 	// Same tag but different keys → replace entire subtree
-	if (oldEl.Key != "" || newEl.Key != "") && oldEl.Key != newEl.Key {
-		html, _ := RenderFragment(newEl)
+	if (oldNode.NodeKey() != "" || newNode.NodeKey() != "") && oldNode.NodeKey() != newNode.NodeKey() {
+		html, _ := RenderFragment(newNode)
 		*patches = append(*patches, Patch{
 			Op:   OpReplace,
 			Path: copyPath(path),
@@ -62,78 +62,79 @@ func diffRecursive(oldEl, newEl *gerbera.Element, path []int, patches *[]Patch) 
 		return
 	}
 
-	// Compare Value (text content)
-	if oldEl.Value != newEl.Value {
+	// Compare text content
+	if oldNode.Text() != newNode.Text() {
 		op := OpSetText
-		if strings.Contains(newEl.Value, "<") {
+		if strings.Contains(newNode.Text(), "<") {
 			op = OpSetHTML
 		}
 		*patches = append(*patches, Patch{
 			Op:    op,
 			Path:  copyPath(path),
-			Value: newEl.Value,
+			Value: newNode.Text(),
 		})
 	}
 
-	// Compare Attr maps
-	diffAttrs(oldEl.Attr, newEl.Attr, path, patches)
+	// Compare attributes (includes class)
+	diffAttributes(oldNode.Attributes(), newNode.Attributes(), path, patches)
 
-	// Compare ClassNames
-	diffClasses(oldEl.ClassNames, newEl.ClassNames, path, patches)
-
-	// Compare Children
-	diffChildren(oldEl.Children, newEl.Children, path, patches)
+	// Compare children
+	diffChildren(oldNode.Children(), newNode.Children(), path, patches)
 }
 
-func diffAttrs(oldAttr, newAttr gerbera.AttrMap, path []int, patches *[]Patch) {
+func diffAttributes(oldAttrs, newAttrs []gerbera.Attribute, path []int, patches *[]Patch) {
+	oldMap := attrMap(oldAttrs)
+	newMap := attrMap(newAttrs)
+
 	// Attributes added or changed
-	for key, newVal := range newAttr {
-		if oldVal, ok := oldAttr[key]; !ok || oldVal != newVal {
-			*patches = append(*patches, Patch{
-				Op:    OpSetAttr,
-				Path:  copyPath(path),
-				Key:   key,
-				Value: newVal,
-			})
+	for _, a := range newAttrs {
+		if oldVal, ok := oldMap[a.Key]; !ok || oldVal != a.Value {
+			if a.Key == "class" {
+				*patches = append(*patches, Patch{
+					Op:    OpSetClass,
+					Path:  copyPath(path),
+					Value: a.Value,
+				})
+			} else {
+				*patches = append(*patches, Patch{
+					Op:    OpSetAttr,
+					Path:  copyPath(path),
+					Key:   a.Key,
+					Value: a.Value,
+				})
+			}
 		}
 	}
+
 	// Attributes removed
-	for key := range oldAttr {
-		if _, ok := newAttr[key]; !ok {
-			*patches = append(*patches, Patch{
-				Op:   OpRemoveAttr,
-				Path: copyPath(path),
-				Key:  key,
-			})
+	for _, a := range oldAttrs {
+		if _, ok := newMap[a.Key]; !ok {
+			if a.Key == "class" {
+				*patches = append(*patches, Patch{
+					Op:    OpSetClass,
+					Path:  copyPath(path),
+					Value: "",
+				})
+			} else {
+				*patches = append(*patches, Patch{
+					Op:   OpRemoveAttr,
+					Path: copyPath(path),
+					Key:  a.Key,
+				})
+			}
 		}
 	}
 }
 
-func diffClasses(oldClasses, newClasses gerbera.ClassMap, path []int, patches *[]Patch) {
-	oldStr := classString(oldClasses)
-	newStr := classString(newClasses)
-	if oldStr != newStr {
-		*patches = append(*patches, Patch{
-			Op:    OpSetClass,
-			Path:  copyPath(path),
-			Value: newStr,
-		})
+func attrMap(attrs []gerbera.Attribute) map[string]string {
+	m := make(map[string]string, len(attrs))
+	for _, a := range attrs {
+		m[a.Key] = a.Value
 	}
+	return m
 }
 
-func classString(cm gerbera.ClassMap) string {
-	if len(cm) == 0 {
-		return ""
-	}
-	names := make([]string, 0, len(cm))
-	for name := range cm {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return strings.Join(names, " ")
-}
-
-func diffChildren(oldChildren, newChildren []*gerbera.Element, path []int, patches *[]Patch) {
+func diffChildren(oldChildren, newChildren []gerbera.Node, path []int, patches *[]Patch) {
 	minLen := len(oldChildren)
 	if len(newChildren) < minLen {
 		minLen = len(newChildren)
