@@ -12,7 +12,6 @@ import (
 	g "github.com/tomo3110/gerbera"
 	_ "github.com/tomo3110/gerbera/assets"
 	gd "github.com/tomo3110/gerbera/dom"
-	"github.com/tomo3110/gerbera/expr"
 	gl "github.com/tomo3110/gerbera/live"
 	gp "github.com/tomo3110/gerbera/property"
 	gu "github.com/tomo3110/gerbera/ui"
@@ -166,11 +165,13 @@ func (v *DashboardView) Render() g.Components {
 								MonthChangeEvent: "calMonthChange",
 								YearChangeEvent:  "calYearChange",
 							}),
-							expr.If(v.CalSelected != nil,
-								gd.Div(gp.Attr("style", "margin-top:8px"),
-									gu.Badge(v.CalSelected.Format("2006-01-02"), "dark"),
-								),
-							),
+							func(n g.Node) {
+								if v.CalSelected != nil {
+									gd.Div(gp.Attr("style", "margin-top:8px"),
+										gu.Badge(v.CalSelected.Format("2006-01-02"), "dark"),
+									)(n)
+								}
+							},
 						),
 					),
 				),
