@@ -715,8 +715,15 @@
                     if (n.children[p.idx]) n.removeChild(n.children[p.idx]);
                     break;
                   case "replace": {
-                    var frag = parseFragment(p.html, n.parentNode);
-                    n.replaceWith(frag);
+                    if (n === el) {
+                      // Replacing the body itself — parse the replacement HTML
+                      // and update container innerHTML to preserve the mount point.
+                      var tmpDoc = new DOMParser().parseFromString(p.html, "text/html");
+                      el.innerHTML = tmpDoc.body ? tmpDoc.body.innerHTML : "";
+                    } else {
+                      var frag = parseFragment(p.html, n.parentNode);
+                      n.replaceWith(frag);
+                    }
                     break;
                   }
                 }
