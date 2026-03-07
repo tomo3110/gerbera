@@ -45,7 +45,10 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 		return out.WriteByte('>')
 	}
 
-	if el.Value != "" && len(el.ChildElems) == 0 {
+	hasMetaInjection := el.meta != nil && (el.TagName == "head" || el.TagName == "body")
+	hasChildren := len(el.ChildElems) > 0
+
+	if el.Value != "" && !hasChildren && !hasMetaInjection {
 		out.WriteByte('>')
 		out.WriteString(el.Value)
 		out.WriteString("</")
@@ -53,7 +56,7 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 		return out.WriteByte('>')
 	}
 
-	if el.Value == "" && len(el.ChildElems) == 0 {
+	if el.Value == "" && !hasChildren && !hasMetaInjection {
 		out.WriteString("></")
 		out.WriteString(el.TagName)
 		return out.WriteByte('>')
@@ -66,7 +69,7 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 		}
 	}
 
-	if len(el.ChildElems) > 0 {
+	if hasChildren {
 		for _, c := range el.ChildElems {
 			if err := render(out, c, indent+2); err != nil {
 				return err
@@ -74,10 +77,72 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 			out.WriteByte('\n')
 		}
 	}
+
+	// Inject stylesheets before </head>
+	if el.TagName == "head" {
+		if err := renderMetaStyleSheets(out, el, indent+2); err != nil {
+			return err
+		}
+	}
+
+	// Inject scripts before </body>
+	if el.TagName == "body" {
+		if err := renderMetaScripts(out, el, indent+2); err != nil {
+			return err
+		}
+	}
+
 	writeIndent(out, indent)
 	out.WriteString("</")
 	out.WriteString(el.TagName)
 	return out.WriteByte('>')
+}
+
+const (
+	metaKeyScripts     = "gerbera.web.scripts"
+	metaKeyStyleSheets = "gerbera.web.stylesheets"
+)
+
+func renderMetaStyleSheets(out *bufio.Writer, el *Element, indent int) error {
+	if el.meta == nil {
+		return nil
+	}
+	val := el.Meta(metaKeyStyleSheets)
+	if val == nil {
+		return nil
+	}
+	set, ok := val.(map[string]bool)
+	if !ok {
+		return nil
+	}
+	for path := range set {
+		writeIndent(out, indent)
+		out.WriteString(`<link rel="stylesheet" href="`)
+		out.WriteString(path)
+		out.WriteString("\">\n")
+	}
+	return nil
+}
+
+func renderMetaScripts(out *bufio.Writer, el *Element, indent int) error {
+	if el.meta == nil {
+		return nil
+	}
+	val := el.Meta(metaKeyScripts)
+	if val == nil {
+		return nil
+	}
+	set, ok := val.(map[string]bool)
+	if !ok {
+		return nil
+	}
+	for path := range set {
+		writeIndent(out, indent)
+		out.WriteString(`<script src="`)
+		out.WriteString(path)
+		out.WriteString("\" defer></script>\n")
+	}
+	return nil
 }
 
 func renderAttr(out *bufio.Writer, attr AttrMap) error {

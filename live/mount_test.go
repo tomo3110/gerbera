@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	g "github.com/tomo3110/gerbera"
+	"github.com/tomo3110/gerbera/assets"
 )
 
 func TestLiveMount_BasicAttributes(t *testing.T) {
@@ -76,5 +77,30 @@ func TestLiveMount_MultipleOptions(t *testing.T) {
 	}
 	if div.Attr["gerbera-live"] != "/widget" {
 		t.Errorf("gerbera-live: got %q, want %q", div.Attr["gerbera-live"], "/widget")
+	}
+}
+
+func TestLiveMount_RegistersScript(t *testing.T) {
+	parent := &g.Element{TagName: "div", ChildElems: make([]*g.Element, 0)}
+	LiveMount("/admin/notifications")(parent)
+
+	scripts := assets.Scripts(parent)
+	if len(scripts) != 1 {
+		t.Fatalf("Scripts() returned %d items, want 1", len(scripts))
+	}
+	if scripts[0] != assets.JSPath() {
+		t.Errorf("script = %q, want %q", scripts[0], assets.JSPath())
+	}
+}
+
+func TestLiveMount_MultipleMountsDeduplicateScript(t *testing.T) {
+	parent := &g.Element{TagName: "div", ChildElems: make([]*g.Element, 0)}
+	LiveMount("/a")(parent)
+	LiveMount("/b")(parent)
+	LiveMount("/c")(parent)
+
+	scripts := assets.Scripts(parent)
+	if len(scripts) != 1 {
+		t.Errorf("Scripts() returned %d items, want 1 (deduplicated)", len(scripts))
 	}
 }

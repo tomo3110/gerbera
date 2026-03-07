@@ -323,9 +323,11 @@ func (n *testNode) SetAttribute(key, value string) {
 func (n *testNode) AddClass(name string)  {}
 func (n *testNode) SetText(text string)   { n.text = text }
 func (n *testNode) SetKey(key string)     { n.key = key }
-func (n *testNode) Tag() string           { return n.tag }
-func (n *testNode) NodeKey() string       { return n.key }
-func (n *testNode) Text() string          { return n.text }
+func (n *testNode) SetMeta(key string, val any) {}
+func (n *testNode) Meta(key string) any         { return nil }
+func (n *testNode) Tag() string                 { return n.tag }
+func (n *testNode) NodeKey() string             { return n.key }
+func (n *testNode) Text() string                { return n.text }
 func (n *testNode) Attributes() []gerbera.Attribute { return n.attrs }
 func (n *testNode) Children() []gerbera.Node {
 	nodes := make([]gerbera.Node, len(n.children))
