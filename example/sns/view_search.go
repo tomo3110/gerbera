@@ -93,9 +93,9 @@ func (v *SearchView) buildSearchPath() string {
 	if v.searchQuery != "" {
 		q := url.Values{}
 		q.Set("keyword", v.searchQuery)
-		return "/live/search?" + q.Encode()
+		return "/search?" + q.Encode()
 	}
-	return "/live/search"
+	return "/search"
 }
 
 func (v *SearchView) Render() g.Components {

@@ -83,9 +83,9 @@ func (v *MessagesView) loadChat(partnerID int64) error {
 
 func (v *MessagesView) buildMessagesPath() string {
 	if v.chatPartnerID > 0 {
-		return "/live/messages?id=" + strconv.FormatInt(v.chatPartnerID, 10)
+		return "/messages/" + strconv.FormatInt(v.chatPartnerID, 10)
 	}
-	return "/live/messages"
+	return "/messages"
 }
 
 func (v *MessagesView) HandleEvent(event string, payload gl.Payload) error {
@@ -131,11 +131,16 @@ func (v *MessagesView) HandleEvent(event string, payload gl.Payload) error {
 
 func (v *MessagesView) HandleParams(path string, params url.Values) error {
 	v.toastVisible = false
+	// Extract partner ID from path (/messages/{id}) or query (?id=...)
+	var id int64
 	if idStr := params.Get("id"); idStr != "" {
-		id, _ := strconv.ParseInt(idStr, 10, 64)
-		if id > 0 {
-			return v.loadChat(id)
-		}
+		id, _ = strconv.ParseInt(idStr, 10, 64)
+	} else if strings.HasPrefix(path, "/messages/") {
+		idStr := strings.TrimPrefix(path, "/messages/")
+		id, _ = strconv.ParseInt(idStr, 10, 64)
+	}
+	if id > 0 {
+		return v.loadChat(id)
 	}
 	return v.loadConversations()
 }
