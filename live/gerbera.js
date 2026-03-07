@@ -515,7 +515,7 @@
           var compCsrf = compCsrfMeta ? compCsrfMeta.getAttribute("content") : "";
           if (compSid) {
             var compWs = new WebSocket(
-              proto + "//" + location.host + path + "?gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
+              proto + "//" + location.host + path + (path.indexOf("?") === -1 ? "?" : "&") + "gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
             );
             compWs.onmessage = function(ev) {
               // Apply patches scoped to the component container
@@ -619,7 +619,7 @@
           var compCsrf = compCsrfMeta ? compCsrfMeta.getAttribute("content") : "";
           if (compSid) {
             var compWs = new WebSocket(
-              proto + "//" + location.host + path + "?gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
+              proto + "//" + location.host + path + (path.indexOf("?") === -1 ? "?" : "&") + "gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
             );
             var liveSend = function(name, payload) {
               if (compWs.readyState === WebSocket.OPEN) {

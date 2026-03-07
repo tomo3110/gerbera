@@ -72,7 +72,7 @@ func snsPage(title, activePage, liveEndpoint string, badges badgeCounts) g.Compo
 					sidebarLinks(activePage, badges),
 				),
 			),
-			g.Literal(`<script>document.getElementById('sns-drawer').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})</script>`),
+			g.Literal(`<script>var d=document.getElementById('sns-drawer');if(d)d.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})</script>`),
 		),
 	}
 }
