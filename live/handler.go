@@ -299,18 +299,29 @@ func buildTree(lang, sessionID, csrfToken string, components gerbera.Components)
 
 	// Inject CSRF meta tag into <head> if a token is provided
 	if csrfToken != "" {
+		var head *gerbera.Element
 		for _, child := range root.ChildElems {
 			if child.TagName == "head" {
-				meta := &gerbera.Element{
-					TagName:    "meta",
-					Attr:       gerbera.AttrMap{"name": "gerbera-csrf", "content": csrfToken},
-					ClassNames: make(gerbera.ClassMap),
-					ChildElems:   make([]*gerbera.Element, 0),
-				}
-				child.ChildElems = append([]*gerbera.Element{meta}, child.ChildElems...)
+				head = child
 				break
 			}
 		}
+		// Create <head> if the view did not include one (e.g. LiveMount endpoints)
+		if head == nil {
+			head = &gerbera.Element{
+				TagName:    "head",
+				ClassNames: make(gerbera.ClassMap),
+				ChildElems: make([]*gerbera.Element, 0),
+			}
+			root.ChildElems = append([]*gerbera.Element{head}, root.ChildElems...)
+		}
+		meta := &gerbera.Element{
+			TagName:    "meta",
+			Attr:       gerbera.AttrMap{"name": "gerbera-csrf", "content": csrfToken},
+			ClassNames: make(gerbera.ClassMap),
+			ChildElems: make([]*gerbera.Element, 0),
+		}
+		head.ChildElems = append([]*gerbera.Element{meta}, head.ChildElems...)
 	}
 
 	return root
