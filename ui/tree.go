@@ -14,7 +14,7 @@ type TreeNode struct {
 	Children []TreeNode
 	Open     bool   // whether children are expanded
 	Active   bool   // highlight as selected
-	Attrs    []gerbera.ComponentFunc // additional attrs (e.g., live.Click)
+	Attrs    gerbera.Components // additional attrs (e.g., live.Click)
 }
 
 // Tree renders a hierarchical tree view from a slice of nodes.
@@ -23,11 +23,11 @@ func Tree(nodes []TreeNode) gerbera.ComponentFunc {
 }
 
 func renderTreeLevel(nodes []TreeNode) gerbera.ComponentFunc {
-	var items []gerbera.ComponentFunc
+	var items gerbera.Components
 	for _, n := range nodes {
 		items = append(items, renderTreeNode(n))
 	}
-	return dom.Ul(append([]gerbera.ComponentFunc{
+	return dom.Ul(append(gerbera.Components{
 		property.Class("g-tree"),
 		property.Role("tree"),
 	}, items...)...)
@@ -37,7 +37,7 @@ func renderTreeNode(n TreeNode) gerbera.ComponentFunc {
 	hasChildren := len(n.Children) > 0
 
 	// Node content row
-	var rowParts []gerbera.ComponentFunc
+	var rowParts gerbera.Components
 	rowParts = append(rowParts,
 		property.Class("g-tree-node"),
 		property.ClassIf(n.Active, "g-tree-node-active"),
@@ -67,7 +67,7 @@ func renderTreeNode(n TreeNode) gerbera.ComponentFunc {
 	row := dom.Div(rowParts...)
 
 	// Item with optional children
-	inner := []gerbera.ComponentFunc{
+	inner := gerbera.Components{
 		property.Class("g-tree-item"),
 		property.Role("treeitem"),
 		row,
@@ -84,11 +84,11 @@ func renderTreeNode(n TreeNode) gerbera.ComponentFunc {
 }
 
 func renderSubTree(nodes []TreeNode) gerbera.ComponentFunc {
-	var items []gerbera.ComponentFunc
+	var items gerbera.Components
 	for _, n := range nodes {
 		items = append(items, renderTreeNode(n))
 	}
-	return dom.Ul(append([]gerbera.ComponentFunc{
+	return dom.Ul(append(gerbera.Components{
 		property.Class("g-tree"),
 		property.Role("group"),
 	}, items...)...)

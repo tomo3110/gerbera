@@ -16,7 +16,7 @@ func Divider() gerbera.ComponentFunc {
 
 // EmptyState renders a centered placeholder message for empty content areas.
 func EmptyState(message string, children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	inner := []gerbera.ComponentFunc{
+	inner := gerbera.Components{
 		property.Class("g-empty-state"),
 		dom.P(property.Class("g-empty-state-msg"), property.Value(message)),
 	}

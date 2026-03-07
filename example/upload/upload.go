@@ -60,13 +60,13 @@ func (v *UploadView) HandleEvent(event string, _ gl.Payload) error {
 	return nil
 }
 
-func (v *UploadView) Render() []g.ComponentFunc {
+func (v *UploadView) Render() g.Components {
 	fileItems := make([]g.ConvertToMap, len(v.Files))
 	for i, f := range v.Files {
 		fileItems[i] = f
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title("File Upload — Gerbera Demo"),
 			gs.CSS(`

@@ -113,13 +113,13 @@ func (v *MarkdownView) HandleEvent(event string, payload gl.Payload) error {
 	return nil
 }
 
-func (v *MarkdownView) Render() []g.ComponentFunc {
+func (v *MarkdownView) Render() g.Components {
 	title := "Markdown Viewer"
 	if v.FileName != "" {
 		title = v.FileName + " — Markdown Viewer"
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title(title),
 			gd.Meta(gp.Attr("charset", "utf-8")),

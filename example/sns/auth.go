@@ -40,7 +40,7 @@ func verifyPassword(stored, password string) bool {
 	return parts[1] == hex.EncodeToString(hash[:])
 }
 
-func renderAuthPage(title string, csrfToken, errMsg string, isRegister bool) []g.ComponentFunc {
+func renderAuthPage(title string, csrfToken, errMsg string, isRegister bool) g.Components {
 	actionURL := "/login"
 	heading := "Sign In"
 	switchText := "Don't have an account?"
@@ -54,7 +54,7 @@ func renderAuthPage(title string, csrfToken, errMsg string, isRegister bool) []g
 		switchLabel = "Sign In"
 	}
 
-	var formFields []g.ComponentFunc
+	var formFields g.Components
 	formFields = append(formFields,
 		expr.If(csrfToken != "",
 			gd.Input(gp.Attr("type", "hidden"), gp.Name("csrf_token"), gp.Attr("value", csrfToken)),
@@ -108,7 +108,7 @@ func renderAuthPage(title string, csrfToken, errMsg string, isRegister bool) []g
 		),
 	)
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title(title),
 			gd.Meta(gp.Attr("name", "viewport"), gp.Attr("content", "width=device-width, initial-scale=1")),
@@ -148,7 +148,7 @@ func renderAuthPage(title string, csrfToken, errMsg string, isRegister bool) []g
 	}
 }
 
-func loginPage(r *http.Request) []g.ComponentFunc {
+func loginPage(r *http.Request) g.Components {
 	sess := session.FromContext(r.Context())
 	var csrfToken string
 	if sess != nil {
@@ -160,7 +160,7 @@ func loginPage(r *http.Request) []g.ComponentFunc {
 	return renderAuthPage("Login — SNS", csrfToken, "", false)
 }
 
-func registerPage(r *http.Request) []g.ComponentFunc {
+func registerPage(r *http.Request) g.Components {
 	sess := session.FromContext(r.Context())
 	var csrfToken string
 	if sess != nil {

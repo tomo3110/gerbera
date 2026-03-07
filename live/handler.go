@@ -264,7 +264,7 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []JSCommand
 // as a second <body> component. Both handleHTTP and renderAndDiff call this
 // so that old and new trees always share the same structure, preventing
 // spurious diff patches for the script body.
-func appendScriptComponents(components []gerbera.ComponentFunc, debug bool) []gerbera.ComponentFunc {
+func appendScriptComponents(components gerbera.Components, debug bool) gerbera.Components {
 	if debug {
 		debugHTML := renderDebugPanelHTML()
 		escaped := escapeForJSString(debugHTML)
@@ -282,7 +282,7 @@ func appendScriptComponents(components []gerbera.ComponentFunc, debug bool) []ge
 }
 
 // buildTree creates the full <html> Element tree from view components.
-func buildTree(lang, sessionID, csrfToken string, components []gerbera.ComponentFunc) *gerbera.Element {
+func buildTree(lang, sessionID, csrfToken string, components gerbera.Components) *gerbera.Element {
 	root := &gerbera.Element{
 		TagName:    "html",
 		Attr:       gerbera.AttrMap{"lang": lang, "gerbera-session": sessionID},

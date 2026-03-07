@@ -122,13 +122,14 @@ gd.Tfoot(
 
 ```go
 func main() {
-	http.HandleFunc("/detail/", detailHandle)
-	http.HandleFunc("/", listHandle)
-	log.Fatal(http.ListenAndServe(":8820", nil))
+	mux := http.NewServeMux()
+	mux.Handle("GET /detail/{name}", g.HandlerFunc(detailHandle))
+	mux.Handle("GET /", g.Handler(listPage()...))
+	log.Fatal(http.ListenAndServe(":8820", mux))
 }
 ```
 
-`NewServeMux` は単一ルートに最適化されていますが、複数のルートが必要な場合は標準の `http.HandleFunc` を使い、各ハンドラ内で `g.ExecuteTemplate` を呼び出します。
+`g.Handler()` は静的ページの配信に推奨されるアプローチで、`g.HandlerFunc()` はリクエストに依存する動的ページ向けです。
 
 ## 実行方法
 

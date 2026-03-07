@@ -4,7 +4,7 @@
 
 gerbera を使って CRUD 機能を持つ Wiki アプリケーションを構築します。このチュートリアルでは以下の機能を学びます。
 
-- `ExecuteTemplate` — テンプレートの直接実行
+- `HandlerFunc` — リクエスト依存の関数を HTTP ハンドラとしてラップ
 - `Form`, `Textarea`, `Button`, `Label` — フォーム要素
 - `If` / `Each` — 条件分岐とリスト描画
 - `ConvertToMap` — 構造体からテンプレートデータへの変換
@@ -38,21 +38,24 @@ func (p *Page) ToMap() g.Map {
 
 ```go
 func main() {
-	http.HandleFunc("/view/", viewHandle)
-	http.HandleFunc("/edit/", editHandle)
-	http.HandleFunc("/save/", saveHandle)
-	http.HandleFunc("/", listHandle)
-	log.Fatal(http.ListenAndServe(":8880", nil))
+	mux := http.NewServeMux()
+	mux.Handle("GET /view/{title}", g.HandlerFunc(viewHandle))
+	mux.Handle("GET /edit/{title}", g.HandlerFunc(editHandle))
+	mux.Handle("POST /save/{title}", http.HandlerFunc(saveHandle))
+	mux.Handle("GET /", g.HandlerFunc(listHandle))
+	log.Fatal(http.ListenAndServe(":8880", mux))
 }
 ```
 
-`NewServeMux` は単一ページ向けのヘルパーです。複数ルートを持つアプリでは、標準の `http.HandleFunc` を直接使用します。
+`g.HandlerFunc()` は `func(r *http.Request) []g.ComponentFunc` シグネチャの関数を `http.Handler` にラップします。ラップされた関数はリクエストを受け取り、`ComponentFunc` のスライスを返します。gerbera が自動的に HTML としてレンダリングします。`http.ResponseWriter` に直接アクセスする必要があるハンドラ（リダイレクトなど）では、`saveHandle` のように標準の `http.HandlerFunc` を使用します。
 
-## ステップ 3: ビューの構築 — ExecuteTemplate
+ルートは Go 1.22 の拡張 `ServeMux` パターン構文を使用し、メソッドプレフィックス（`GET`、`POST`）とパスパラメータ（`{title}`）を指定しています。
+
+## ステップ 3: ビューの構築 — ページ関数
 
 ```go
-func viewLayout(w http.ResponseWriter, page *Page) error {
-	return g.ExecuteTemplate(w, "jp",
+func viewPage(page *Page) []g.ComponentFunc {
+	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title(page.Title),
 			gc.BootstrapCSS(),
@@ -60,13 +63,37 @@ func viewLayout(w http.ResponseWriter, page *Page) error {
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value(page.Title)),
-			gd.P(gp.Value(string(page.Body))),
+			gd.A(
+				gp.Href("/"),
+				gp.Value("list"),
+			),
+			gd.A(
+				gp.Href("/edit/"+page.Title),
+				gp.Value("Edit"),
+			),
+			gd.P(
+				gp.Value(string(page.Body)),
+			),
 		),
-	)
+	}
 }
 ```
 
-`g.ExecuteTemplate(w, lang, children...)` は内部で `Template` を作成し、マウント・レンダリング・書き出しを一括で行います。
+各ページ関数は必要なデータを受け取り、`[]g.ComponentFunc` を返します。ハンドラ関数は適切なページ関数を呼び出し、その結果を返します:
+
+```go
+func viewHandle(r *http.Request) []g.ComponentFunc {
+	title := r.PathValue("title")
+	page, err := LoadPage(title)
+	if err != nil {
+		// ページが見つからない場合、作成用の編集ページを返す
+		return editPage(&Page{Title: title})
+	}
+	return viewPage(page)
+}
+```
+
+ページが見つからない場合、`viewHandle` は HTTP リダイレクトを行わず、`editPage` を直接返します。これにより、1回のリクエストでユーザーに新規ページの編集フォームを表示できます。
 
 ## ステップ 4: フォームの構築
 
@@ -128,8 +155,8 @@ go run example/wiki/wiki.go
 
 ブラウザで http://localhost:8880 を開き、以下を試してみましょう:
 1. トップページでページ一覧を確認
-2. URL に `/edit/テスト` を入力して新規ページを作成
-3. 保存後、`/view/テスト` で表示を確認
+2. `/view/test` にアクセス — ページが存在しないため、自動的に編集フォームが表示されます
+3. 内容を入力して保存後、`/view/test` で表示を確認
 
 ## 発展課題
 
@@ -141,7 +168,7 @@ go run example/wiki/wiki.go
 
 | 関数 | 説明 |
 |------|------|
-| `g.ExecuteTemplate(w, lang, children...)` | テンプレートを作成・レンダリング・書き出し |
+| `g.HandlerFunc(fn)` | `func(r *http.Request) []ComponentFunc` を `http.Handler` にラップ |
 | `g.ConvertToMap` | `ToMap() Map` を持つインターフェース |
 | `g.Map` | `map[string]any` 型。`Get(key)` メソッドを持つ |
 | `gd.Form(children...)` | `<form>` 要素 |

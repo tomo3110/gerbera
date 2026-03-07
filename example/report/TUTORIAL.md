@@ -37,7 +37,7 @@ if err := tmpl.Mount(
 
 - `g.Template{Lang: "ja"}` creates a template directly
 - `Mount(children...)` internally runs `Parse` then `Render`, accumulating HTML in a buffer
-- This is the lowest-level template operation, without using `ExecuteTemplate` or `NewServeMux`
+- This is the lowest-level template operation, without using `ExecuteTemplate` or `Handler`
 
 ## Step 2: Output with String() / Bytes()
 

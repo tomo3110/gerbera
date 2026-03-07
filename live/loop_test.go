@@ -26,8 +26,8 @@ func (v *loopTestView) HandleEvent(event string, _ Payload) error {
 	}
 	return nil
 }
-func (v *loopTestView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *loopTestView) Render() g.Components {
+	return g.Components{
 		gd.Head(gd.Title("Test")),
 		gd.Body(gd.H1(gp.Value(fmt.Sprintf("Count: %d", v.Count)))),
 	}
@@ -82,8 +82,8 @@ func (v *loopPatcherView) HandleParams(path string, params url.Values) error {
 	return nil
 }
 
-func (v *loopPatcherView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *loopPatcherView) Render() g.Components {
+	return g.Components{
 		gd.Head(gd.Title("Test")),
 		gd.Body(gd.H1(gp.Value(fmt.Sprintf("Page: %s", v.Page)))),
 	}

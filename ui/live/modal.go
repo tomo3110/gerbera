@@ -12,14 +12,14 @@ import (
 // it carries the hidden attribute so the positional diff stays stable.
 // Clicking the backdrop or the close button fires closeEvent.
 func Modal(open bool, closeEvent string, children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	wrapper := []gerbera.ComponentFunc{
+	wrapper := gerbera.Components{
 		dom.Div(
 			property.Class("g-modal-overlay"),
 			property.Role("dialog"),
 			property.AriaLabel("Modal"),
 			gl.Click(closeEvent),
 			dom.Div(
-				append([]gerbera.ComponentFunc{
+				append(gerbera.Components{
 					property.Class("g-modal-panel"),
 					// Stop click propagation by re-binding click to a no-op
 					// The panel itself doesn't fire the close event
@@ -29,7 +29,7 @@ func Modal(open bool, closeEvent string, children ...gerbera.ComponentFunc) gerb
 		),
 	}
 	if !open {
-		wrapper = append([]gerbera.ComponentFunc{property.Attr("hidden", "")}, wrapper...)
+		wrapper = append(gerbera.Components{property.Attr("hidden", "")}, wrapper...)
 	}
 	return dom.Div(wrapper...)
 }
@@ -50,10 +50,10 @@ func ModalHeader(title, closeEvent string) gerbera.ComponentFunc {
 
 // ModalBody renders the main content area of a modal.
 func ModalBody(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	return dom.Div(append([]gerbera.ComponentFunc{property.Class("g-modal-body")}, children...)...)
+	return dom.Div(append(gerbera.Components{property.Class("g-modal-body")}, children...)...)
 }
 
 // ModalFooter renders a modal footer for action buttons.
 func ModalFooter(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	return dom.Div(append([]gerbera.ComponentFunc{property.Class("g-modal-footer")}, children...)...)
+	return dom.Div(append(gerbera.Components{property.Class("g-modal-footer")}, children...)...)
 }

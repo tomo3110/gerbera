@@ -16,13 +16,13 @@ func Drawer(open bool, closeEvent, side string, children ...gerbera.ComponentFun
 	if side == "" {
 		side = "left"
 	}
-	wrapper := []gerbera.ComponentFunc{
+	wrapper := gerbera.Components{
 		dom.Div(
 			property.Class("g-drawer-overlay"),
 			gl.Click(closeEvent),
 		),
 		dom.Div(
-			append([]gerbera.ComponentFunc{
+			append(gerbera.Components{
 				property.Class("g-drawer", "g-drawer-"+side),
 				property.Role("dialog"),
 				property.AriaLabel("Drawer"),
@@ -30,7 +30,7 @@ func Drawer(open bool, closeEvent, side string, children ...gerbera.ComponentFun
 		),
 	}
 	if !open {
-		wrapper = append([]gerbera.ComponentFunc{property.Attr("hidden", "")}, wrapper...)
+		wrapper = append(gerbera.Components{property.Attr("hidden", "")}, wrapper...)
 	}
 	return dom.Div(wrapper...)
 }
@@ -51,5 +51,5 @@ func DrawerHeader(title, closeEvent string) gerbera.ComponentFunc {
 
 // DrawerBody renders the main scrollable content area of a drawer.
 func DrawerBody(children ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	return dom.Div(append([]gerbera.ComponentFunc{property.Class("g-drawer-body")}, children...)...)
+	return dom.Div(append(gerbera.Components{property.Class("g-drawer-body")}, children...)...)
 }

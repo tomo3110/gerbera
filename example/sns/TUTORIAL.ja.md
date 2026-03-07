@@ -137,7 +137,7 @@ mux.Handle("/", authGuard(gl.Handler(func(_ context.Context) gl.View {
 
 ### auth.go — 静的認証ページ
 
-ログインと登録ページは `g.ExecuteTemplate()` を使用したサーバーサイドレンダリング（LiveView ではない）です。`isRegister` フラグに基づいて HTML を生成する `renderAuthPage()` 関数を共有します。
+ログインと登録ページは `g.Handler()` を使用したサーバーサイドレンダリング（LiveView ではない）です。`isRegister` フラグに基づいて HTML を生成する `renderAuthPage()` 関数を共有します。POST エラーレスポンスではステータスコード制御のために `g.ExecuteTemplate()` を直接使用しています。
 
 CSRF トークンは `session.GenerateCSRFToken(sess)` で生成し、フォーム送信時にバリデーションします。
 

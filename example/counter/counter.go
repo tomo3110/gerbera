@@ -20,8 +20,8 @@ func (v *CounterView) Mount(params gl.Params) error {
 	return nil
 }
 
-func (v *CounterView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *CounterView) Render() g.Components {
+	return g.Components{
 		gd.Head(gd.Title("カウンター")),
 		gd.Body(
 			gp.Class("container"),

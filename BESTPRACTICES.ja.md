@@ -67,7 +67,7 @@ myapp/
 
 ### 基本: 関数で合成する
 
-Gerbera のコンポーネントはすべて `ComponentFunc`（`func(*Element) error`）です。通常のGo関数として定義し、呼び出し側で合成します:
+Gerbera のコンポーネントはすべて `ComponentFunc`（`func(Node)`）です。通常のGo関数として定義し、呼び出し側で合成します:
 
 ```go
 // Good: 再利用可能なコンポーネント関数

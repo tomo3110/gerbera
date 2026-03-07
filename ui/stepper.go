@@ -37,7 +37,7 @@ var StepperVertical = property.ClassIf(true, "g-stepper-vertical")
 
 // Stepper renders a step-by-step progress indicator.
 func Stepper(steps []Step, opts StepperOpts, extra ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	wrapAttrs := []gerbera.ComponentFunc{
+	wrapAttrs := gerbera.Components{
 		property.Class("g-stepper"),
 		property.ClassIf(opts.Vertical, "g-stepper-vertical"),
 		property.Role("list"),
@@ -50,7 +50,7 @@ func Stepper(steps []Step, opts StepperOpts, extra ...gerbera.ComponentFunc) ger
 			status = StepUpcoming
 		}
 
-		stepAttrs := []gerbera.ComponentFunc{
+		stepAttrs := gerbera.Components{
 			property.Class("g-stepper-step", fmt.Sprintf("g-stepper-%s", status)),
 			property.Role("listitem"),
 		}
@@ -71,7 +71,7 @@ func Stepper(steps []Step, opts StepperOpts, extra ...gerbera.ComponentFunc) ger
 		)
 
 		// Content (label + optional description)
-		contentChildren := []gerbera.ComponentFunc{
+		contentChildren := gerbera.Components{
 			property.Class("g-stepper-content"),
 			dom.Span(property.Class("g-stepper-label"), property.Value(step.Label)),
 		}

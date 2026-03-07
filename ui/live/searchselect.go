@@ -35,7 +35,7 @@ func SearchSelect(opts SearchSelectOpts) gerbera.ComponentFunc {
 		ph = "Search..."
 	}
 
-	inputAttrs := []gerbera.ComponentFunc{
+	inputAttrs := gerbera.Components{
 		property.Class("g-searchselect-input"),
 		property.Name(opts.Name),
 		property.Placeholder(ph),
@@ -64,7 +64,7 @@ func SearchSelect(opts SearchSelectOpts) gerbera.ComponentFunc {
 	// Dropdown list
 	var listContent gerbera.ComponentFunc
 	if len(opts.Options) > 0 {
-		var items []gerbera.ComponentFunc
+		var items gerbera.Components
 		for i, o := range opts.Options {
 			items = append(items, dom.Button(
 				property.Class("g-searchselect-option"),
@@ -78,7 +78,7 @@ func SearchSelect(opts SearchSelectOpts) gerbera.ComponentFunc {
 			))
 		}
 		listContent = dom.Div(
-			append([]gerbera.ComponentFunc{
+			append(gerbera.Components{
 				property.Class("g-searchselect-list"),
 				property.Role("listbox"),
 			}, items...)...,

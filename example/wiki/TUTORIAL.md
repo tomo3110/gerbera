@@ -4,7 +4,7 @@
 
 Build a Wiki application with CRUD functionality using gerbera. This tutorial covers the following features:
 
-- `ExecuteTemplate` — Direct template execution
+- `HandlerFunc` — Wrapping request-dependent functions as HTTP handlers
 - `Form`, `Textarea`, `Button`, `Label` — Form elements
 - `If` / `Each` — Conditional branching and list rendering
 - `ConvertToMap` — Converting structs to template data
@@ -38,21 +38,24 @@ Implementing the `ConvertToMap` interface allows the struct to be used with `exp
 
 ```go
 func main() {
-	http.HandleFunc("/view/", viewHandle)
-	http.HandleFunc("/edit/", editHandle)
-	http.HandleFunc("/save/", saveHandle)
-	http.HandleFunc("/", listHandle)
-	log.Fatal(http.ListenAndServe(":8880", nil))
+	mux := http.NewServeMux()
+	mux.Handle("GET /view/{title}", g.HandlerFunc(viewHandle))
+	mux.Handle("GET /edit/{title}", g.HandlerFunc(editHandle))
+	mux.Handle("POST /save/{title}", http.HandlerFunc(saveHandle))
+	mux.Handle("GET /", g.HandlerFunc(listHandle))
+	log.Fatal(http.ListenAndServe(":8880", mux))
 }
 ```
 
-`NewServeMux` is a helper optimized for single-page apps. For applications with multiple routes, use the standard `http.HandleFunc` directly.
+`g.HandlerFunc()` wraps a function with the signature `func(r *http.Request) []g.ComponentFunc` into an `http.Handler`. The wrapped function receives the request and returns a slice of `ComponentFunc` that gerbera renders as HTML automatically. For handlers that need direct access to `http.ResponseWriter` (e.g., redirects), use the standard `http.HandlerFunc` instead, as shown with `saveHandle`.
 
-## Step 3: Building Views — ExecuteTemplate
+Routes use Go 1.22's enhanced `ServeMux` pattern syntax with method prefixes (`GET`, `POST`) and path parameters (`{title}`).
+
+## Step 3: Building Views — Page Functions
 
 ```go
-func viewLayout(w http.ResponseWriter, page *Page) error {
-	return g.ExecuteTemplate(w, "jp",
+func viewPage(page *Page) []g.ComponentFunc {
+	return []g.ComponentFunc{
 		gd.Head(
 			gd.Title(page.Title),
 			gc.BootstrapCSS(),
@@ -60,13 +63,37 @@ func viewLayout(w http.ResponseWriter, page *Page) error {
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value(page.Title)),
-			gd.P(gp.Value(string(page.Body))),
+			gd.A(
+				gp.Href("/"),
+				gp.Value("list"),
+			),
+			gd.A(
+				gp.Href("/edit/"+page.Title),
+				gp.Value("Edit"),
+			),
+			gd.P(
+				gp.Value(string(page.Body)),
+			),
 		),
-	)
+	}
 }
 ```
 
-`g.ExecuteTemplate(w, lang, children...)` internally creates a `Template`, mounts components, renders HTML, and writes it to the writer in a single call.
+Each page function takes the data it needs and returns `[]g.ComponentFunc`. The handler function calls the appropriate page function and returns its result:
+
+```go
+func viewHandle(r *http.Request) []g.ComponentFunc {
+	title := r.PathValue("title")
+	page, err := LoadPage(title)
+	if err != nil {
+		// Page not found — return edit page for creation
+		return editPage(&Page{Title: title})
+	}
+	return viewPage(page)
+}
+```
+
+When a page is not found, `viewHandle` returns `editPage` directly instead of issuing an HTTP redirect. This keeps the response in a single round-trip while still presenting the user with the edit form for the new page.
 
 ## Step 4: Building Forms
 
@@ -128,8 +155,8 @@ go run example/wiki/wiki.go
 
 Open http://localhost:8880 in your browser and try the following:
 1. View the page list on the top page
-2. Navigate to `/edit/test` to create a new page
-3. After saving, verify it at `/view/test`
+2. Navigate to `/view/test` — since the page does not exist yet, the edit form is displayed automatically
+3. Enter content and save, then verify it at `/view/test`
 
 ## Exercises
 
@@ -141,7 +168,7 @@ Open http://localhost:8880 in your browser and try the following:
 
 | Function | Description |
 |----------|-------------|
-| `g.ExecuteTemplate(w, lang, children...)` | Creates, renders, and writes a template |
+| `g.HandlerFunc(fn)` | Wraps `func(r *http.Request) []ComponentFunc` as an `http.Handler` |
 | `g.ConvertToMap` | Interface with `ToMap() Map` |
 | `g.Map` | `map[string]any` type with `Get(key)` method |
 | `gd.Form(children...)` | `<form>` element |

@@ -19,13 +19,14 @@ Build a portfolio site styled with Materialize CSS. This tutorial covers the fol
 ## Step 1: Using Materialize CSS
 
 ```go
-mux := g.NewServeMux(
+mux := http.NewServeMux()
+mux.Handle("GET /", g.Handler(
 	gd.Head(
 		gd.Title("Portfolio - Taro Tanaka"),
 		gc.MaterializeCSS(),
 	),
 	body(),
-)
+))
 ```
 
 `gc.MaterializeCSS()` adds Materialize CSS CDN links to the parent `<head>` element and ensures charset/viewport meta tags are present. It can be used as an alternative to Bootstrap.

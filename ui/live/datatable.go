@@ -33,9 +33,9 @@ type DataTableOpts struct {
 // DataTable renders a sortable, paginated data table.
 func DataTable(opts DataTableOpts) gerbera.ComponentFunc {
 	// Build header row
-	var ths []gerbera.ComponentFunc
+	var ths gerbera.Components
 	for _, col := range opts.Columns {
-		attrs := []gerbera.ComponentFunc{}
+		attrs := gerbera.Components{}
 		if col.Sortable && opts.SortEvent != "" {
 			attrs = append(attrs,
 				property.Class("g-sortable"),
@@ -62,9 +62,9 @@ func DataTable(opts DataTableOpts) gerbera.ComponentFunc {
 	}
 
 	// Build body rows
-	var trs []gerbera.ComponentFunc
+	var trs gerbera.Components
 	for _, row := range opts.Rows {
-		var tds []gerbera.ComponentFunc
+		var tds gerbera.Components
 		for _, cell := range row {
 			tds = append(tds, dom.Td(property.Value(cell)))
 		}
@@ -86,7 +86,7 @@ func DataTable(opts DataTableOpts) gerbera.ComponentFunc {
 			end = opts.Total
 		}
 
-		var pageButtons []gerbera.ComponentFunc
+		var pageButtons gerbera.Components
 		for i := 0; i < totalPages; i++ {
 			pageButtons = append(pageButtons, dom.Button(
 				property.Class("g-datatable-page"),
@@ -101,7 +101,7 @@ func DataTable(opts DataTableOpts) gerbera.ComponentFunc {
 			property.Class("g-datatable-footer"),
 			dom.Span(property.Value(fmt.Sprintf("%d\u2013%d / %d", start, end, opts.Total))),
 			dom.Div(
-				append([]gerbera.ComponentFunc{property.Class("g-datatable-pages")}, pageButtons...)...,
+				append(gerbera.Components{property.Class("g-datatable-pages")}, pageButtons...)...,
 			),
 		)
 

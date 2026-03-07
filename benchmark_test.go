@@ -121,7 +121,7 @@ func BenchmarkRender_Wide1000(b *testing.B) {
 // --- Parse benchmarks (ComponentFunc composition) ---
 
 func BenchmarkParse_Flat10(b *testing.B) {
-	fns := make([]ComponentFunc, 10)
+	fns := make(Components, 10)
 	for i := range fns {
 		fns[i] = Tag("p", Literal("text"))
 	}
@@ -133,7 +133,7 @@ func BenchmarkParse_Flat10(b *testing.B) {
 }
 
 func BenchmarkParse_Flat100(b *testing.B) {
-	fns := make([]ComponentFunc, 100)
+	fns := make(Components, 100)
 	for i := range fns {
 		fns[i] = Tag("p", Literal("text"))
 	}
@@ -171,7 +171,7 @@ func BenchmarkExecuteTemplate_Simple(b *testing.B) {
 }
 
 func BenchmarkExecuteTemplate_Medium(b *testing.B) {
-	items := make([]ComponentFunc, 50)
+	items := make(Components, 50)
 	for i := range items {
 		items[i] = Tag("li", Literal("item"))
 	}
@@ -183,7 +183,7 @@ func BenchmarkExecuteTemplate_Medium(b *testing.B) {
 }
 
 func BenchmarkExecuteTemplate_Large(b *testing.B) {
-	items := make([]ComponentFunc, 200)
+	items := make(Components, 200)
 	for i := range items {
 		items[i] = Tag("tr",
 			Tag("td", Literal("col1")),

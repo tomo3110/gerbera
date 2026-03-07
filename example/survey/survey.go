@@ -37,15 +37,16 @@ var (
 func main() {
 	addr := flag.String("addr", ":8830", "running address")
 	flag.Parse()
-	http.HandleFunc("/submit", submitHandle)
-	http.HandleFunc("/results", resultsHandle)
-	http.HandleFunc("/", formHandle)
+	mux := http.NewServeMux()
+	mux.Handle("POST /submit", http.HandlerFunc(submitHandle))
+	mux.Handle("GET /results", g.HandlerFunc(resultsHandle))
+	mux.Handle("GET /", g.Handler(formPage()...))
 	log.Printf("survey server running on %s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	log.Fatal(http.ListenAndServe(*addr, mux))
 }
 
-func formHandle(w http.ResponseWriter, _ *http.Request) {
-	if err := g.ExecuteTemplate(w, "ja",
+func formPage() g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title("アンケートフォーム"),
 			gc.BootstrapCSS(),
@@ -144,16 +145,10 @@ func formHandle(w http.ResponseWriter, _ *http.Request) {
 				),
 			),
 		),
-	); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func submitHandle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -170,7 +165,7 @@ func submitHandle(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/results", http.StatusSeeOther)
 }
 
-func resultsHandle(w http.ResponseWriter, _ *http.Request) {
+func resultsHandle(_ *http.Request) g.Components {
 	mu.Lock()
 	list := make([]g.ConvertToMap, len(responses))
 	for i, r := range responses {
@@ -178,7 +173,7 @@ func resultsHandle(w http.ResponseWriter, _ *http.Request) {
 	}
 	mu.Unlock()
 
-	if err := g.ExecuteTemplate(w, "ja",
+	return g.Components{
 		gd.Head(
 			gd.Title("アンケート結果"),
 			gc.BootstrapCSS(),
@@ -206,7 +201,5 @@ func resultsHandle(w http.ResponseWriter, _ *http.Request) {
 				),
 			),
 		),
-	); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

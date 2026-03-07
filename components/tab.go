@@ -15,7 +15,7 @@ import (
 type Tab struct {
 	Label       string                  // Tab button text
 	Content     gerbera.ComponentFunc   // Panel content
-	ButtonAttrs []gerbera.ComponentFunc // Additional attributes for the tab button
+	ButtonAttrs gerbera.Components // Additional attributes for the tab button
 }
 
 // Tabs renders an accessible tab UI.
@@ -23,13 +23,13 @@ type Tab struct {
 // wrapperAttrs are additional ComponentFuncs applied to the outer wrapper div.
 func Tabs(id string, activeIndex int, tabs []Tab, wrapperAttrs ...gerbera.ComponentFunc) gerbera.ComponentFunc {
 	// Build tab buttons
-	var buttons []gerbera.ComponentFunc
+	var buttons gerbera.Components
 	for i, tab := range tabs {
 		active := i == activeIndex
 		tabID := fmt.Sprintf("%s-tab-%d", id, i)
 		panelID := fmt.Sprintf("%s-panel-%d", id, i)
 
-		attrs := []gerbera.ComponentFunc{
+		attrs := gerbera.Components{
 			property.Role("tab"),
 			property.ID(tabID),
 			property.AriaSelected(active),
@@ -49,20 +49,20 @@ func Tabs(id string, activeIndex int, tabs []Tab, wrapperAttrs ...gerbera.Compon
 	}
 
 	tablist := dom.Div(
-		append([]gerbera.ComponentFunc{
+		append(gerbera.Components{
 			property.Role("tablist"),
 			property.AriaLabel("Tabs"),
 		}, buttons...)...,
 	)
 
 	// Build tab panels
-	var panels []gerbera.ComponentFunc
+	var panels gerbera.Components
 	for i, tab := range tabs {
 		active := i == activeIndex
 		tabID := fmt.Sprintf("%s-tab-%d", id, i)
 		panelID := fmt.Sprintf("%s-panel-%d", id, i)
 
-		attrs := []gerbera.ComponentFunc{
+		attrs := gerbera.Components{
 			property.Role("tabpanel"),
 			property.ID(panelID),
 			property.AriaLabelledBy(tabID),
@@ -79,7 +79,7 @@ func Tabs(id string, activeIndex int, tabs []Tab, wrapperAttrs ...gerbera.Compon
 	}
 
 	// Assemble wrapper
-	wrapper := []gerbera.ComponentFunc{
+	wrapper := gerbera.Components{
 		property.ClassIf(true, "gerbera-tabs"),
 		property.ID(id),
 	}

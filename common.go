@@ -36,6 +36,10 @@ var emptyElements = map[string]struct{}{
 // ComponentFuncs are pure construction functions — they do not perform I/O.
 type ComponentFunc func(Node)
 
+// Components is a slice of ComponentFunc.
+// It is used as the return type of Render() and page builder functions.
+type Components = []ComponentFunc
+
 type ClassMap map[string]bool
 type AttrMap map[string]string
 type StyleMap map[string]any

@@ -140,7 +140,7 @@ func navLink(icon, label, page string, active bool, badgeCount int) g.ComponentF
 	if active {
 		cls = "sns-nav-link active"
 	}
-	var children []g.ComponentFunc
+	var children g.Components
 	children = append(children,
 		gp.Class(cls),
 		gl.Click("nav"), gl.ClickValue(page),

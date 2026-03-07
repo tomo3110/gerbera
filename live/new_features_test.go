@@ -232,8 +232,8 @@ type tickerTestView struct {
 }
 
 func (v *tickerTestView) Mount(_ Params) error { return nil }
-func (v *tickerTestView) Render() []g.ComponentFunc {
-	return []g.ComponentFunc{
+func (v *tickerTestView) Render() g.Components {
+	return g.Components{
 		gd.Body(gd.H1(gp.Value(fmt.Sprintf("Count: %d", v.Count)))),
 	}
 }

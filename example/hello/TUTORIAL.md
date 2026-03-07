@@ -4,7 +4,7 @@
 
 Build a minimal web page using gerbera. This tutorial covers the following features:
 
-- `NewServeMux` — Creating a simple HTTP server
+- `Handler` — Creating a simple HTTP server
 - `BootstrapCSS` — Adding Bootstrap 5 CSS/JS to `<head>`
 - `Body`, `H1`, `P` — Building basic DOM elements
 - `Class`, `Value` — Setting attributes and text content
@@ -47,7 +47,7 @@ func body() g.ComponentFunc {
 }
 ```
 
-`ComponentFunc` is the type `func(*Element) error` and serves as the fundamental unit of gerbera. All DOM helpers return a `ComponentFunc`.
+`ComponentFunc` is the type `func(Node)` and serves as the fundamental unit of gerbera. `Node` is the interface that abstracts over `Element`. All DOM helpers return a `ComponentFunc`.
 
 - `gd.Body(...)` — Creates a `<body>` element and appends children passed as arguments
 - `gp.Class("container")` — Sets the `class="container"` attribute
@@ -59,18 +59,19 @@ func body() g.ComponentFunc {
 func main() {
 	addr := flag.String("addr", ":8800", "running address")
 	flag.Parse()
-	mux := g.NewServeMux(
+	mux := http.NewServeMux()
+	mux.Handle("GET /", g.Handler(
 		gd.Head(
 			gd.Title("Gerbera Template Engine !"),
 			gc.BootstrapCSS(),
 		),
 		body(),
-	)
+	))
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }
 ```
 
-- `g.NewServeMux(head, body)` returns an `http.ServeMux` with a handler registered at the root path `/`
+- `g.Handler(children...)` returns an `http.Handler` that renders the given components as an HTML page
 - `gd.Head(children...)` creates a `<head>` element with the given children
 - `gc.BootstrapCSS()` adds Bootstrap 5 CSS/JS CDN links and ensures charset/viewport meta tags are present
 
@@ -98,7 +99,7 @@ go run example/hello/hello.go -addr :3000
 
 | Function | Description |
 |----------|-------------|
-| `g.NewServeMux(children...)` | Returns a ServeMux with a handler at the root path |
+| `g.Handler(children...)` | Returns an `http.Handler` that renders the given components |
 | `gc.BootstrapCSS()` | Adds Bootstrap 5 CSS/JS to `<head>` |
 | `gd.Head(children...)` | `<head>` element |
 | `gd.Title(text)` | `<title>` element |

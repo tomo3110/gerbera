@@ -22,7 +22,7 @@ var ButtonSmall gerbera.ComponentFunc = property.ClassIf(true, "g-btn-sm")
 // opts can include ButtonPrimary, ButtonOutline, ButtonDanger, ButtonSmall,
 // or any ComponentFunc (e.g., live.Click).
 func Button(label string, opts ...gerbera.ComponentFunc) gerbera.ComponentFunc {
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Class("g-btn"),
 	}
 	attrs = append(attrs, opts...)

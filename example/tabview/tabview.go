@@ -24,7 +24,7 @@ func (v *TabDemoView) Mount(params gl.Params) error {
 	return nil
 }
 
-func (v *TabDemoView) Render() []g.ComponentFunc {
+func (v *TabDemoView) Render() g.Components {
 	tabs := []gc.Tab{
 		{
 			Label:       "Home",
@@ -43,7 +43,7 @@ func (v *TabDemoView) Render() []g.ComponentFunc {
 		},
 	}
 
-	return []g.ComponentFunc{
+	return g.Components{
 		gd.Head(
 			gd.Title("Tab Demo"),
 			gc.TabsDefaultCSS(),
@@ -68,8 +68,8 @@ func (v *TabDemoView) HandleEvent(event string, payload gl.Payload) error {
 	return nil
 }
 
-func tabClickAttrs(index string) []g.ComponentFunc {
-	return []g.ComponentFunc{
+func tabClickAttrs(index string) g.Components {
+	return g.Components{
 		gl.Click("switch-tab"),
 		gl.ClickValue(index),
 	}

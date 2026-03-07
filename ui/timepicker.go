@@ -39,7 +39,7 @@ func TimePicker(name string, hour, minute, second int, opts TimePickerOpts, extr
 	// Format the current value for the payload
 	timeValue := FormatTime(hour, minute, second, opts.ShowSec)
 
-	wrapAttrs := []gerbera.ComponentFunc{
+	wrapAttrs := gerbera.Components{
 		property.Class("g-timepicker"),
 		property.Role("group"),
 		property.AriaLabel(name),
@@ -71,14 +71,14 @@ func TimePicker(name string, hour, minute, second int, opts TimePickerOpts, extr
 
 	// AM/PM toggle for 12-hour format
 	if !opts.Use24H {
-		amBtnAttrs := []gerbera.ComponentFunc{
+		amBtnAttrs := gerbera.Components{
 			property.Class("g-timepicker-ampm-btn"),
 			property.Attr("type", "button"),
 			property.Attr("aria-pressed", boolStr(ampm == "AM")),
 			property.Disabled(opts.Disabled),
 			property.Value("AM"),
 		}
-		pmBtnAttrs := []gerbera.ComponentFunc{
+		pmBtnAttrs := gerbera.Components{
 			property.Class("g-timepicker-ampm-btn"),
 			property.Attr("type", "button"),
 			property.Attr("aria-pressed", boolStr(ampm == "PM")),
@@ -106,7 +106,7 @@ func TimePicker(name string, hour, minute, second int, opts TimePickerOpts, extr
 }
 
 func timeUnit(label string, value, min, max int, disabled bool, changeEvent, upValue, downValue string) gerbera.ComponentFunc {
-	upBtnAttrs := []gerbera.ComponentFunc{
+	upBtnAttrs := gerbera.Components{
 		property.Class("g-timepicker-btn", "g-timepicker-up"),
 		property.Attr("type", "button"),
 		property.Attr("tabindex", "-1"),
@@ -121,7 +121,7 @@ func timeUnit(label string, value, min, max int, disabled bool, changeEvent, upV
 		)
 	}
 
-	downBtnAttrs := []gerbera.ComponentFunc{
+	downBtnAttrs := gerbera.Components{
 		property.Class("g-timepicker-btn", "g-timepicker-down"),
 		property.Attr("type", "button"),
 		property.Attr("tabindex", "-1"),
@@ -136,7 +136,7 @@ func timeUnit(label string, value, min, max int, disabled bool, changeEvent, upV
 		)
 	}
 
-	inputAttrs := []gerbera.ComponentFunc{
+	inputAttrs := gerbera.Components{
 		property.Class("g-timepicker-field"),
 		property.Attr("type", "text"),
 		property.Attr("inputmode", "numeric"),

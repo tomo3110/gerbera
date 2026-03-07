@@ -18,11 +18,12 @@ func init() {
 }
 
 func main() {
-	http.HandleFunc("/view/", viewHandle)
-	http.HandleFunc("/edit/", editHandle)
-	http.HandleFunc("/save/", saveHandle)
-	http.HandleFunc("/", listHandle)
-	log.Fatal(http.ListenAndServe(":8880", nil))
+	mux := http.NewServeMux()
+	mux.Handle("GET /view/{title}", g.HandlerFunc(viewHandle))
+	mux.Handle("GET /edit/{title}", g.HandlerFunc(editHandle))
+	mux.Handle("POST /save/{title}", http.HandlerFunc(saveHandle))
+	mux.Handle("GET /", g.HandlerFunc(listHandle))
+	log.Fatal(http.ListenAndServe(":8880", mux))
 }
 
 /** model */
@@ -96,33 +97,27 @@ func FetchPageNameList() ([]*Page, error) {
 
 /** controller */
 
-func viewHandle(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/view/"):]
+func viewHandle(r *http.Request) g.Components {
+	title := r.PathValue("title")
 	page, err := LoadPage(title)
 	if err != nil {
-		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
-		return
+		// Page not found — return edit page for creation
+		return editPage(&Page{Title: title})
 	}
-	if err := viewLayout(w, page); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return viewPage(page)
 }
 
-func editHandle(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/edit/"):]
+func editHandle(r *http.Request) g.Components {
+	title := r.PathValue("title")
 	page, err := LoadPage(title)
 	if err != nil {
 		page = &Page{Title: title}
 	}
-	if err := editLayout(w, page); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return editPage(page)
 }
 
 func saveHandle(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/save/"):]
+	title := r.PathValue("title")
 	body := r.FormValue("body")
 	page := &Page{Title: title, Body: []byte(body)}
 	if err := page.Save(); err != nil {
@@ -132,22 +127,18 @@ func saveHandle(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
-func listHandle(w http.ResponseWriter, _ *http.Request) {
+func listHandle(r *http.Request) g.Components {
 	list, err := FetchPageNameList()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil
 	}
-	if err := listLayout(w, list); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return listPage(list)
 }
 
 /** view */
 
-func viewLayout(w http.ResponseWriter, page *Page) error {
-	return g.ExecuteTemplate(w, "jp",
+func viewPage(page *Page) g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title(page.Title),
 			gc.BootstrapCSS(),
@@ -167,11 +158,11 @@ func viewLayout(w http.ResponseWriter, page *Page) error {
 				gp.Value(string(page.Body)),
 			),
 		),
-	)
+	}
 }
 
-func editLayout(w http.ResponseWriter, page *Page) error {
-	return g.ExecuteTemplate(w, "jp",
+func editPage(page *Page) g.Components {
+	return g.Components{
 		gd.Head(
 			gd.Title(page.Title),
 			gc.BootstrapCSS(),
@@ -206,15 +197,15 @@ func editLayout(w http.ResponseWriter, page *Page) error {
 				),
 			),
 		),
-	)
+	}
 }
 
-func listLayout(w http.ResponseWriter, pages []*Page) error {
+func listPage(pages []*Page) g.Components {
 	list := make([]g.ConvertToMap, len(pages))
 	for i, page := range pages {
 		list[i] = page
 	}
-	return g.ExecuteTemplate(w, "jp",
+	return g.Components{
 		gd.Head(
 			gd.Title("ページ一覧"),
 			gc.BootstrapCSS(),
@@ -222,6 +213,12 @@ func listLayout(w http.ResponseWriter, pages []*Page) error {
 		gd.Body(
 			gp.Class("container"),
 			gd.H1(gp.Value("ページ一覧")),
+			gd.P(
+				gd.A(
+					gp.Href("/edit/NewPage"),
+					gp.Value("+ 新規ページ作成"),
+				),
+			),
 			ge.If(len(list) > 0,
 				ge.Each(list, func(page g.ConvertToMap) g.ComponentFunc {
 					title := page.ToMap().Get("title").(string)
@@ -235,5 +232,5 @@ func listLayout(w http.ResponseWriter, pages []*Page) error {
 				gd.P(gp.Value("empty pages ...")),
 			),
 		),
-	)
+	}
 }

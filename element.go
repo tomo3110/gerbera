@@ -63,14 +63,3 @@ func (el *Element) SetKey(key string) {
 	el.Key = key
 }
 
-// AppendTo adds el as a child of parent.
-// Deprecated: Use Node.AppendElement instead.
-func (el *Element) AppendTo(parent *Element) error {
-	parent.Children = append(parent.Children, el)
-	return nil
-}
-
-// NewRoot creates a root Element for tree construction.
-func NewRoot() *Element {
-	return &Element{}
-}

@@ -148,7 +148,7 @@ func TestTabs_ButtonAttrs(t *testing.T) {
 		{
 			Label:   "Click Me",
 			Content: property.Value("content"),
-			ButtonAttrs: []gerbera.ComponentFunc{
+			ButtonAttrs: gerbera.Components{
 				property.Attr("gerbera-click", "switch-tab"),
 				property.Attr("gerbera-value", "0"),
 			},

@@ -22,13 +22,13 @@ type Tab struct {
 // the payload contains {"value": "<index>"}.
 func Tabs(id string, activeIndex int, tabs []Tab, changeEvent string) gerbera.ComponentFunc {
 	// Build tab buttons
-	var buttons []gerbera.ComponentFunc
+	var buttons gerbera.Components
 	for i, tab := range tabs {
 		active := i == activeIndex
 		tabID := fmt.Sprintf("%s-tab-%d", id, i)
 		panelID := fmt.Sprintf("%s-panel-%d", id, i)
 
-		attrs := []gerbera.ComponentFunc{
+		attrs := gerbera.Components{
 			property.Class("g-tab"),
 			property.ClassIf(active, "g-tab-active"),
 			property.Role("tab"),
@@ -48,7 +48,7 @@ func Tabs(id string, activeIndex int, tabs []Tab, changeEvent string) gerbera.Co
 	}
 
 	tablist := dom.Div(
-		append([]gerbera.ComponentFunc{
+		append(gerbera.Components{
 			property.Class("g-tablist"),
 			property.Role("tablist"),
 			property.AriaLabel("Tabs"),
@@ -56,13 +56,13 @@ func Tabs(id string, activeIndex int, tabs []Tab, changeEvent string) gerbera.Co
 	)
 
 	// Build tab panels
-	var panels []gerbera.ComponentFunc
+	var panels gerbera.Components
 	for i, tab := range tabs {
 		active := i == activeIndex
 		tabID := fmt.Sprintf("%s-tab-%d", id, i)
 		panelID := fmt.Sprintf("%s-panel-%d", id, i)
 
-		attrs := []gerbera.ComponentFunc{
+		attrs := gerbera.Components{
 			property.Class("g-tabpanel"),
 			property.Role("tabpanel"),
 			property.ID(panelID),
@@ -78,7 +78,7 @@ func Tabs(id string, activeIndex int, tabs []Tab, changeEvent string) gerbera.Co
 	}
 
 	// Assemble wrapper
-	wrapper := []gerbera.ComponentFunc{
+	wrapper := gerbera.Components{
 		property.Class("g-tabs"),
 		property.ID(id),
 	}

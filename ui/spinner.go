@@ -15,7 +15,7 @@ func Spinner(size string, opts ...gerbera.ComponentFunc) gerbera.ComponentFunc {
 	if size == "" {
 		size = "md"
 	}
-	attrs := []gerbera.ComponentFunc{
+	attrs := gerbera.Components{
 		property.Class("g-spinner", "g-spinner-"+size),
 		property.Role("status"),
 		property.AriaLabel("Loading"),
