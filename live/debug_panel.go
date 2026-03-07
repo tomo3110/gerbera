@@ -143,13 +143,13 @@ func renderDebugPanelHTML() string {
 			TagName:    "div",
 			ClassNames: make(gerbera.ClassMap),
 			Attr:       make(gerbera.AttrMap),
-			Children:   make([]*gerbera.Element, 0),
+			ChildElems:   make([]*gerbera.Element, 0),
 		}
 
 		wrapper = gerbera.Parse(wrapper, debugPanelComponents()...)
 
 		var sb strings.Builder
-		for _, child := range wrapper.Children {
+		for _, child := range wrapper.ChildElems {
 			html, err := diff.RenderFragment(child)
 			if err != nil {
 				continue

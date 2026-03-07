@@ -29,7 +29,7 @@ func (t *Template) init() {
 	}
 	t.el.Attr = AttrMap{"lang": lang}
 	t.el.ClassNames = nil
-	t.el.Children = nil
+	t.el.ChildElems = nil
 	if t.buf == nil {
 		t.buf = bufPool.Get().(*bytes.Buffer)
 	}

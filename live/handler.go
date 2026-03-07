@@ -237,8 +237,13 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []JSCommand
 	components := sess.View.Render()
 	components = appendScriptComponents(components, cfg.debug)
 	lang := ""
-	if sess.tree != nil && sess.tree.Attr != nil {
-		lang = sess.tree.Attr["lang"]
+	if sess.tree != nil {
+		for _, a := range sess.tree.Attributes() {
+			if a.Key == "lang" {
+				lang = a.Value
+				break
+			}
+		}
 	}
 	newTree := buildTree(lang, sess.ID, sess.CSRFToken, components)
 
@@ -287,22 +292,22 @@ func buildTree(lang, sessionID, csrfToken string, components gerbera.Components)
 		TagName:    "html",
 		Attr:       gerbera.AttrMap{"lang": lang, "gerbera-session": sessionID},
 		ClassNames: make(gerbera.ClassMap),
-		Children:   make([]*gerbera.Element, 0),
+		ChildElems:   make([]*gerbera.Element, 0),
 	}
 
 	root = gerbera.Parse(root, components...)
 
 	// Inject CSRF meta tag into <head> if a token is provided
 	if csrfToken != "" {
-		for _, child := range root.Children {
+		for _, child := range root.ChildElems {
 			if child.TagName == "head" {
 				meta := &gerbera.Element{
 					TagName:    "meta",
 					Attr:       gerbera.AttrMap{"name": "gerbera-csrf", "content": csrfToken},
 					ClassNames: make(gerbera.ClassMap),
-					Children:   make([]*gerbera.Element, 0),
+					ChildElems:   make([]*gerbera.Element, 0),
 				}
-				child.Children = append([]*gerbera.Element{meta}, child.Children...)
+				child.ChildElems = append([]*gerbera.Element{meta}, child.ChildElems...)
 				break
 			}
 		}

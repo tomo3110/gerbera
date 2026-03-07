@@ -294,7 +294,7 @@ func TestTestViewTick(t *testing.T) {
 // --- B3 / B6: Form Builder ---
 
 func TestField(t *testing.T) {
-	el := &g.Element{TagName: "div", Children: make([]*g.Element, 0)}
+	el := &g.Element{TagName: "div", ChildElems: make([]*g.Element, 0)}
 	fn := Field("email", FieldOpts{
 		Type:        "email",
 		Label:       "Email",
@@ -306,20 +306,20 @@ func TestField(t *testing.T) {
 	})
 
 	fn(el)
-	if len(el.Children) == 0 {
+	if len(el.ChildElems) == 0 {
 		t.Error("expected Field to produce children")
 	}
 }
 
 func TestFieldWithoutError(t *testing.T) {
-	el := &g.Element{TagName: "div", Children: make([]*g.Element, 0)}
+	el := &g.Element{TagName: "div", ChildElems: make([]*g.Element, 0)}
 	fn := Field("name", FieldOpts{
 		Label: "Name",
 		Value: "John",
 	})
 
 	fn(el)
-	if len(el.Children) == 0 {
+	if len(el.ChildElems) == 0 {
 		t.Error("expected Field to produce children")
 	}
 }
@@ -389,13 +389,13 @@ func TestWithMiddleware(t *testing.T) {
 // --- C3: Component ---
 
 func TestComponent(t *testing.T) {
-	el := &g.Element{TagName: "div", Children: make([]*g.Element, 0)}
+	el := &g.Element{TagName: "div", ChildElems: make([]*g.Element, 0)}
 	fn := Component("chat", "/chat")
 	fn(el)
-	if len(el.Children) != 1 {
-		t.Fatalf("expected 1 child, got %d", len(el.Children))
+	if len(el.ChildElems) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(el.ChildElems))
 	}
-	child := el.Children[0]
+	child := el.ChildElems[0]
 	if child.Attr["gerbera-component"] != "/chat" {
 		t.Error("expected gerbera-component=/chat")
 	}

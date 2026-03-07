@@ -26,14 +26,15 @@ var bufioPool = sync.Pool{
 	New: func() any { return bufio.NewWriterSize(nil, 4096) },
 }
 
-// RenderFragment renders an Element as an HTML fragment (no DOCTYPE).
-func RenderFragment(el *gerbera.Element) (string, error) {
+// RenderFragment renders a Node as an HTML fragment (no DOCTYPE).
+// It operates on the Node interface, making it platform-independent.
+func RenderFragment(node gerbera.Node) (string, error) {
 	buf := bufPool.Get().(*bytes.Buffer)
 	buf.Reset()
 	w := bufioPool.Get().(*bufio.Writer)
 	w.Reset(buf)
 
-	if err := renderNode(w, el, 0); err != nil {
+	if err := renderNode(w, node, 0); err != nil {
 		bufPool.Put(buf)
 		bufioPool.Put(w)
 		return "", err
@@ -49,43 +50,47 @@ func RenderFragment(el *gerbera.Element) (string, error) {
 	return s, nil
 }
 
-func renderNode(out *bufio.Writer, el *gerbera.Element, indent int) error {
+func renderNode(out *bufio.Writer, node gerbera.Node, indent int) error {
+	tag := node.Tag()
+	text := node.Text()
+	attrs := node.Attributes()
+	children := node.Children()
+
 	out.WriteByte('<')
-	out.WriteString(el.TagName)
+	out.WriteString(tag)
 
-	renderClasses(out, el.ClassNames)
-	renderAttr(out, el.Attr)
+	renderAttributes(out, attrs)
 
-	if isEmptyElement(el.TagName) {
-		if el.Value != "" {
+	if isEmptyElement(tag) {
+		if text != "" {
 			out.WriteString(" value=\"")
-			out.WriteString(el.Value)
+			out.WriteString(text)
 			out.WriteByte('"')
 		}
 		return out.WriteByte('>')
 	}
 
-	if el.Value != "" && len(el.Children) == 0 {
+	if text != "" && len(children) == 0 {
 		out.WriteByte('>')
-		out.WriteString(el.Value)
+		out.WriteString(text)
 		out.WriteString("</")
-		out.WriteString(el.TagName)
+		out.WriteString(tag)
 		return out.WriteByte('>')
 	}
 
-	if el.Value == "" && len(el.Children) == 0 {
+	if text == "" && len(children) == 0 {
 		out.WriteString("></")
-		out.WriteString(el.TagName)
+		out.WriteString(tag)
 		return out.WriteByte('>')
 	}
 
 	out.WriteString(">\n")
-	if el.Value != "" {
-		out.WriteString(el.Value)
+	if text != "" {
+		out.WriteString(text)
 		out.WriteByte('\n')
 	}
 
-	for _, c := range el.Children {
+	for _, c := range children {
 		writeIndent(out, indent+2)
 		if err := renderNode(out, c, indent+2); err != nil {
 			return err
@@ -94,34 +99,18 @@ func renderNode(out *bufio.Writer, el *gerbera.Element, indent int) error {
 	}
 	writeIndent(out, indent)
 	out.WriteString("</")
-	out.WriteString(el.TagName)
+	out.WriteString(tag)
 	return out.WriteByte('>')
 }
 
-func renderAttr(out *bufio.Writer, attr gerbera.AttrMap) {
-	for key, val := range attr {
+func renderAttributes(out *bufio.Writer, attrs []gerbera.Attribute) {
+	for _, a := range attrs {
 		out.WriteByte(' ')
-		out.WriteString(key)
+		out.WriteString(a.Key)
 		out.WriteString("=\"")
-		out.WriteString(val)
+		out.WriteString(a.Value)
 		out.WriteByte('"')
 	}
-}
-
-func renderClasses(out *bufio.Writer, classes gerbera.ClassMap) {
-	if len(classes) == 0 {
-		return
-	}
-	out.WriteString(" class=\"")
-	first := true
-	for name := range classes {
-		if !first {
-			out.WriteByte(' ')
-		}
-		out.WriteString(name)
-		first = false
-	}
-	out.WriteByte('"')
 }
 
 func writeIndent(out *bufio.Writer, n int) {

@@ -10,7 +10,7 @@ func benchEl(tag, value string, children ...*gerbera.Element) *gerbera.Element {
 	return &gerbera.Element{
 		TagName:    tag,
 		Value:      value,
-		Children:   children,
+		ChildElems:   children,
 		ClassNames: make(gerbera.ClassMap),
 		Attr:       make(gerbera.AttrMap),
 	}
@@ -26,7 +26,7 @@ func benchElFull(tag, value string, classes []string, attrs gerbera.AttrMap, chi
 		Value:      value,
 		ClassNames: cm,
 		Attr:       attrs,
-		Children:   children,
+		ChildElems:   children,
 	}
 }
 
@@ -122,7 +122,7 @@ func BenchmarkDiff_WideList50(b *testing.B) {
 	oldEl := buildList(50, "item")
 	newEl := buildList(50, "item")
 	// Change the last item
-	newEl.Children[49].Value = "changed"
+	newEl.ChildElems[49].Value = "changed"
 	b.ResetTimer()
 	for b.Loop() {
 		Diff(oldEl, newEl)

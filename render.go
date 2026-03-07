@@ -45,7 +45,7 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 		return out.WriteByte('>')
 	}
 
-	if el.Value != "" && len(el.Children) == 0 {
+	if el.Value != "" && len(el.ChildElems) == 0 {
 		out.WriteByte('>')
 		out.WriteString(el.Value)
 		out.WriteString("</")
@@ -53,7 +53,7 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 		return out.WriteByte('>')
 	}
 
-	if el.Value == "" && len(el.Children) == 0 {
+	if el.Value == "" && len(el.ChildElems) == 0 {
 		out.WriteString("></")
 		out.WriteString(el.TagName)
 		return out.WriteByte('>')
@@ -66,8 +66,8 @@ func render(out *bufio.Writer, el *Element, indent int) error {
 		}
 	}
 
-	if len(el.Children) > 0 {
-		for _, c := range el.Children {
+	if len(el.ChildElems) > 0 {
+		for _, c := range el.ChildElems {
 			if err := render(out, c, indent+2); err != nil {
 				return err
 			}
@@ -112,7 +112,7 @@ func renderValue(out *bufio.Writer, el *Element) error {
 	if !isEmptyElement(el.TagName) {
 		if el.Value != "" {
 			out.WriteString(el.Value)
-			if len(el.Children) > 0 {
+			if len(el.ChildElems) > 0 {
 				out.WriteByte('\n')
 			}
 		}

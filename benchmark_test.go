@@ -11,18 +11,18 @@ func buildSimpleTree() *Element {
 		TagName:    "html",
 		Attr:       AttrMap{"lang": "en"},
 		ClassNames: ClassMap{},
-		Children: []*Element{
+		ChildElems: []*Element{
 			{
 				TagName: "head", ClassNames: ClassMap{}, Attr: AttrMap{},
-				Children: []*Element{
-					{TagName: "title", Value: "Hello", ClassNames: ClassMap{}, Attr: AttrMap{}, Children: []*Element{}},
+				ChildElems: []*Element{
+					{TagName: "title", Value: "Hello", ClassNames: ClassMap{}, Attr: AttrMap{}, ChildElems: []*Element{}},
 				},
 			},
 			{
 				TagName: "body", ClassNames: ClassMap{"container": true}, Attr: AttrMap{},
-				Children: []*Element{
-					{TagName: "h1", Value: "Title", ClassNames: ClassMap{}, Attr: AttrMap{}, Children: []*Element{}},
-					{TagName: "p", Value: "A paragraph.", ClassNames: ClassMap{}, Attr: AttrMap{}, Children: []*Element{}},
+				ChildElems: []*Element{
+					{TagName: "h1", Value: "Title", ClassNames: ClassMap{}, Attr: AttrMap{}, ChildElems: []*Element{}},
+					{TagName: "p", Value: "A paragraph.", ClassNames: ClassMap{}, Attr: AttrMap{}, ChildElems: []*Element{}},
 				},
 			},
 		},
@@ -35,14 +35,14 @@ func buildDeepTree(depth, width int) *Element {
 		TagName:    "div",
 		ClassNames: ClassMap{"root": true},
 		Attr:       AttrMap{"id": "root"},
-		Children:   make([]*Element, 0, width),
+		ChildElems:   make([]*Element, 0, width),
 	}
 	for i := 0; i < width; i++ {
 		child := &Element{
 			TagName:    "div",
 			ClassNames: ClassMap{"level-1": true, "item": true},
 			Attr:       AttrMap{"data-index": "0"},
-			Children:   make([]*Element, 0),
+			ChildElems:   make([]*Element, 0),
 		}
 		node := child
 		for d := 2; d <= depth; d++ {
@@ -50,15 +50,15 @@ func buildDeepTree(depth, width int) *Element {
 				TagName:    "div",
 				ClassNames: ClassMap{"nested": true},
 				Attr:       AttrMap{"data-depth": "d"},
-				Children:   make([]*Element, 0),
+				ChildElems:   make([]*Element, 0),
 			}
-			node.Children = append(node.Children, inner)
+			node.ChildElems = append(node.ChildElems, inner)
 			node = inner
 		}
-		node.Children = append(node.Children, &Element{
-			TagName: "span", Value: "leaf", ClassNames: ClassMap{}, Attr: AttrMap{}, Children: []*Element{},
+		node.ChildElems = append(node.ChildElems, &Element{
+			TagName: "span", Value: "leaf", ClassNames: ClassMap{}, Attr: AttrMap{}, ChildElems: []*Element{},
 		})
-		root.Children = append(root.Children, child)
+		root.ChildElems = append(root.ChildElems, child)
 	}
 	return root
 }
@@ -68,11 +68,11 @@ func buildWideList(n int) *Element {
 	items := make([]*Element, n)
 	for i := range items {
 		items[i] = &Element{
-			TagName: "li", Value: "Item", ClassNames: ClassMap{}, Attr: AttrMap{}, Children: []*Element{},
+			TagName: "li", Value: "Item", ClassNames: ClassMap{}, Attr: AttrMap{}, ChildElems: []*Element{},
 		}
 	}
 	return &Element{
-		TagName: "ul", ClassNames: ClassMap{"list": true}, Attr: AttrMap{}, Children: items,
+		TagName: "ul", ClassNames: ClassMap{"list": true}, Attr: AttrMap{}, ChildElems: items,
 	}
 }
 
@@ -127,7 +127,7 @@ func BenchmarkParse_Flat10(b *testing.B) {
 	}
 	b.ResetTimer()
 	for b.Loop() {
-		root := &Element{TagName: "div", Children: make([]*Element, 0)}
+		root := &Element{TagName: "div", ChildElems: make([]*Element, 0)}
 		Parse(root, fns...)
 	}
 }
@@ -139,7 +139,7 @@ func BenchmarkParse_Flat100(b *testing.B) {
 	}
 	b.ResetTimer()
 	for b.Loop() {
-		root := &Element{TagName: "div", Children: make([]*Element, 0)}
+		root := &Element{TagName: "div", ChildElems: make([]*Element, 0)}
 		Parse(root, fns...)
 	}
 }
@@ -152,7 +152,7 @@ func BenchmarkParse_Nested5(b *testing.B) {
 	}
 	b.ResetTimer()
 	for b.Loop() {
-		root := &Element{TagName: "div", Children: make([]*Element, 0)}
+		root := &Element{TagName: "div", ChildElems: make([]*Element, 0)}
 		Parse(root, fn)
 	}
 }

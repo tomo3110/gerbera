@@ -175,8 +175,8 @@ func TestBuildTree(t *testing.T) {
 	if tree.Attr["gerbera-session"] != "test-id" {
 		t.Error("expected gerbera-session attribute")
 	}
-	if len(tree.Children) != 2 {
-		t.Errorf("expected 2 children (head, body), got %d", len(tree.Children))
+	if len(tree.ChildElems) != 2 {
+		t.Errorf("expected 2 children (head, body), got %d", len(tree.ChildElems))
 	}
 }
 
@@ -190,7 +190,7 @@ func TestBuildTreeWithCSRFToken(t *testing.T) {
 
 	// Find <head> and check that first child is the CSRF meta tag
 	var head *g.Element
-	for _, child := range tree.Children {
+	for _, child := range tree.ChildElems {
 		if child.TagName == "head" {
 			head = child
 			break
@@ -199,10 +199,10 @@ func TestBuildTreeWithCSRFToken(t *testing.T) {
 	if head == nil {
 		t.Fatal("expected <head> element")
 	}
-	if len(head.Children) == 0 {
+	if len(head.ChildElems) == 0 {
 		t.Fatal("expected children in <head>")
 	}
-	meta := head.Children[0]
+	meta := head.ChildElems[0]
 	if meta.TagName != "meta" {
 		t.Errorf("expected meta tag, got %s", meta.TagName)
 	}
