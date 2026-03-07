@@ -666,8 +666,13 @@
                 jsCommands = data.js_commands;
               }
               patches.forEach(function(p) {
+                // Server diff paths are relative to <html>. The view body
+                // is child[1] (after <head> at child[0]).  In LiveMount mode
+                // the container (el) holds body's innerHTML, so we skip the
+                // first path element that addresses <body> within <html>.
+                if (p.path.length === 0 || p.path[0] !== 1) return;
                 var n = el;
-                for (var i = 0; i < p.path.length; i++) {
+                for (var i = 1; i < p.path.length; i++) {
                   if (!n.children[p.path[i]]) return;
                   n = n.children[p.path[i]];
                 }
