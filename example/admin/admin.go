@@ -10,6 +10,7 @@ import (
 	"time"
 
 	g "github.com/tomo3110/gerbera"
+	_ "github.com/tomo3110/gerbera/assets"
 	gd "github.com/tomo3110/gerbera/dom"
 	"github.com/tomo3110/gerbera/expr"
 	gl "github.com/tomo3110/gerbera/live"
@@ -92,7 +93,6 @@ func adminPage(page string, liveEndpoint string) g.Components {
 					gl.LiveMount(liveEndpoint),
 				),
 			),
-			gl.Script(),
 		),
 	}
 }
@@ -564,5 +564,5 @@ func main() {
 	})
 
 	log.Printf("admin running on %s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, mux))
+	log.Fatal(http.ListenAndServe(*addr, g.Serve(mux)))
 }

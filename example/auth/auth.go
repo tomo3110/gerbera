@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	g "github.com/tomo3110/gerbera"
+	_ "github.com/tomo3110/gerbera/assets"
 	gd "github.com/tomo3110/gerbera/dom"
 	"github.com/tomo3110/gerbera/expr"
 	gl "github.com/tomo3110/gerbera/live"
@@ -99,7 +100,6 @@ func dashboardPage() g.Components {
 					),
 				),
 			),
-			gl.Script(),
 		),
 	}
 }
@@ -267,5 +267,5 @@ func main() {
 	handler := sessionMW(mux)
 
 	log.Printf("auth demo running on %s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, handler))
+	log.Fatal(http.ListenAndServe(*addr, g.Serve(handler)))
 }
