@@ -197,6 +197,7 @@ func renderConvoItem(c ConversationSummary) g.ComponentFunc {
 	avatar := avatarComponent(c.Partner)
 	return gd.Div(
 		gp.Class("convo-item"),
+		gp.Key(fmt.Sprintf("convo-%d", c.Partner.ID)),
 		gl.Click("openChat"), gl.ClickValue(fmt.Sprintf("%d", c.Partner.ID)),
 		avatar,
 		gd.Div(

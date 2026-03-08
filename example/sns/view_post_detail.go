@@ -198,6 +198,7 @@ func renderComment(c CommentWithUser) g.ComponentFunc {
 	avatar := avatarComponent(c.Author)
 	return gd.Div(
 		gp.Class("comment-item"),
+		gp.Key(fmt.Sprintf("comment-%d", c.Comment.ID)),
 		avatar,
 		gd.Div(
 			gp.Class("comment-body"),

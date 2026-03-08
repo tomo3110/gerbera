@@ -75,6 +75,7 @@ func postCard(p PostWithMeta) g.ComponentFunc {
 
 	return gd.Div(
 		gp.Class("post-card"),
+		gp.Key("post-"+postIDStr),
 		gd.Div(
 			gp.Class("post-header"),
 			avatar,
@@ -172,6 +173,7 @@ func renderSearchUserItem(u User) g.ComponentFunc {
 	avatar := avatarComponent(u)
 	return gd.A(
 		gp.Class("search-user-item"),
+		gp.Key(fmt.Sprintf("user-%d", u.ID)),
 		gp.Attr("href", fmt.Sprintf("/profile/%d", u.ID)),
 		avatar,
 		gd.Div(
