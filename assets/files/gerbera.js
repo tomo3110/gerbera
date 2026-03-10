@@ -65,7 +65,7 @@
         var p = {value: el.value};
         var gv = el.getAttribute("gerbera-value");
         if (gv) p.value = gv;
-        send(inputEvt, p);
+        findScopedSend(el)(inputEvt, p);
       }
     }
   });
@@ -142,11 +142,18 @@
   }
 
   function send(name, payload) {
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
       // Add loading class
       document.documentElement.classList.add("gerbera-loading");
       ws.send(JSON.stringify({e: name, p: payload}));
     }
+  }
+
+  // Find the scoped send function for an element inside a LiveMount container.
+  function findScopedSend(el) {
+    var container = el.closest("[gerbera-live]");
+    if (container && container._gbLiveSend) return container._gbLiveSend;
+    return send;
   }
 
   function bind() {
@@ -418,6 +425,7 @@
           } else {
             n.textContent = v;
           }
+          if (n.tagName === "TEXTAREA") { n.value = v; }
           break;
         case "html":
           if (isSVG(n)) {
@@ -515,7 +523,7 @@
           var compCsrf = compCsrfMeta ? compCsrfMeta.getAttribute("content") : "";
           if (compSid) {
             var compWs = new WebSocket(
-              proto + "//" + location.host + path + "?gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
+              proto + "//" + location.host + path + (path.indexOf("?") === -1 ? "?" : "&") + "gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
             );
             compWs.onmessage = function(ev) {
               // Apply patches scoped to the component container
@@ -540,6 +548,7 @@
                       if (tn) { tn.textContent = v; }
                       else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
                     } else { n.textContent = v; }
+                    if (n.tagName === "TEXTAREA") { n.value = v; }
                     break;
                   case "html":
                     if (isSVG(n)) {
@@ -591,12 +600,25 @@
   }
 
   window.addEventListener("popstate", function() {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    var params = new URLSearchParams(window.location.search);
-    var p = {};
-    params.forEach(function(v, k) { p[k] = v; });
-    p["_path"] = window.location.pathname + window.location.search;
-    send("gerbera:params_change", p);
+    // Full LiveView mode
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      var params = new URLSearchParams(window.location.search);
+      var p = {};
+      params.forEach(function(v, k) { p[k] = v; });
+      p["_path"] = window.location.pathname + window.location.search;
+      send("gerbera:params_change", p);
+      return;
+    }
+    // LiveMount mode: dispatch to all mounted components
+    document.querySelectorAll("[gerbera-live]").forEach(function(el) {
+      if (el._gbLiveWs && el._gbLiveWs.readyState === WebSocket.OPEN && el._gbLiveSend) {
+        var params = new URLSearchParams(window.location.search);
+        var p = {};
+        params.forEach(function(v, k) { p[k] = v; });
+        p["_path"] = window.location.pathname + window.location.search;
+        el._gbLiveSend("gerbera:params_change", p);
+      }
+    });
   });
 
   // Mount LiveView components embedded in SSR pages via gl.LiveMount().
@@ -618,9 +640,13 @@
           var compCsrfMeta = doc.querySelector('meta[name="gerbera-csrf"]');
           var compCsrf = compCsrfMeta ? compCsrfMeta.getAttribute("content") : "";
           if (compSid) {
+            // Store session info on container for upload support
+            el._gbLiveSessionId = compSid;
+            el._gbLiveCsrf = compCsrf;
             var compWs = new WebSocket(
-              proto + "//" + location.host + path + "?gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
+              proto + "//" + location.host + path + (path.indexOf("?") === -1 ? "?" : "&") + "gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
             );
+            el._gbLiveWs = compWs;
             var liveSend = function(name, payload) {
               if (compWs.readyState === WebSocket.OPEN) {
                 el.classList.add("gerbera-loading");
@@ -642,8 +668,13 @@
                 jsCommands = data.js_commands;
               }
               patches.forEach(function(p) {
+                // Server diff paths are relative to <html>. The view body
+                // is child[1] (after <head> at child[0]).  In LiveMount mode
+                // the container (el) holds body's innerHTML, so we skip the
+                // first path element that addresses <body> within <html>.
+                if (p.path.length === 0 || p.path[0] !== 1) return;
                 var n = el;
-                for (var i = 0; i < p.path.length; i++) {
+                for (var i = 1; i < p.path.length; i++) {
                   if (!n.children[p.path[i]]) return;
                   n = n.children[p.path[i]];
                 }
@@ -658,6 +689,7 @@
                       if (tn) { tn.textContent = v; }
                       else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
                     } else { n.textContent = v; }
+                    if (n.tagName === "TEXTAREA") { n.value = v; }
                     break;
                   case "html":
                     if (isSVG(n)) {
@@ -686,8 +718,15 @@
                     if (n.children[p.idx]) n.removeChild(n.children[p.idx]);
                     break;
                   case "replace": {
-                    var frag = parseFragment(p.html, n.parentNode);
-                    n.replaceWith(frag);
+                    if (n === el) {
+                      // Replacing the body itself — parse the replacement HTML
+                      // and update container innerHTML to preserve the mount point.
+                      var tmpDoc = new DOMParser().parseFromString(p.html, "text/html");
+                      el.innerHTML = tmpDoc.body ? tmpDoc.body.innerHTML : "";
+                    } else {
+                      var frag = parseFragment(p.html, n.parentNode);
+                      n.replaceWith(frag);
+                    }
                     break;
                   }
                 }
@@ -708,6 +747,9 @@
   // Bind gerbera event attributes within a scoped container element,
   // using the provided sendFn for WebSocket communication.
   function bindScoped(container, sendFn) {
+    // Store sendFn on container so compositionend / other global handlers can find it.
+    container._gbLiveSend = sendFn;
+
     EVENTS.forEach(function(type) {
       container.querySelectorAll("[gerbera-" + type + "]").forEach(function(el) {
         if (el._gb && el._gb[type]) return;
@@ -743,6 +785,34 @@
           } else {
             sendFn(name, p);
           }
+        });
+      });
+    });
+
+    // File upload inputs (scoped)
+    container.querySelectorAll("[gerbera-upload]").forEach(function(el) {
+      if (el._gbUpload) return;
+      el._gbUpload = true;
+      el.addEventListener("change", function() {
+        if (!el.files || !el.files.length) return;
+        var event = el.getAttribute("gerbera-upload");
+        var maxSize = parseInt(el.getAttribute("gerbera-upload-max")) || (10 * 1024 * 1024);
+        var fd = new FormData();
+        for (var i = 0; i < el.files.length; i++) {
+          if (el.files[i].size > maxSize) {
+            console.warn("Gerbera: file too large:", el.files[i].name, el.files[i].size);
+            continue;
+          }
+          fd.append("files", el.files[i]);
+        }
+        var liveEl = container;
+        var livePath = liveEl.getAttribute("gerbera-live") || "";
+        var liveSid = liveEl._gbLiveSessionId || "";
+        var liveCsrf = liveEl._gbLiveCsrf || "";
+        var sep = livePath.indexOf("?") === -1 ? "?" : "&";
+        var url = livePath + sep + "gerbera-upload=1&session=" + liveSid + "&csrf=" + liveCsrf + "&event=" + encodeURIComponent(event);
+        fetch(url, {method: "POST", body: fd}).then(function(res) {
+          if (res.ok) sendFn("gerbera:upload_complete", {event: event});
         });
       });
     });

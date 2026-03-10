@@ -35,16 +35,17 @@ type NewCommentOnViewedPostNotif struct {
 }
 
 // Hub is a pub/sub that routes real-time notifications to connected LiveView sessions.
+// A single user may have multiple sessions (one per View / WebSocket).
 type Hub struct {
-	mu      sync.RWMutex
-	clients map[string]*live.Session // key: live session ID
-	userMap map[int64]string         // key: user DB ID → live session ID
+	mu       sync.RWMutex
+	clients  map[string]*live.Session         // sessionID → Session
+	userSess map[int64]map[string]struct{} // userID → set of sessionIDs
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		clients: make(map[string]*live.Session),
-		userMap: make(map[int64]string),
+		clients:  make(map[string]*live.Session),
+		userSess: make(map[int64]map[string]struct{}),
 	}
 }
 
@@ -52,7 +53,10 @@ func NewHub() *Hub {
 func (h *Hub) Join(sess *live.Session, userID int64) {
 	h.mu.Lock()
 	h.clients[sess.ID] = sess
-	h.userMap[userID] = sess.ID
+	if h.userSess[userID] == nil {
+		h.userSess[userID] = make(map[string]struct{})
+	}
+	h.userSess[userID][sess.ID] = struct{}{}
 	h.mu.Unlock()
 }
 
@@ -60,17 +64,24 @@ func (h *Hub) Join(sess *live.Session, userID int64) {
 func (h *Hub) Leave(sessionID string, userID int64) {
 	h.mu.Lock()
 	delete(h.clients, sessionID)
-	delete(h.userMap, userID)
+	if sids, ok := h.userSess[userID]; ok {
+		delete(sids, sessionID)
+		if len(sids) == 0 {
+			delete(h.userSess, userID)
+		}
+	}
 	h.mu.Unlock()
 }
 
-// Notify sends a message to a specific user's LiveView session.
+// Notify sends a message to all of a specific user's LiveView sessions.
 func (h *Hub) Notify(userID int64, msg any) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	if sessID, ok := h.userMap[userID]; ok {
-		if sess, ok := h.clients[sessID]; ok {
-			sess.SendInfo(msg)
+	if sids, ok := h.userSess[userID]; ok {
+		for sid := range sids {
+			if sess, ok := h.clients[sid]; ok {
+				sess.SendInfo(msg)
+			}
 		}
 	}
 }

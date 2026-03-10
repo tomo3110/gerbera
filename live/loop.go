@@ -75,7 +75,9 @@ func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
 	}
 
 	// Build the initial tree so that the first diff has a baseline.
+	// Include script components so the tree matches what handleHTTP sent.
 	components := view.Render()
+	components = appendScriptComponents(components, cfg.Debug)
 	sess.tree = buildTree(cfg.Lang, cfg.SessionID, cfg.CSRFToken, components)
 
 	hcfg := &handlerConfig{

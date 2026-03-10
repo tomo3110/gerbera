@@ -163,10 +163,25 @@ body {
 	margin-left: auto;
 }
 .post-content {
+	display: block;
 	margin: var(--g-space-xs) 0;
 	line-height: 1.5;
 	white-space: pre-wrap;
 	word-wrap: break-word;
+	color: inherit;
+	text-decoration: none;
+}
+a.post-author {
+	color: inherit;
+	text-decoration: none;
+}
+a.post-action-btn {
+	text-decoration: none;
+	color: var(--g-text-tertiary);
+}
+a.search-user-item {
+	text-decoration: none;
+	color: inherit;
 }
 .post-image {
 	width: 100%;
