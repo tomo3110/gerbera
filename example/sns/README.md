@@ -59,11 +59,22 @@ cd example/sns && go run . -addr :9000 -dsn "user:pass@tcp(host:3306)/dbname?par
 
 This example uses an independent `go.mod` with `replace` directive (same pattern as `example/mdviewer`).
 
-The app follows the **single LiveView with internal routing** pattern from `example/admin/`: a single `SNSView` struct manages all pages via `v.page` state and a `switch` in `renderContent()`. Navigation events update the page state and the diff engine patches only the changed DOM.
+The app follows a **multi-View SSR shell** architecture: an SSR layout (`layout.go`) renders the sidebar navigation and embeds individual LiveView endpoints via `LiveMount`. Each page has its own View struct (`TimelineView`, `ProfileView`, `PostDetailView`, `MessagesView`, `SearchView`, `SettingsView`) with isolated state, all sharing common logic through an embedded `baseView`.
 
-Authentication uses the `session/` package with static login/register pages (same pattern as `example/auth/`), while the main app is a protected LiveView behind `session.RequireKey`.
+SSR shell pages handle routing and badge counts, while LiveView endpoints handle real-time interactivity:
 
-Real-time notifications use the Hub pub/sub pattern from `example/chat/`: a shared `Hub` maps user IDs to `*live.Session` references, and `SendInfo()` pushes typed notification messages to the correct user's `HandleInfo()` method.
+```
+GET /           → SSR shell → LiveMount("/live/timeline")  → TimelineView
+GET /profile    → SSR shell → LiveMount("/live/profile")   → ProfileView
+GET /post/{id}  → SSR shell → LiveMount("/live/post?id=…") → PostDetailView
+GET /messages   → SSR shell → LiveMount("/live/messages")  → MessagesView
+GET /search     → SSR shell → LiveMount("/live/search")    → SearchView
+GET /settings   → SSR shell → LiveMount("/live/settings")  → SettingsView
+```
+
+Authentication uses the `session/` package with static login/register pages (same pattern as `example/auth/`), while all LiveView endpoints are protected behind `session.RequireKey`.
+
+Real-time notifications use the Hub pub/sub pattern from `example/chat/`: a shared `Hub` maps user IDs to multiple `*live.Session` references (one per View/WebSocket), and `SendInfo()` pushes typed notification messages to the correct user's `HandleInfo()` method across all active Views.
 
 ## File Structure
 
@@ -72,11 +83,17 @@ Real-time notifications use the Hub pub/sub pattern from `example/chat/`: a shar
 | `main.go` | Entry point, routes, MySQL init, session store |
 | `db.go` | DB connection, auto-migration, all SQL queries |
 | `models.go` | Data structs (User, Post, Like, Follow, etc.) |
-| `hub.go` | Real-time notification Hub |
+| `hub.go` | Real-time notification Hub with multi-session user mapping |
 | `auth.go` | Login/register pages + POST handlers + password hashing |
-| `view.go` | SNSView struct, Mount, HandleEvent, HandleUpload, HandleInfo, Unmount |
-| `pages.go` | Render method + page renderers (timeline, profile, post, messages, settings, search) |
-| `components.go` | Shared UI components (post card, nav links, compose box, SVG icons) |
+| `layout.go` | SSR shell layout with sidebar, drawer, badge counts, LiveMount |
+| `view_base.go` | Shared view logic: mountBase, unmountBase, post actions, notifications |
+| `view_timeline.go` | TimelineView: home feed, compose, post/delete |
+| `view_profile.go` | ProfileView: user profile, follow/unfollow |
+| `view_post_detail.go` | PostDetailView: single post, comments, delete |
+| `view_messages.go` | MessagesView: conversations, 1:1 chat |
+| `view_search.go` | SearchView: debounced user/post search |
+| `view_settings.go` | SettingsView: profile edit, password change, avatar upload |
+| `components.go` | Shared UI components (post card, compose box, avatars, SVG icons) |
 | `css.go` | All CSS (mobile-first, responsive breakpoints) |
 | `schema.sql` | Reference SQL schema |
 | `docker-compose.yml` | MySQL 8.0 container |

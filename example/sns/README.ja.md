@@ -59,11 +59,22 @@ cd example/sns && go run . -addr :9000 -dsn "user:pass@tcp(host:3306)/dbname?par
 
 このサンプルは `replace` ディレクティブ付きの独立した `go.mod` を使用します（`example/mdviewer` と同じパターン）。
 
-アプリは `example/admin/` の**単一 LiveView + 内部ルーティング**パターンに従います: 単一の `SNSView` 構造体が `v.page` 状態と `renderContent()` の `switch` により全ページを管理します。ナビゲーションイベントがページ状態を更新し、diff エンジンが変更された DOM のみをパッチします。
+アプリは**マルチビュー SSR シェル**アーキテクチャに従います: SSR レイアウト（`layout.go`）がサイドバーナビゲーションを描画し、個別の LiveView エンドポイントを `LiveMount` で埋め込みます。各ページは独自の View 構造体（`TimelineView`、`ProfileView`、`PostDetailView`、`MessagesView`、`SearchView`、`SettingsView`）を持ち、分離された状態を管理します。すべてのビューは埋め込まれた `baseView` を通じて共通ロジックを共有します。
 
-認証は `session/` パッケージを使用した静的ログイン/登録ページ（`example/auth/` と同じパターン）で、メインアプリは `session.RequireKey` で保護された LiveView です。
+SSR シェルページがルーティングとバッジカウントを処理し、LiveView エンドポイントがリアルタイムのインタラクティビティを担当します:
 
-リアルタイム通知は `example/chat/` の Hub pub/sub パターンを使用: 共有 `Hub` がユーザー ID を `*live.Session` 参照にマッピングし、`SendInfo()` が型付き通知メッセージを正しいユーザーの `HandleInfo()` メソッドにプッシュします。
+```
+GET /           → SSR シェル → LiveMount("/live/timeline")  → TimelineView
+GET /profile    → SSR シェル → LiveMount("/live/profile")   → ProfileView
+GET /post/{id}  → SSR シェル → LiveMount("/live/post?id=…") → PostDetailView
+GET /messages   → SSR シェル → LiveMount("/live/messages")  → MessagesView
+GET /search     → SSR シェル → LiveMount("/live/search")    → SearchView
+GET /settings   → SSR シェル → LiveMount("/live/settings")  → SettingsView
+```
+
+認証は `session/` パッケージを使用した静的ログイン/登録ページ（`example/auth/` と同じパターン）で、すべての LiveView エンドポイントは `session.RequireKey` で保護されています。
+
+リアルタイム通知は `example/chat/` の Hub pub/sub パターンを使用: 共有 `Hub` がユーザー ID を複数の `*live.Session` 参照（View/WebSocket ごとに 1 つ）にマッピングし、`SendInfo()` が型付き通知メッセージを正しいユーザーの `HandleInfo()` メソッドにすべてのアクティブ View を通じてプッシュします。
 
 ## ファイル構成
 
@@ -72,11 +83,17 @@ cd example/sns && go run . -addr :9000 -dsn "user:pass@tcp(host:3306)/dbname?par
 | `main.go` | エントリポイント、ルーティング、MySQL 初期化、セッションストア |
 | `db.go` | DB 接続、自動マイグレーション、全 SQL クエリ |
 | `models.go` | データ構造体（User, Post, Like, Follow 等） |
-| `hub.go` | リアルタイム通知 Hub |
+| `hub.go` | マルチセッションユーザーマッピング付きリアルタイム通知 Hub |
 | `auth.go` | ログイン/登録ページ + POST ハンドラ + パスワードハッシュ |
-| `view.go` | SNSView 構造体、Mount, HandleEvent, HandleUpload, HandleInfo, Unmount |
-| `pages.go` | Render メソッド + ページレンダラー（タイムライン、プロフィール、投稿、メッセージ、設定、検索） |
-| `components.go` | 共有 UI コンポーネント（投稿カード、ナビリンク、投稿ボックス、SVG アイコン） |
+| `layout.go` | SSR シェルレイアウト（サイドバー、ドロワー、バッジカウント、LiveMount） |
+| `view_base.go` | 共有ビューロジック: mountBase、unmountBase、投稿アクション、通知 |
+| `view_timeline.go` | TimelineView: ホームフィード、投稿作成、投稿/削除 |
+| `view_profile.go` | ProfileView: ユーザープロフィール、フォロー/フォロー解除 |
+| `view_post_detail.go` | PostDetailView: 単一投稿、コメント、削除 |
+| `view_messages.go` | MessagesView: 会話一覧、1:1 チャット |
+| `view_search.go` | SearchView: デバウンス付きユーザー/投稿検索 |
+| `view_settings.go` | SettingsView: プロフィール編集、パスワード変更、アバターアップロード |
+| `components.go` | 共有 UI コンポーネント（投稿カード、投稿ボックス、アバター、SVG アイコン） |
 | `css.go` | 全 CSS（モバイルファースト、レスポンシブブレークポイント） |
 | `schema.sql` | リファレンス SQL スキーマ |
 | `docker-compose.yml` | MySQL 8.0 コンテナ |
