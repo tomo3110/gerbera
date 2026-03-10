@@ -152,7 +152,7 @@ func (v *SettingsView) Render() g.Components {
 						gu.FormGroup(
 							gu.FormLabel("Bio", "bio"),
 							gu.FormTextarea("bio",
-								gp.Attr("value", v.settingsBio),
+								gp.Value(v.settingsBio),
 								gp.Placeholder("Tell us about yourself"),
 								gp.Attr("maxlength", "160"),
 								gl.Input("settingsBioInput"),
@@ -190,9 +190,9 @@ func (v *SettingsView) Render() g.Components {
 						gp.Attr("style", "display:flex; align-items:center; gap:var(--g-space-md)"),
 						func() g.ComponentFunc {
 							if v.user.AvatarPath != "" {
-								return gu.ImageAvatar(v.user.AvatarPath, gu.AvatarOpts{Size: "xl"})
+								return gu.ImageAvatar(v.user.AvatarPath, gu.AvatarOpts{Size: "xl"}, gp.Key("avatar-img"))
 							}
-							return gu.LetterAvatar(v.user.DisplayName, gu.AvatarOpts{Size: "xl"})
+							return gu.LetterAvatar(v.user.DisplayName, gu.AvatarOpts{Size: "xl"}, gp.Key("avatar-letter"))
 						}(),
 						gd.Label(
 							gp.Attr("style", "cursor:pointer"),

@@ -425,6 +425,7 @@
           } else {
             n.textContent = v;
           }
+          if (n.tagName === "TEXTAREA") { n.value = v; }
           break;
         case "html":
           if (isSVG(n)) {
@@ -547,6 +548,7 @@
                       if (tn) { tn.textContent = v; }
                       else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
                     } else { n.textContent = v; }
+                    if (n.tagName === "TEXTAREA") { n.value = v; }
                     break;
                   case "html":
                     if (isSVG(n)) {
@@ -687,6 +689,7 @@
                       if (tn) { tn.textContent = v; }
                       else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
                     } else { n.textContent = v; }
+                    if (n.tagName === "TEXTAREA") { n.value = v; }
                     break;
                   case "html":
                     if (isSVG(n)) {
