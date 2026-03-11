@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	g "github.com/tomo3110/gerbera"
 	gl "github.com/tomo3110/gerbera/live"
 )
 
@@ -59,5 +60,5 @@ func main() {
 		}
 		log.Printf("  mode: %s, file: %s", mode, filePath)
 	}
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	log.Fatal(http.ListenAndServe(*addr, g.Serve(http.DefaultServeMux)))
 }

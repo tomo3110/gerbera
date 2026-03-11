@@ -174,10 +174,12 @@ func main() {
 		return NewSettingsView(db, hub)
 	}, liveOpts...)))
 
-	handler := sessionMW(mux)
+	// sessionMW must wrap g.Serve so that /_gerbera/ws (multiplex endpoint)
+	// also has the session loaded into context for authGuard to work.
+	handler := sessionMW(g.Serve(mux, g.WithMultiplex(authGuard(muxHandler))))
 
 	log.Printf("SNS running on http://localhost%s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, g.Serve(handler, g.WithMultiplex(authGuard(muxHandler)))))
+	log.Fatal(http.ListenAndServe(*addr, handler))
 }
 
 // fetchBadgeCounts retrieves notification and message badge counts for the current user.

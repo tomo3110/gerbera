@@ -244,5 +244,5 @@ func main() {
 	flag.Parse()
 	http.Handle("/", gl.Handler(func(_ context.Context) gl.View { return &WikiView{} }))
 	log.Printf("wiki_live running on %s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	log.Fatal(http.ListenAndServe(*addr, g.Serve(http.DefaultServeMux)))
 }

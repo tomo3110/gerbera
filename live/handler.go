@@ -4,16 +4,14 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/tomo3110/gerbera"
+	"github.com/tomo3110/gerbera/assets"
 	"github.com/tomo3110/gerbera/diff"
-	"github.com/tomo3110/gerbera/dom"
 	"github.com/tomo3110/gerbera/session"
 )
 
@@ -99,6 +97,12 @@ func Handler(viewFactory func(context.Context) View, opts ...Option) http.Handle
 		o(cfg)
 	}
 
+	if cfg.debug {
+		assets.RegisterDebugHTMLProvider(func() string {
+			return renderDebugPanelHTML()
+		})
+	}
+
 	checkOrigin := cfg.checkOrigin
 	if checkOrigin == nil {
 		checkOrigin = defaultCheckOrigin
@@ -157,9 +161,8 @@ func handleHTTP(w http.ResponseWriter, r *http.Request, viewFactory func(context
 	}
 
 	components := view.Render()
-	components = appendScriptComponents(components, cfg.debug)
-
 	tree := buildTree(cfg.lang, sess.ID, sess.CSRFToken, components)
+	registerScripts(tree, cfg.debug)
 
 	sess.mu.Lock()
 	sess.tree = tree
@@ -235,7 +238,6 @@ func handleWS(w http.ResponseWriter, r *http.Request, store *sessionStore, cfg *
 // When debug is true, it also marshals the View state for the debug panel.
 func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []JSCommand, json.RawMessage) {
 	components := sess.View.Render()
-	components = appendScriptComponents(components, cfg.debug)
 	lang := ""
 	if sess.tree != nil {
 		for _, a := range sess.tree.Attributes() {
@@ -265,25 +267,17 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []JSCommand
 	return patches, cmds, viewState
 }
 
-// appendScriptComponents appends gerbera JS (and debug JS when enabled)
-// as a second <body> component. Both handleHTTP and renderAndDiff call this
-// so that old and new trees always share the same structure, preventing
-// spurious diff patches for the script body.
-func appendScriptComponents(components gerbera.Components, debug bool) gerbera.Components {
+// registerScripts registers gerbera.js (and debug JS when enabled) as
+// metadata on the tree root, so that gerbera.Render() injects <script src>
+// tags in the <body>. diff.Diff() and diff.RenderFragment() ignore metadata,
+// keeping the ViewLoop tree free of scripts.
+func registerScripts(tree *gerbera.Element, debug bool) {
+	jsURL, _ := url.Parse(assets.JSPath())
+	assets.RequireScript(tree, jsURL)
 	if debug {
-		debugHTML := renderDebugPanelHTML()
-		escaped := escapeForJSString(debugHTML)
-		debugJS := strings.Replace(gerberaDebugJSContent(),
-			`/*__GERBERA_DEBUG_HTML__*/""`,
-			`"`+escaped+`"`, 1)
-		return append(components, dom.Body(
-			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJSContent())),
-			gerbera.Literal(fmt.Sprintf("<script>%s</script>", debugJS)),
-		))
+		debugURL, _ := url.Parse(assets.DebugJSPath())
+		assets.RequireScript(tree, debugURL)
 	}
-	return append(components, dom.Body(
-		gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJSContent())),
-	))
 }
 
 // buildTree creates the full <html> Element tree from view components.

@@ -808,11 +808,11 @@
           fd.append("files", el.files[i]);
         }
         var liveEl = container;
-        var livePath = liveEl.getAttribute("gerbera-live") || "";
         var liveSid = liveEl._gbLiveSessionId || "";
         var liveCsrf = liveEl._gbLiveCsrf || "";
-        var sep = livePath.indexOf("?") === -1 ? "?" : "&";
-        var url = livePath + sep + "gerbera-upload=1&session=" + liveSid + "&csrf=" + liveCsrf + "&event=" + encodeURIComponent(event);
+        var uploadBase = liveEl._gbMuxEndpoint || liveEl.getAttribute("gerbera-live") || "";
+        var sep = uploadBase.indexOf("?") === -1 ? "?" : "&";
+        var url = uploadBase + sep + "gerbera-upload=1&session=" + liveSid + "&csrf=" + liveCsrf + "&event=" + encodeURIComponent(event);
         fetch(url, {method: "POST", body: fd}).then(function(res) {
           if (res.ok) sendFn("gerbera:upload_complete", {event: event});
         });
@@ -886,6 +886,8 @@
         view.csrf = data.csrf;
         el._gbLiveSessionId = data.session_id;
         el._gbLiveCsrf = data.csrf;
+        // Mark this container as multiplexed so uploads route to the mux endpoint
+        el._gbMuxEndpoint = document.documentElement.getAttribute("gerbera-multiplex");
 
         // Set initial HTML (body content from server)
         el.innerHTML = data.html;

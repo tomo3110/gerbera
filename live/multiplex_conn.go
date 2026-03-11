@@ -27,6 +27,7 @@ type multiplexConn struct {
 	cfg      *handlerConfig
 	dlog     *debugLogger
 	req      *http.Request // original upgrade request (for session, etc.)
+	sessions *sync.Map     // shared session store for upload support
 
 	mu    sync.Mutex
 	views map[string]*muxViewEntry
@@ -35,13 +36,14 @@ type multiplexConn struct {
 	done  chan struct{}
 }
 
-func newMultiplexConn(conn *websocket.Conn, registry *ViewRegistry, cfg *handlerConfig, dlog *debugLogger, r *http.Request) *multiplexConn {
+func newMultiplexConn(conn *websocket.Conn, registry *ViewRegistry, cfg *handlerConfig, dlog *debugLogger, r *http.Request, sessions *sync.Map) *multiplexConn {
 	return &multiplexConn{
 		conn:     conn,
 		registry: registry,
 		cfg:      cfg,
 		dlog:     dlog,
 		req:      r,
+		sessions: sessions,
 		views:    make(map[string]*muxViewEntry),
 		outCh:    make(chan outboundMsg, 64),
 		done:     make(chan struct{}),
@@ -191,6 +193,9 @@ func (mc *multiplexConn) handleMount(msg MultiplexClientMessage) {
 
 	transport := newMultiplexTransport(msg.ViewID, mc.outCh)
 
+	// Register session for upload support
+	mc.sessions.Store(sess.ID, &muxSessionEntry{sess: sess, view: view})
+
 	mc.mu.Lock()
 	mc.views[msg.ViewID] = &muxViewEntry{vs: vs, transport: transport}
 	mc.mu.Unlock()
@@ -230,6 +235,7 @@ func (mc *multiplexConn) handleMount(msg MultiplexClientMessage) {
 		}
 
 		transport.Close()
+		mc.sessions.Delete(sess.ID)
 
 		mc.mu.Lock()
 		delete(mc.views, msg.ViewID)
@@ -286,6 +292,7 @@ func (mc *multiplexConn) cleanupAll() {
 	for _, e := range entries {
 		e.transport.Close()
 		e.vs.cancel()
+		mc.sessions.Delete(e.vs.sess.ID)
 	}
 
 	// Give ViewLoops time to run Unmount

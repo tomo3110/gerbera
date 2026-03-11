@@ -1919,5 +1919,5 @@ func main() {
 
 	http.Handle("/", gl.Handler(func(_ context.Context) gl.View { return &CatalogView{} }, opts...))
 	log.Printf("catalog running on %s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	log.Fatal(http.ListenAndServe(*addr, g.Serve(http.DefaultServeMux)))
 }
