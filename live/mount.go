@@ -55,6 +55,29 @@ func WithMountClass(class string) MountOption {
 	}
 }
 
+// MultiplexAttr returns a ComponentFunc that marks the page for WebSocket
+// multiplexing by setting the gerbera-multiplex attribute on the root element.
+// Include this in your SSR page components when using g.Serve with g.WithMultiplex.
+//
+// Usage:
+//
+//	g.Handler(gl.MultiplexAttr(), gd.Head(...), gd.Body(...))
+func MultiplexAttr() gerbera.ComponentFunc {
+	return func(parent gerbera.Node) {
+		parent.SetAttribute("gerbera-multiplex", "/_gerbera/ws")
+	}
+}
+
+// WithIndependentConnection marks this LiveMount to always use its own
+// independent WebSocket connection, even when the page uses multiplexing.
+// This is useful for components that need a dedicated connection (e.g. for
+// reliability or isolation from other components on the page).
+func WithIndependentConnection() MountOption {
+	return func(n gerbera.Node) {
+		n.SetAttribute("gerbera-multiplex", "false")
+	}
+}
+
 // LiveMount creates a mount point for embedding a LiveView within an SSR page.
 //
 // When the client-side JavaScript detects a [gerbera-live] element, it
