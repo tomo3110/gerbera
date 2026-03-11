@@ -165,5 +165,5 @@ func main() {
 
 	http.Handle("/", gl.Handler(func(_ context.Context) gl.View { return &UploadView{} }, opts...))
 	log.Printf("upload running on %s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	log.Fatal(http.ListenAndServe(*addr, g.Serve(http.DefaultServeMux)))
 }

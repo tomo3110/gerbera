@@ -242,5 +242,5 @@ func main() {
 	}, opts...))
 
 	log.Println("Chat running on http://localhost:8920")
-	log.Fatal(http.ListenAndServe(":8920", nil))
+	log.Fatal(http.ListenAndServe(":8920", g.Serve(http.DefaultServeMux)))
 }
