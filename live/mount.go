@@ -33,7 +33,7 @@ import (
 func Script() gerbera.ComponentFunc {
 	return func(parent gerbera.Node) {
 		child := parent.AppendElement("script")
-		child.SetText(gerberaJS)
+		child.SetText(gerberaJSContent())
 	}
 }
 

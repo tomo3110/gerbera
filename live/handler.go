@@ -273,16 +273,16 @@ func appendScriptComponents(components gerbera.Components, debug bool) gerbera.C
 	if debug {
 		debugHTML := renderDebugPanelHTML()
 		escaped := escapeForJSString(debugHTML)
-		debugJS := strings.Replace(gerberaDebugJS,
+		debugJS := strings.Replace(gerberaDebugJSContent(),
 			`/*__GERBERA_DEBUG_HTML__*/""`,
 			`"`+escaped+`"`, 1)
 		return append(components, dom.Body(
-			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
+			gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJSContent())),
 			gerbera.Literal(fmt.Sprintf("<script>%s</script>", debugJS)),
 		))
 	}
 	return append(components, dom.Body(
-		gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJS)),
+		gerbera.Literal(fmt.Sprintf("<script>%s</script>", gerberaJSContent())),
 	))
 }
 

@@ -16,6 +16,9 @@ func init() {
 //go:embed files/gerbera.js
 var gerberaJS []byte
 
+//go:embed files/gerbera_debug.js
+var gerberaDebugJS []byte
+
 //go:embed files/gerbera.css
 var gerberaCSS []byte
 
@@ -25,6 +28,18 @@ var cssHash = computeHash(gerberaCSS)
 func computeHash(data []byte) string {
 	h := sha256.Sum256(data)
 	return fmt.Sprintf("%x", h[:8])
+}
+
+// JSString returns the gerbera.js content as a string.
+// Used by the live package to inline the script in full LiveView pages.
+func JSString() string {
+	return string(gerberaJS)
+}
+
+// DebugJSString returns the gerbera_debug.js content as a string.
+// Used by the live package to inline the debug panel script.
+func DebugJSString() string {
+	return string(gerberaDebugJS)
 }
 
 // JSPath returns the URL path for gerbera.js with a content hash for cache busting.
