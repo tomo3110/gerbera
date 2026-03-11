@@ -19,6 +19,7 @@ type badgeCounts struct {
 // snsPage returns the SSR shell layout with an embedded LiveMount.
 func snsPage(title, activePage, liveEndpoint string, badges badgeCounts) g.Components {
 	return g.Components{
+		gl.MultiplexAttr(),
 		gd.Head(
 			gd.Title(title+" — SNS"),
 			gd.Meta(gp.Attr("name", "viewport"), gp.Attr("content", "width=device-width, initial-scale=1")),

@@ -89,6 +89,16 @@ func main() {
 		liveOpts = append(liveOpts, gl.WithDebug())
 	}
 
+	// --- WebSocket Multiplexing ---
+	registry := gl.NewViewRegistry()
+	registry.Register("/live/timeline", func(_ context.Context) gl.View { return NewTimelineView(db, hub) })
+	registry.Register("/live/profile", func(_ context.Context) gl.View { return NewProfileView(db, hub) })
+	registry.Register("/live/post", func(_ context.Context) gl.View { return NewPostDetailView(db, hub) })
+	registry.Register("/live/messages", func(_ context.Context) gl.View { return NewMessagesView(db, hub) })
+	registry.Register("/live/search", func(_ context.Context) gl.View { return NewSearchView(db, hub) })
+	registry.Register("/live/settings", func(_ context.Context) gl.View { return NewSettingsView(db, hub) })
+	muxHandler := gl.NewMultiplexHandler(registry, liveOpts...)
+
 	// --- SSR pages (render layout shell with LiveMount) ---
 
 	mux.Handle("GET /{$}", authGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +177,7 @@ func main() {
 	handler := sessionMW(mux)
 
 	log.Printf("SNS running on http://localhost%s", *addr)
-	log.Fatal(http.ListenAndServe(*addr, g.Serve(handler)))
+	log.Fatal(http.ListenAndServe(*addr, g.Serve(handler, g.WithMultiplex(authGuard(muxHandler)))))
 }
 
 // fetchBadgeCounts retrieves notification and message badge counts for the current user.

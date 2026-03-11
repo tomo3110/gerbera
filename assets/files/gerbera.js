@@ -609,6 +609,8 @@
       send("gerbera:params_change", p);
       return;
     }
+    // Multiplex mode is handled by a separate popstate handler below.
+    if (GerberaMultiplex.ws && GerberaMultiplex.ws.readyState === WebSocket.OPEN) return;
     // LiveMount mode: dispatch to all mounted components
     document.querySelectorAll("[gerbera-live]").forEach(function(el) {
       if (el._gbLiveWs && el._gbLiveWs.readyState === WebSocket.OPEN && el._gbLiveSend) {
@@ -818,11 +820,337 @@
     });
   }
 
+  // --- WebSocket Multiplexing ---
+
+  var GerberaMultiplex = {
+    ws: null,
+    views: {},       // view_id -> {container, path, sessionId, csrf}
+    counter: 0,
+    reconnectAttempts: 0,
+    reconnectOverlay: null,
+
+    connect: function() {
+      var muxEndpoint = document.documentElement.getAttribute("gerbera-multiplex");
+      var muxProto = location.protocol === "https:" ? "wss:" : "ws:";
+      var muxUrl = muxProto + "//" + location.host + muxEndpoint;
+      var self = this;
+      this.ws = new WebSocket(muxUrl);
+
+      this.ws.onopen = function() {
+        self.reconnectAttempts = 0;
+        self.hideReconnectOverlay();
+        self.mountAll();
+      };
+
+      this.ws.onmessage = function(ev) {
+        self.onMessage(JSON.parse(ev.data));
+      };
+
+      this.ws.onclose = function(ev) {
+        if (_navigating) return;
+        self.showReconnectOverlay();
+        var delay = Math.min(1000 * Math.pow(2, self.reconnectAttempts), 30000);
+        self.reconnectAttempts++;
+        if (self.reconnectAttempts > 3 && ev && ev.code === 1006) {
+          location.reload();
+          return;
+        }
+        setTimeout(function() { self.connect(); }, delay);
+      };
+    },
+
+    mountAll: function() {
+      var self = this;
+      document.querySelectorAll("[gerbera-live]").forEach(function(el) {
+        // Skip elements marked for independent connection
+        if (el.getAttribute("gerbera-multiplex") === "false") return;
+        if (el._gbMuxMounted) return;
+        el._gbMuxMounted = true;
+        var path = el.getAttribute("gerbera-live");
+        var viewId = "v" + (++self.counter);
+        el._gbMuxViewId = viewId;
+        self.views[viewId] = {container: el, path: path, sessionId: null, csrf: null};
+        self.send({type: "mount", view_id: viewId, path: path});
+      });
+    },
+
+    onMessage: function(data) {
+      var viewId = data.view_id;
+      var view = this.views[viewId];
+      if (!view) return;
+      var el = view.container;
+
+      if (data.type === "mounted") {
+        // Store session info for upload support
+        view.sessionId = data.session_id;
+        view.csrf = data.csrf;
+        el._gbLiveSessionId = data.session_id;
+        el._gbLiveCsrf = data.csrf;
+
+        // Set initial HTML (body content from server)
+        el.innerHTML = data.html;
+
+        // Bind events scoped to this container
+        var self = this;
+        var liveSend = function(name, payload) {
+          self.sendEvent(viewId, name, payload);
+        };
+        bindScoped(el, liveSend);
+        return;
+      }
+
+      if (data.type === "update") {
+        el.classList.remove("gerbera-loading");
+        var patches = data.patches ? (typeof data.patches === "string" ? JSON.parse(data.patches) : data.patches) : [];
+        patches.forEach(function(p) {
+          // Server diff paths are relative to <html>. The view body
+          // is child[1] (after <head> at child[0]). In multiplex mode
+          // the container (el) holds body's innerHTML, so we skip the
+          // first path element that addresses <body> within <html>.
+          if (p.path.length === 0 || p.path[0] !== 1) return;
+          var n = el;
+          for (var i = 1; i < p.path.length; i++) {
+            if (!n.children[p.path[i]]) return;
+            n = n.children[p.path[i]];
+          }
+          var v = p.val != null ? p.val : "";
+          switch (p.op) {
+            case "text":
+              if (n.children.length > 0) {
+                var tn = null;
+                for (var j = 0; j < n.childNodes.length; j++) {
+                  if (n.childNodes[j].nodeType === 3) { tn = n.childNodes[j]; break; }
+                }
+                if (tn) { tn.textContent = v; }
+                else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
+              } else { n.textContent = v; }
+              if (n.tagName === "TEXTAREA") { n.value = v; }
+              break;
+            case "html":
+              if (isSVG(n)) {
+                while (n.firstChild) n.removeChild(n.firstChild);
+                if (v) n.appendChild(parseFragment(v, n));
+              } else { n.innerHTML = v; }
+              break;
+            case "attr":
+              var dv = decodeAttr(v);
+              n.setAttribute(p.key, dv);
+              if (p.key === "value" && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.tagName === "SELECT")) {
+                if (!(_composing && n === document.activeElement)) { n.value = dv; }
+              }
+              break;
+            case "rattr": n.removeAttribute(p.key); break;
+            case "class":
+              if (isSVG(n)) { n.setAttribute("class", v); }
+              else { n.className = v; }
+              break;
+            case "insert": {
+              var frag = parseFragment(p.html, n);
+              n.insertBefore(frag, n.children[p.idx] || null);
+              break;
+            }
+            case "remove":
+              if (n.children[p.idx]) n.removeChild(n.children[p.idx]);
+              break;
+            case "replace": {
+              if (n === el) {
+                var tmpDoc = new DOMParser().parseFromString(p.html, "text/html");
+                el.innerHTML = tmpDoc.body ? tmpDoc.body.innerHTML : "";
+              } else {
+                var frag = parseFragment(p.html, n.parentNode);
+                n.replaceWith(frag);
+              }
+              break;
+            }
+          }
+        });
+        if (patches.length > 0) {
+          var self = this;
+          bindScoped(el, function(name, payload) {
+            self.sendEvent(viewId, name, payload);
+          });
+        }
+        executeJSCommands(data.js_commands);
+        return;
+      }
+
+      if (data.type === "error") {
+        console.warn("Gerbera multiplex error for view", viewId);
+      }
+    },
+
+    send: function(msg) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(msg));
+      }
+    },
+
+    sendEvent: function(viewId, event, payload) {
+      var el = this.views[viewId] ? this.views[viewId].container : null;
+      if (el) el.classList.add("gerbera-loading");
+      this.send({type: "event", view_id: viewId, event: event, payload: payload});
+    },
+
+    showReconnectOverlay: function() {
+      if (this.reconnectOverlay) return;
+      this.reconnectOverlay = document.createElement("div");
+      this.reconnectOverlay.id = "gerbera-reconnect-overlay";
+      this.reconnectOverlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:2147483646;display:flex;align-items:center;justify-content:center;";
+      var box = document.createElement("div");
+      box.style.cssText = "background:#fff;padding:24px 32px;border-radius:8px;font-family:sans-serif;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.3);";
+      box.innerHTML = '<div style="font-size:18px;margin-bottom:8px;">&#x26A0; Connection Lost</div>' +
+        '<div style="color:#666;">Reconnecting...</div>' +
+        '<div style="color:#999;font-size:12px;margin-top:4px;">\u63a5\u7d9a\u304c\u5207\u308c\u307e\u3057\u305f\u3002\u518d\u63a5\u7d9a\u4e2d...</div>';
+      this.reconnectOverlay.appendChild(box);
+      document.body.appendChild(this.reconnectOverlay);
+    },
+
+    hideReconnectOverlay: function() {
+      if (this.reconnectOverlay) {
+        this.reconnectOverlay.remove();
+        this.reconnectOverlay = null;
+      }
+    }
+  };
+
   // If running as a full LiveView page (session on <html>), connect normally.
-  // Otherwise, only mount LiveView components embedded in the SSR page.
+  // Otherwise, check for multiplex mode or fall back to independent connections.
   if (sid) {
     connect();
   } else {
-    mountLiveComponents();
+    var muxEndpoint = document.documentElement.getAttribute("gerbera-multiplex");
+    if (muxEndpoint) {
+      GerberaMultiplex.connect();
+      // Mount independent-connection elements separately
+      document.querySelectorAll('[gerbera-live][gerbera-multiplex="false"]').forEach(function(el) {
+        // These will be picked up by mountLiveComponents below
+      });
+      // Mount any independent-connection LiveMounts via the legacy path
+      (function() {
+        var origMount = mountLiveComponents;
+        document.querySelectorAll('[gerbera-live][gerbera-multiplex="false"]').forEach(function(el) {
+          if (el._gbLiveMounted) return;
+          el._gbLiveMounted = true;
+          var path = el.getAttribute("gerbera-live");
+          fetch(path).then(function(res) { return res.text(); }).then(function(html) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, "text/html");
+            var body = doc.body;
+            if (body) {
+              body.querySelectorAll("script").forEach(function(s) { s.remove(); });
+              el.innerHTML = body.innerHTML;
+              var compSid = doc.documentElement.getAttribute("gerbera-session");
+              var compCsrfMeta = doc.querySelector('meta[name="gerbera-csrf"]');
+              var compCsrf = compCsrfMeta ? compCsrfMeta.getAttribute("content") : "";
+              if (compSid) {
+                el._gbLiveSessionId = compSid;
+                el._gbLiveCsrf = compCsrf;
+                var compWs = new WebSocket(
+                  proto + "//" + location.host + path + (path.indexOf("?") === -1 ? "?" : "&") + "gerbera-ws=1&session=" + compSid + "&csrf=" + compCsrf
+                );
+                el._gbLiveWs = compWs;
+                var liveSend = function(name, payload) {
+                  if (compWs.readyState === WebSocket.OPEN) {
+                    el.classList.add("gerbera-loading");
+                    compWs.send(JSON.stringify({e: name, p: payload}));
+                  }
+                };
+                compWs.onopen = function() { bindScoped(el, liveSend); };
+                compWs.onmessage = function(ev) {
+                  el.classList.remove("gerbera-loading");
+                  var data = JSON.parse(ev.data);
+                  var patches;
+                  var jsCommands;
+                  if (Array.isArray(data)) { patches = data; }
+                  else {
+                    patches = typeof data.patches === "string" ? JSON.parse(data.patches) : (data.patches || []);
+                    jsCommands = data.js_commands;
+                  }
+                  patches.forEach(function(p) {
+                    if (p.path.length === 0 || p.path[0] !== 1) return;
+                    var n = el;
+                    for (var i = 1; i < p.path.length; i++) {
+                      if (!n.children[p.path[i]]) return;
+                      n = n.children[p.path[i]];
+                    }
+                    var v = p.val != null ? p.val : "";
+                    switch (p.op) {
+                      case "text":
+                        if (n.children.length > 0) {
+                          var tn = null;
+                          for (var j = 0; j < n.childNodes.length; j++) {
+                            if (n.childNodes[j].nodeType === 3) { tn = n.childNodes[j]; break; }
+                          }
+                          if (tn) { tn.textContent = v; }
+                          else if (v) { n.insertBefore(document.createTextNode(v), n.firstChild); }
+                        } else { n.textContent = v; }
+                        if (n.tagName === "TEXTAREA") { n.value = v; }
+                        break;
+                      case "html":
+                        if (isSVG(n)) {
+                          while (n.firstChild) n.removeChild(n.firstChild);
+                          if (v) n.appendChild(parseFragment(v, n));
+                        } else { n.innerHTML = v; }
+                        break;
+                      case "attr":
+                        var dv = decodeAttr(v);
+                        n.setAttribute(p.key, dv);
+                        if (p.key === "value" && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.tagName === "SELECT")) {
+                          if (!(_composing && n === document.activeElement)) { n.value = dv; }
+                        }
+                        break;
+                      case "rattr": n.removeAttribute(p.key); break;
+                      case "class":
+                        if (isSVG(n)) { n.setAttribute("class", v); }
+                        else { n.className = v; }
+                        break;
+                      case "insert": {
+                        var frag = parseFragment(p.html, n);
+                        n.insertBefore(frag, n.children[p.idx] || null);
+                        break;
+                      }
+                      case "remove":
+                        if (n.children[p.idx]) n.removeChild(n.children[p.idx]);
+                        break;
+                      case "replace": {
+                        if (n === el) {
+                          var tmpDoc = new DOMParser().parseFromString(p.html, "text/html");
+                          el.innerHTML = tmpDoc.body ? tmpDoc.body.innerHTML : "";
+                        } else {
+                          var frag = parseFragment(p.html, n.parentNode);
+                          n.replaceWith(frag);
+                        }
+                        break;
+                      }
+                    }
+                  });
+                  if (patches.length > 0) bindScoped(el, liveSend);
+                  executeJSCommands(jsCommands);
+                };
+              }
+              bindScoped(el, function(){});
+            }
+          });
+        });
+      })();
+    } else {
+      mountLiveComponents();
+    }
   }
+
+  // Extend popstate handler for multiplex mode
+  window.addEventListener("popstate", function() {
+    if (GerberaMultiplex.ws && GerberaMultiplex.ws.readyState === WebSocket.OPEN) {
+      Object.keys(GerberaMultiplex.views).forEach(function(viewId) {
+        var p = {};
+        var params = new URLSearchParams(window.location.search);
+        params.forEach(function(v, k) { p[k] = v; });
+        p["_path"] = window.location.pathname + window.location.search;
+        GerberaMultiplex.send({
+          type: "params_change", view_id: viewId,
+          payload: p
+        });
+      });
+    }
+  });
 })();

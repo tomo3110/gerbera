@@ -1,9 +1,15 @@
 package live
 
-import _ "embed"
+import "github.com/tomo3110/gerbera/assets"
 
-//go:embed gerbera.js
-var gerberaJS string
+// gerberaJS returns the client-side JavaScript content.
+// The single source of truth is assets/files/gerbera.js.
+func gerberaJSContent() string {
+	return assets.JSString()
+}
 
-//go:embed gerbera_debug.js
-var gerberaDebugJS string
+// gerberaDebugJSContent returns the debug panel JavaScript content.
+// The single source of truth is assets/files/gerbera_debug.js.
+func gerberaDebugJSContent() string {
+	return assets.DebugJSString()
+}
