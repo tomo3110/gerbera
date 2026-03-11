@@ -66,8 +66,8 @@ func TestHandlerHTTPRender(t *testing.T) {
 	if !strings.Contains(body, "gerbera-click") {
 		t.Error("expected gerbera-click attribute in response")
 	}
-	if !strings.Contains(body, "<script>") {
-		t.Error("expected embedded script tag")
+	if !strings.Contains(body, `<script src="`) {
+		t.Error("expected script src tag for gerbera.js")
 	}
 }
 

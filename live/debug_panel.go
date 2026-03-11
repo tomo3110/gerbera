@@ -160,13 +160,3 @@ func renderDebugPanelHTML() string {
 	})
 	return debugPanelHTMLStr
 }
-
-// escapeForJSString escapes a string for safe embedding inside a JavaScript string literal.
-func escapeForJSString(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `"`, `\"`)
-	s = strings.ReplaceAll(s, "\n", `\n`)
-	s = strings.ReplaceAll(s, "\r", `\r`)
-	s = strings.ReplaceAll(s, "</script>", `<\/script>`)
-	return s
-}

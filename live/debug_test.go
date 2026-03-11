@@ -28,9 +28,9 @@ func TestDebugHTTPInjectsDebugScript(t *testing.T) {
 	h.ServeHTTP(w, req)
 
 	body := w.Body.String()
-	// gerbera-debug-host is unique to gerbera_debug.js (the DevPanel)
-	if !strings.Contains(body, "gerbera-debug-host") {
-		t.Error("expected debug panel script in response when debug is enabled")
+	// Debug JS is now served as an external script via <script src> tag
+	if !strings.Contains(body, "gerbera_debug.") {
+		t.Error("expected debug panel script src in response when debug is enabled")
 	}
 }
 
@@ -41,8 +41,8 @@ func TestNonDebugHTTPDoesNotInjectDebugScript(t *testing.T) {
 	h.ServeHTTP(w, req)
 
 	body := w.Body.String()
-	// gerbera-debug-host is unique to gerbera_debug.js (the DevPanel)
-	if strings.Contains(body, "gerbera-debug-host") {
+	// Debug JS script src should not be present when debug is disabled
+	if strings.Contains(body, "gerbera_debug.") {
 		t.Error("debug panel script should not be present when debug is disabled")
 	}
 }
