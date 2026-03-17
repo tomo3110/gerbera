@@ -388,6 +388,58 @@ func TestViewLoopParamsChange(t *testing.T) {
 	wg.Wait()
 }
 
+func TestViewLoopCustomRootBuilder(t *testing.T) {
+	view := &loopTestView{}
+	view.Mount(Params{})
+
+	tr := NewTestTransport()
+
+	customRoot := func(components g.Components) *g.Element {
+		root := &g.Element{
+			TagName:    "div",
+			Attr:       g.AttrMap{"gerbera-view": "custom"},
+			ClassNames: make(g.ClassMap),
+			ChildElems: make([]*g.Element, 0),
+		}
+		return g.Parse(root, components...)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var loopErr error
+	go func() {
+		defer wg.Done()
+		loopErr = ViewLoop(view, tr, ViewLoopConfig{
+			SessionID:   "test-sess",
+			Lang:        "en",
+			RootBuilder: customRoot,
+		})
+	}()
+
+	// Send an event to trigger a diff cycle
+	tr.PushEvent("inc", nil)
+	time.Sleep(50 * time.Millisecond)
+
+	if view.Count != 1 {
+		t.Errorf("expected Count=1, got %d", view.Count)
+	}
+
+	// Check that a Message was sent with patches
+	tr.mu.Lock()
+	msgCount := len(tr.Messages)
+	tr.mu.Unlock()
+	if msgCount == 0 {
+		t.Error("expected at least one message to be sent")
+	}
+
+	tr.Close()
+	wg.Wait()
+
+	if loopErr != nil {
+		t.Errorf("expected nil error, got %v", loopErr)
+	}
+}
+
 func TestViewLoopParamsChangeNonPatcher(t *testing.T) {
 	view := &loopTestView{}
 	view.Mount(Params{})

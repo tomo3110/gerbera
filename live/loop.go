@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"time"
 
+	g "github.com/tomo3110/gerbera"
 	"github.com/tomo3110/gerbera/session"
 )
 
@@ -19,6 +20,10 @@ type ViewLoopConfig struct {
 	InfoCh        <-chan any
 	StopTick      chan struct{} // closed on loop exit
 	DLog          *debugLogger
+
+	// RootBuilder customizes the internal tree construction of ViewLoop.
+	// If nil, the default <html> root is used.
+	RootBuilder func(components g.Components) *g.Element
 }
 
 // ViewLoop drives a View's lifecycle over a Transport.
@@ -78,11 +83,16 @@ func ViewLoop(view View, transport Transport, cfg ViewLoopConfig) error {
 	// Scripts are no longer in the tree — they are injected via metadata
 	// only at gerbera.Render() time, so the diff baseline is script-free.
 	components := view.Render()
-	sess.tree = buildTree(cfg.Lang, cfg.SessionID, cfg.CSRFToken, components)
+	if cfg.RootBuilder != nil {
+		sess.tree = cfg.RootBuilder(components)
+	} else {
+		sess.tree = buildTree(cfg.Lang, cfg.SessionID, cfg.CSRFToken, components)
+	}
 
 	hcfg := &handlerConfig{
-		debug:      cfg.Debug,
-		sessionTTL: cfg.SessionTTL,
+		debug:       cfg.Debug,
+		sessionTTL:  cfg.SessionTTL,
+		rootBuilder: cfg.RootBuilder,
 	}
 
 	for {

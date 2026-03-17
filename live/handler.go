@@ -22,6 +22,7 @@ type handlerConfig struct {
 	middlewares  []func(http.Handler) http.Handler
 	checkOrigin  func(r *http.Request) bool
 	sessionStore session.Store
+	rootBuilder  func(gerbera.Components) *gerbera.Element
 }
 
 // Option configures the live handler.
@@ -247,7 +248,12 @@ func renderAndDiff(sess *Session, cfg *handlerConfig) ([]diff.Patch, []JSCommand
 			}
 		}
 	}
-	newTree := buildTree(lang, sess.ID, sess.CSRFToken, components)
+	var newTree *gerbera.Element
+	if cfg.rootBuilder != nil {
+		newTree = cfg.rootBuilder(components)
+	} else {
+		newTree = buildTree(lang, sess.ID, sess.CSRFToken, components)
+	}
 
 	patches := diff.Diff(sess.tree, newTree)
 	sess.tree = newTree
